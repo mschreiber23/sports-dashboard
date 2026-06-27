@@ -5381,7 +5381,7 @@ thead .dfs-sticky-player {
 }
 .bsp-compact-side:hover { opacity: 0.8; }
 .bsp-compact-away { justify-content: flex-start; }
-.bsp-compact-home { justify-content: flex-end; flex-direction: row-reverse; }
+.bsp-compact-home { justify-content: flex-end; }
 .bsp-compact-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
 .bsp-compact-info { display: flex; flex-direction: column; line-height: 1.2; }
 .bsp-compact-info-right { align-items: flex-end; }
@@ -5399,7 +5399,7 @@ thead .dfs-sticky-player {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 72px;
+  min-width: 64px;
 }
 .bsp-compact-live-dot {
   width: 7px; height: 7px;
