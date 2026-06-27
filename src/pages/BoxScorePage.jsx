@@ -115,7 +115,6 @@ const platePts = (() => {
 })();
 
 function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation }) {
-  const [view, setView] = useState('batter');
 
   // Zone bounds in SVG coords
   const zL = svgX(-0.83), zR = svgX(0.83);
@@ -132,14 +131,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
   return (
     <div className="mlb-pitch-view">
 
-      {/* Tab toggle */}
-      <div className="mlb-pv-tabs">
-        <button className={`mlb-pv-tab${view==='batter'?' mlb-pv-tab-active':''}`} onClick={()=>setView('batter')}>Batter</button>
-        <button className={`mlb-pv-tab${view==='field'?' mlb-pv-tab-active':''}`}  onClick={()=>setView('field')}>Field</button>
-      </div>
-
-      {view === 'batter' && (
-        <div className="mlb-pv-batter">
+      <div className="mlb-pv-batter">
           <svg viewBox="0 0 360 440" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
             <defs>
               {/* Field background gradient */}
@@ -295,32 +287,6 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
         </div>
       )}
 
-      {view === 'field' && (
-        <div className="mlb-pv-field">
-          {situation && (
-            <div className="mlb-pv-field-inner">
-              <BaseDiamond
-                onFirst={!!situation.onFirst}
-                onSecond={!!situation.onSecond}
-                onThird={!!situation.onThird}
-                size={160} />
-              <div className="mlb-pv-field-count">
-                <div className="mlb-pv-field-count-row">
-                  <span style={{color:'#4ade80'}}>{situation.balls??0} B</span>
-                  <span style={{color:'#f87171'}}>{situation.strikes??0} S</span>
-                  <span style={{color:'#fb923c'}}>{situation.outs??0} Out{situation.outs!==1?'s':''}</span>
-                </div>
-              </div>
-              {matchup?.batter?.fullName && (
-                <div className="mlb-pv-field-matchup">
-                  <div><span className="mlb-pv-role">Batter</span> {matchup.batter.fullName}</div>
-                  <div><span className="mlb-pv-role">Pitcher</span> {matchup.pitcher?.fullName}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
