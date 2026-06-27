@@ -5090,7 +5090,7 @@ thead .dfs-sticky-player {
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  object-position: top;
+  object-position: center 15%;
   background: var(--bg3);
   flex-shrink: 0;
 }
@@ -5435,7 +5435,7 @@ thead .dfs-sticky-player {
 .gc-matchup-photo {
   width: 56px; height: 56px;
   border-radius: 50%;
-  object-fit: cover; object-position: top;
+  object-fit: cover; object-position: center 15%;
   background: var(--bg3);
   border: 2px solid var(--border);
   flex-shrink: 0;
