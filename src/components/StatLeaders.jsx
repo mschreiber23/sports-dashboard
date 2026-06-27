@@ -10,6 +10,7 @@ const CATEGORIES = {
     { key: 'avg',         label: 'Batting Avg' },
     { key: 'ERA',         label: 'ERA' },
     { key: 'strikeouts',  label: 'Strikeouts' },
+    { key: 'WARBR',       label: 'WAR' },
   ],
   nfl: [
     { key: 'passingYards',       label: 'Pass Yards' },
@@ -46,7 +47,7 @@ function formatValue(value, key) {
   if (key === 'avg' || key === 'savePct' || key === 'ERA' || key === 'avgGoalsAgainst') {
     return typeof value === 'number' ? value.toFixed(3).replace(/^0\./, '.') : value;
   }
-  if (key === 'pointsPerGame' || key === 'assistsPerGame' || key === 'reboundsPerGame' || key === 'stealsPerGame' || key === 'blocksPerGame') {
+  if (key === 'WARBR' || key === 'pointsPerGame' || key === 'assistsPerGame' || key === 'reboundsPerGame' || key === 'stealsPerGame' || key === 'blocksPerGame') {
     return typeof value === 'number' ? value.toFixed(1) : value;
   }
   return typeof value === 'number' ? Math.round(value) : value;
