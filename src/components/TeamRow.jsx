@@ -237,15 +237,14 @@ function FinalMLBGame({ game, teamId, sport }) {
     const splitLabel = c.homeAway === 'home' ? 'Home' : 'Away';
     const score   = getScore(c);
     return (
-      <div className={`f2-team-row ${isMine ? 'f2-mine' : ''}`}>
+      <div className={`f2-team-row${c.winner ? ' f2-winner' : ''}${isMine ? ' f2-mine' : ''}`}>
         <LogoImg team={c.team} className="f2-logo" />
         <div className="f2-team-info">
           <span className="f2-team-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
           <span className="f2-team-rec">({overall}{split ? `, ${split} ${splitLabel}` : ''})</span>
         </div>
         <div className="f2-score-wrap">
-          {c.winner && <span className="f2-arrow">◄</span>}
-          <span className={`f2-score ${c.winner ? 'f2-score-win' : ''}`}>{score}</span>
+          <span className="f2-score">{score}</span>
         </div>
       </div>
     );

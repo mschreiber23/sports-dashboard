@@ -778,10 +778,11 @@ body {
 /* ── f2 = Final MLB game v2 (ESPN-style two-column) ─────────────── */
 .f2-box {
   display: grid;
-  grid-template-columns: 1fr 145px;
+  grid-template-columns: auto 145px;
   gap: 0;
   padding: 14px 16px 12px;
   border-top: 1px solid var(--border);
+  align-items: start;
 }
 /* Left panel: FINAL + team rows */
 .f2-left-panel {
@@ -792,16 +793,16 @@ body {
   align-self: flex-start; margin-bottom: 10px;
 }
 .f2-team-row {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   padding: 5px 0; min-width: 0;
 }
 .f2-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
 .f2-team-info {
   display: flex; flex-direction: column; gap: 2px;
-  flex: 1; min-width: 0; overflow: hidden;
+  min-width: 0; overflow: hidden;
 }
 .f2-team-name {
-  font-size: 14px; font-weight: 700; color: var(--text);
+  font-size: 14px; font-weight: 400; color: var(--text2);
   line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .f2-team-rec {
@@ -809,15 +810,16 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .f2-score-wrap {
-  display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 4px;
+  display: flex; align-items: center; flex-shrink: 0; margin-left: 6px;
 }
-.f2-arrow { font-size: 10px; color: var(--text); margin-right: 2px; }
 .f2-score {
-  font-size: 26px; font-weight: 900;
+  font-size: 22px; font-weight: 400;
   font-variant-numeric: tabular-nums;
-  color: var(--text2); min-width: 26px; text-align: right; line-height: 1;
+  color: var(--text2); min-width: 22px; text-align: right; line-height: 1;
 }
-.f2-score-win { color: var(--text); }
+/* winning team: bold name + score */
+.f2-winner .f2-team-name { font-weight: 800; color: var(--text); }
+.f2-winner .f2-score     { font-weight: 900; color: var(--text); }
 
 /* Right panel: decisions + buttons */
 .f2-right-panel {
@@ -861,8 +863,7 @@ body {
 .f2-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 
 @media (max-width: 380px) {
-  .f2-box { grid-template-columns: 1fr 132px; }
-  .f2-score { font-size: 22px; }
+  .f2-score { font-size: 18px; }
   .f2-dec-photo { width: 26px; height: 26px; }
 }
 @media (max-width: 320px) {
