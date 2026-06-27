@@ -4,165 +4,260 @@ import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import useMlbLiveFeed from '../hooks/useMlbLiveFeed';
 
-/* ─── Pitch type metadata ────────────────────────────── */
-const PITCH_META = {
-  FF: { label: 'Four-Seam',  color: '#ef4444' },
-  FA: { label: 'Fastball',   color: '#ef4444' },
-  FT: { label: 'Two-Seam',   color: '#f97316' },
-  SI: { label: 'Sinker',     color: '#f97316' },
-  FC: { label: 'Cutter',     color: '#a855f7' },
-  CH: { label: 'Changeup',   color: '#22c55e' },
-  CU: { label: 'Curveball',  color: '#60a5fa' },
-  KC: { label: 'Knuckle Curve', color: '#3b82f6' },
-  SL: { label: 'Slider',     color: '#eab308' },
-  SV: { label: 'Slurve',     color: '#fbbf24' },
-  FS: { label: 'Splitter',   color: '#06b6d4' },
-  FO: { label: 'Forkball',   color: '#06b6d4' },
-  KN: { label: 'Knuckleball',color: '#f1f5f9' },
-  EP: { label: 'Eephus',     color: '#9ca3af' },
+/* ─── Pitch metadata ─────────────────────────────────── */
+const PITCH_NAMES = {
+  FF:'Four-Seam', FA:'Fastball', FT:'Two-Seam', SI:'Sinker',
+  FC:'Cutter', CH:'Changeup', CU:'Curveball', KC:'Knuckle Curve',
+  SL:'Slider', SV:'Slurve', FS:'Splitter', FO:'Forkball',
+  KN:'Knuckleball', EP:'Eephus', ST:'Sweeper', SV:'Slurve',
 };
-function pitchColor(code) { return PITCH_META[code]?.color || '#9ca3af'; }
-function pitchLabel(code, desc) { return PITCH_META[code]?.label || desc || code || '?'; }
+function pitchLabel(code, desc) { return PITCH_NAMES[code] || desc || code || '?'; }
 
-/* ─── Pitch Plot SVG ─────────────────────────────────── */
-/*
-  Coordinate space mirrors MLB's: pX = 0 is plate center,
-  positive pX is to the catcher's right (inside to a RHB),
-  pZ = 0 is ground level.
+// Color by RESULT (matches MLB.com Gameday)
+function resultColor(details) {
+  if (!details) return '#6b7280';
+  const d = details.description?.toLowerCase() || '';
+  if (details.isInPlay)                        return '#9333ea'; // purple
+  if (d.includes('foul'))                      return '#f59e0b'; // amber
+  if (d.includes('hit by'))                    return '#f97316'; // orange
+  if (details.isStrike)                        return '#ef4444'; // red
+  if (details.isBall)                          return '#22c55e'; // green
+  return '#6b7280';
+}
 
-  SVG viewBox "0 0 200 220":
-    Displayed range  pX: -2.5 → +2.5 ft  (200 px, 40 px/ft)
-    Displayed range  pZ:  0   →  5.5 ft  (220 px, 40 px/ft)
-    svgX(pX) = pX*40 + 100
-    svgY(pZ) = 220 - pZ*40
-*/
-const toX = (pX) => pX * 40 + 100;
-const toY = (pZ) => 220 - pZ * 40;
+/* ─── Full-width immersive pitch view ────────────────────
+   Coordinate system (matches MLB API):
+     pX=0 = plate center, pX positive = catcher's right
+     pZ=0 = ground, pZ positive = higher
 
-// Home plate pentagon (pZ ≈ 0.15 ft above ground)
-const PLATE_PTS = (() => {
-  const cx = 100, cy = toY(0.1);
-  const hw = 0.7083 * 40; // half-plate width (8.5in)
-  return [
-    [cx - hw, cy - 6],
-    [cx + hw, cy - 6],
-    [cx + hw, cy + 2],
-    [cx,      cy + 9],
-    [cx - hw, cy + 2],
-  ].map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+   SVG viewBox "0 0 360 440":
+     Displayed pX: -3 to +3 ft    (60 px/ft, center=180)
+     Displayed pZ:  0 to  7.3 ft  (60 px/ft, 0 = y 440)
+
+   svgX(pX) = 180 + pX * 60
+   svgY(pZ) = 440 - pZ * 60
+──────────────────────────────────────────────────────── */
+const SX = 60;  // px per foot
+const CX = 180; // SVG x at pX=0
+const BY = 440; // SVG y at pZ=0
+
+function svgX(pX) { return CX + pX * SX; }
+function svgY(pZ) { return BY - pZ * SX; }
+
+// Home plate pentagon (centre at svgY(0.18))
+const platePts = (() => {
+  const cy = svgY(0.18), hw = 0.7083 * SX;
+  return [[CX-hw,cy-10],[CX+hw,cy-10],[CX+hw,cy+2],[CX,cy+12],[CX-hw,cy+2]]
+    .map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
 })();
 
-function PitchPlot({ pitches, szTop, szBot }) {
-  const zoneLeft  = toX(-0.83);
-  const zoneRight = toX( 0.83);
-  const zoneTop   = toY(szTop);
-  const zoneBot   = toY(szBot);
-  const zoneW = zoneRight - zoneLeft;
-  const zoneH = zoneBot   - zoneTop;
+function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation }) {
+  const [view, setView] = useState('batter');
 
-  // Strike-zone 3×3 grid lines
-  const col1 = zoneLeft + zoneW / 3;
-  const col2 = zoneLeft + (zoneW * 2) / 3;
-  const row1 = zoneTop  + zoneH / 3;
-  const row2 = zoneTop  + (zoneH * 2) / 3;
+  // Zone bounds in SVG coords
+  const zL = svgX(-0.83), zR = svgX(0.83);
+  const zT = svgY(szTop),  zB = svgY(szBot);
+  const zW = zR - zL, zH = zB - zT;
+
+  // 3x3 grid dividers
+  const c1 = zL + zW/3, c2 = zL + zW*2/3;
+  const r1 = zT + zH/3, r2 = zT + zH*2/3;
+
+  const lastCoords = lastPitch?.pitchData?.coordinates;
+  const lastColor  = resultColor(lastPitch?.details);
 
   return (
-    <svg viewBox="0 0 200 220" className="pitch-plot-svg" aria-label="Pitch location plot">
-      {/* Background */}
-      <rect x="0" y="0" width="200" height="220" fill="transparent" />
+    <div className="mlb-pitch-view">
 
-      {/* Shadow ball-zone ring */}
-      <circle cx="100" cy={toY(2.45)} r={toX(1.5) - 100} fill="none"
-        stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+      {/* Tab toggle */}
+      <div className="mlb-pv-tabs">
+        <button className={`mlb-pv-tab${view==='batter'?' mlb-pv-tab-active':''}`} onClick={()=>setView('batter')}>Batter</button>
+        <button className={`mlb-pv-tab${view==='field'?' mlb-pv-tab-active':''}`}  onClick={()=>setView('field')}>Field</button>
+      </div>
 
-      {/* Strike zone */}
-      <rect x={zoneLeft} y={zoneTop} width={zoneW} height={zoneH}
-        fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" />
+      {view === 'batter' && (
+        <div className="mlb-pv-batter">
+          <svg viewBox="0 0 360 440" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              {/* Field background gradient */}
+              <linearGradient id="pvBg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"  stopColor="#050c0a"/>
+                <stop offset="30%" stopColor="#071610"/>
+                <stop offset="65%" stopColor="#0a1f0e"/>
+                <stop offset="85%" stopColor="#12220a"/>
+                <stop offset="100%" stopColor="#1c1506"/>
+              </linearGradient>
+              {/* Grass mound glow at pitcher distance */}
+              <radialGradient id="pvGrass" cx="50%" cy="35%" r="55%">
+                <stop offset="0%"   stopColor="#1a4a22" stopOpacity="0.65"/>
+                <stop offset="100%" stopColor="#050c0a" stopOpacity="0"/>
+              </radialGradient>
+              {/* Dirt halo near plate */}
+              <radialGradient id="pvDirt" cx="50%" cy="100%" r="60%">
+                <stop offset="0%"   stopColor="#3d2710" stopOpacity="0.55"/>
+                <stop offset="100%" stopColor="#1c1506" stopOpacity="0"/>
+              </radialGradient>
+              {/* Pitch tunnel glow */}
+              <linearGradient id="pvTunnel" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stopColor="#2563eb" stopOpacity="0"/>
+                <stop offset="60%"  stopColor="#3b82f6" stopOpacity="0.18"/>
+                <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.06"/>
+              </linearGradient>
+              {/* Last-pitch trail */}
+              <linearGradient id="trailGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+                <stop offset="0%"  stopColor={lastColor} stopOpacity="0"/>
+                <stop offset="70%" stopColor={lastColor} stopOpacity="0.55"/>
+                <stop offset="100%" stopColor={lastColor} stopOpacity="0.2"/>
+              </linearGradient>
+              {/* Dot glow filter */}
+              <filter id="pvGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
 
-      {/* 3×3 inner grid */}
-      {[col1, col2].map((x, i) => (
-        <line key={`col${i}`} x1={x} y1={zoneTop} x2={x} y2={zoneBot}
-          stroke="rgba(255,255,255,0.2)" strokeWidth="0.75" />
-      ))}
-      {[row1, row2].map((y, i) => (
-        <line key={`row${i}`} x1={zoneLeft} y1={y} x2={zoneRight} y2={y}
-          stroke="rgba(255,255,255,0.2)" strokeWidth="0.75" />
-      ))}
+            {/* ── Backgrounds ── */}
+            <rect x="0" y="0" width="360" height="440" fill="url(#pvBg)"/>
+            <ellipse cx="180" cy="170" rx="220" ry="140" fill="url(#pvGrass)"/>
+            <ellipse cx="180" cy="440" rx="210" ry="90"  fill="url(#pvDirt)"/>
 
-      {/* Home plate */}
-      <polygon points={PLATE_PTS} fill="rgba(255,255,255,0.85)" />
+            {/* Faint infield arc lines for depth cue */}
+            {[55, 90, 130].map((r, i) => (
+              <ellipse key={i} cx="180" cy="500" rx={r} ry={r * 0.28}
+                fill="none" stroke="rgba(255,255,255,0.025)" strokeWidth="0.8"/>
+            ))}
 
-      {/* Pitches — oldest first so newest is on top */}
-      {pitches.map((p, i) => {
-        const coords = p.pitchData?.coordinates;
-        if (!coords?.pX == null || coords?.pZ == null) return null;
-        const cx = toX(coords.pX);
-        const cy = toY(coords.pZ);
-        const code = p.details?.type?.code || '';
-        const fill = pitchColor(code);
-        const isStrike = p.details?.isStrike;
-        const isInPlay = p.details?.isInPlay;
-        const isBall   = p.details?.isBall;
-        const isLast   = i === pitches.length - 1;
-        return (
-          <g key={i}>
-            {isLast && (
-              <circle cx={cx} cy={cy} r="12" fill="none"
-                stroke={fill} strokeWidth="1.5" opacity="0.4" />
+            {/* Mound highlight dot */}
+            <ellipse cx="180" cy="58" rx="22" ry="9" fill="rgba(140,100,40,0.18)"/>
+
+            {/* Pitch tunnel cone */}
+            <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},440 L${svgX(-1.6)},440 Z`}
+              fill="url(#pvTunnel)"/>
+
+            {/* ── Last pitch trail ── */}
+            {lastCoords?.pX != null && (
+              <line
+                x1={svgX(lastCoords.pX * 0.25)} y1="0"
+                x2={svgX(lastCoords.pX)}         y2={svgY(lastCoords.pZ)}
+                stroke="url(#trailGrad)" strokeWidth="14" strokeLinecap="round"/>
             )}
-            <circle cx={cx} cy={cy} r={isLast ? 7 : 6}
-              fill={fill}
-              stroke={isStrike || isInPlay ? '#fff' : isBall ? 'rgba(255,255,255,0.3)' : 'none'}
-              strokeWidth={isStrike || isInPlay ? 1.5 : 1}
-              opacity={isLast ? 1 : 0.7}
-            />
-            {/* Pitch number */}
-            <text x={cx} y={cy + 4} textAnchor="middle"
-              fontSize="7" fontWeight="bold" fill="#000" opacity={isLast ? 1 : 0.8}>
-              {i + 1}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
-/* ─── Pitch legend entry ─────────────────────────────── */
-function PitchLegend({ pitches }) {
-  const seen = {};
-  pitches.forEach((p) => {
-    const code = p.details?.type?.code;
-    if (code && !seen[code]) seen[code] = p.details?.type?.description || code;
-  });
-  const entries = Object.entries(seen);
-  if (!entries.length) return null;
-  return (
-    <div className="pitch-legend">
-      {entries.map(([code, desc]) => (
-        <div key={code} className="pitch-legend-item">
-          <span className="pitch-legend-dot" style={{ background: pitchColor(code) }} />
-          <span>{pitchLabel(code, desc)}</span>
+            {/* ── Strike zone (accurate 17in wide) ── */}
+            {/* Zone fill */}
+            <rect x={zL} y={zT} width={zW} height={zH}
+              fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.75)" strokeWidth="1.8"/>
+            {/* 3×3 grid */}
+            {[c1,c2].map((x,i)=>(
+              <line key={`c${i}`} x1={x} y1={zT} x2={x} y2={zB}
+                stroke="rgba(255,255,255,0.35)" strokeWidth="0.9"/>
+            ))}
+            {[r1,r2].map((y,i)=>(
+              <line key={`r${i}`} x1={zL} y1={y} x2={zR} y2={y}
+                stroke="rgba(255,255,255,0.35)" strokeWidth="0.9"/>
+            ))}
+
+            {/* Zone label */}
+            <text x={zL - 4} y={zT - 5} fontSize="9" fill="rgba(255,255,255,0.4)"
+              textAnchor="end" fontFamily="monospace">SZ</text>
+
+            {/* ── Home plate ── */}
+            <polygon points={platePts} fill="rgba(255,255,255,0.88)"/>
+
+            {/* ── Pitches (oldest first → newest on top) ── */}
+            {pitches.map((p, i) => {
+              const c = p.pitchData?.coordinates;
+              if (c?.pX == null || c?.pZ == null) return null;
+              const cx = svgX(c.pX), cy = svgY(c.pZ);
+              const col = resultColor(p.details);
+              const isLast = i === pitches.length - 1;
+              const r = isLast ? 14 : 13;
+              return (
+                <g key={i} filter={isLast ? 'url(#pvGlow)' : undefined}>
+                  {isLast && (
+                    <circle cx={cx} cy={cy} r={r+5}
+                      fill="none" stroke={col} strokeWidth="1.5" opacity="0.35"/>
+                  )}
+                  <circle cx={cx} cy={cy} r={r} fill={col}
+                    stroke="rgba(0,0,0,0.55)" strokeWidth="1.5"/>
+                  <text x={cx} y={cy+5} textAnchor="middle"
+                    fontSize="11" fontWeight="900" fill="#fff"
+                    style={{fontFamily:'system-ui,sans-serif'}}>
+                    {i + 1}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* ── Last pitch info bar ── */}
+          {lastPitch && (() => {
+            const code  = lastPitch.details?.type?.code || '';
+            const desc  = lastPitch.details?.type?.description || '';
+            const speed = lastPitch.pitchData?.startSpeed;
+            const result = lastPitch.details?.description || '';
+            const col   = resultColor(lastPitch.details);
+            return (
+              <div className="mlb-pv-infobar">
+                <div className="mlb-pv-dot-num" style={{background:col}}>
+                  {pitches.length}
+                </div>
+                <div className="mlb-pv-infobar-text">
+                  <div className="mlb-pv-result">{result}</div>
+                  <div className="mlb-pv-pitch-line">
+                    {speed && <span className="mlb-pv-speed">{speed.toFixed(1)} mph</span>}
+                    <span className="mlb-pv-type">{pitchLabel(code, desc)}</span>
+                  </div>
+                </div>
+                <div className="mlb-pv-count">
+                  <span style={{color:'#4ade80'}}>{count.balls??0}</span>
+                  <span className="mlb-pv-count-sep">-</span>
+                  <span style={{color:'#f87171'}}>{count.strikes??0}</span>
+                  <span className="mlb-pv-count-sep"> · </span>
+                  <span style={{color:'#fb923c'}}>{count.outs??0}</span>
+                  <span className="mlb-pv-count-label"> out{(count.outs??0)!==1?'s':''}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Pitch result legend */}
+          <div className="mlb-pv-legend">
+            {[['#22c55e','Ball'],['#ef4444','Strike'],['#9333ea','In Play'],['#f59e0b','Foul']].map(([c,l])=>(
+              <div key={l} className="mlb-pv-legend-item">
+                <span className="mlb-pv-legend-dot" style={{background:c}}/>
+                <span>{l}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
-  );
-}
+      )}
 
-/* ─── Last pitch badge ───────────────────────────────── */
-function LastPitchBadge({ pitch }) {
-  if (!pitch) return null;
-  const code  = pitch.details?.type?.code || '';
-  const desc  = pitch.details?.type?.description || '';
-  const speed = pitch.pitchData?.startSpeed;
-  const result = pitch.details?.description || '';
-  const color = pitchColor(code);
-  return (
-    <div className="last-pitch-badge">
-      <span className="last-pitch-dot" style={{ background: color }} />
-      <span className="last-pitch-label">{pitchLabel(code, desc)}</span>
-      {speed && <span className="last-pitch-speed">{Math.round(speed)} mph</span>}
-      {result && <span className="last-pitch-result">{result}</span>}
+      {view === 'field' && (
+        <div className="mlb-pv-field">
+          {situation && (
+            <div className="mlb-pv-field-inner">
+              <BaseDiamond
+                onFirst={!!situation.onFirst}
+                onSecond={!!situation.onSecond}
+                onThird={!!situation.onThird}
+                size={160} />
+              <div className="mlb-pv-field-count">
+                <div className="mlb-pv-field-count-row">
+                  <span style={{color:'#4ade80'}}>{situation.balls??0} B</span>
+                  <span style={{color:'#f87171'}}>{situation.strikes??0} S</span>
+                  <span style={{color:'#fb923c'}}>{situation.outs??0} Out{situation.outs!==1?'s':''}</span>
+                </div>
+              </div>
+              {matchup?.batter?.fullName && (
+                <div className="mlb-pv-field-matchup">
+                  <div><span className="mlb-pv-role">Batter</span> {matchup.batter.fullName}</div>
+                  <div><span className="mlb-pv-role">Pitcher</span> {matchup.pitcher?.fullName}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -683,47 +778,16 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             ))}
           </div>
 
-          {/* Pitch Tracker */}
-          {pitches.length > 0 && (
-            <div className="pitch-tracker-card">
-              <div className="pitch-tracker-plot">
-                <PitchPlot pitches={pitches} szTop={szTop} szBot={szBot} />
-                <PitchLegend pitches={pitches} />
-              </div>
-              <div className="pitch-tracker-info">
-                <div className="pitch-tracker-header">AT BAT · {pitches.length} pitch{pitches.length !== 1 ? 'es' : ''}</div>
-                {feedMatchup?.batter?.fullName && (
-                  <div className="pitch-tracker-player">
-                    <span className="pitch-tracker-role">Batter</span>
-                    <span className="pitch-tracker-name">{feedMatchup.batter.fullName}</span>
-                  </div>
-                )}
-                {feedMatchup?.pitcher?.fullName && (
-                  <div className="pitch-tracker-player">
-                    <span className="pitch-tracker-role">Pitcher</span>
-                    <span className="pitch-tracker-name">{feedMatchup.pitcher.fullName}</span>
-                  </div>
-                )}
-                <div className="pitch-tracker-count">
-                  <div className="pitch-tracker-count-item">
-                    <span className="pitch-tracker-count-val" style={{color:'#4ade80'}}>{feedCount.balls ?? situation.balls ?? 0}</span>
-                    <span className="pitch-tracker-count-label">B</span>
-                  </div>
-                  <div className="pitch-tracker-count-sep">-</div>
-                  <div className="pitch-tracker-count-item">
-                    <span className="pitch-tracker-count-val" style={{color:'#fbbf24'}}>{feedCount.strikes ?? situation.strikes ?? 0}</span>
-                    <span className="pitch-tracker-count-label">S</span>
-                  </div>
-                  <div className="pitch-tracker-count-sep">·</div>
-                  <div className="pitch-tracker-count-item">
-                    <span className="pitch-tracker-count-val" style={{color:'#f87171'}}>{feedCount.outs ?? situation.outs ?? 0}</span>
-                    <span className="pitch-tracker-count-label">Out{(feedCount.outs ?? situation.outs ?? 0) !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-                <LastPitchBadge pitch={lastPitch} />
-              </div>
-            </div>
-          )}
+          {/* Full-width Pitch Tracker */}
+          <MlbPitchView
+            pitches={pitches}
+            lastPitch={lastPitch}
+            szTop={szTop}
+            szBot={szBot}
+            matchup={feedMatchup}
+            count={feedCount}
+            situation={situation}
+          />
 
           {/* Pitcher / Count / Batter */}
           <div className="gc-at-bat">
