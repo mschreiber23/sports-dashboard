@@ -1651,7 +1651,7 @@ body {
 
 /* ── All Scores Grid Cards ── */
 /* Sport selector tabs (used on Scores, Standings, Leaders pages) */
-.scores-sport-tabs {
+.scores-sport-tabs, .ts-tabs {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
