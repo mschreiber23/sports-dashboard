@@ -56,8 +56,7 @@ function AppShell({ userId }) {
   const { pathname } = useLocation();
   const isSubPage = ['/player/', '/boxscore/', '/team/'].some((p) => pathname.startsWith(p));
   // Show compact sticky ticker on all pages except home and player/boxscore/team sub-pages
-  const isHome = pathname === '/';
-  const showStickyTicker = !isHome && !isSubPage;
+  const showStickyTicker = !isSubPage;
 
   return (
     <FavoritesProvider userId={userId}>
