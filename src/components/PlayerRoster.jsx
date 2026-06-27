@@ -108,7 +108,7 @@ export default function PlayerRoster({ editMode = false, setEditMode }) {
                 {player.headshot && <img src={player.headshot} alt="" className="edit-team-logo" style={{ borderRadius: '50%', opacity: player.hidden ? 0.4 : 1 }} />}
                 <div>
                   <div className="edit-team-name" style={{ opacity: player.hidden ? 0.5 : 1 }}>{player.displayName}</div>
-                  <div className="edit-team-sport">{player.position} · {SPORTS[player.sport]?.label}</div>
+                  <div className="edit-team-sport">{player._position || (typeof player.position === 'string' ? player.position : player.position?.abbreviation) || ''} · {SPORTS[player.sport]?.label}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
@@ -215,7 +215,7 @@ export default function PlayerRoster({ editMode = false, setEditMode }) {
                         )}
                         <div>
                           <div className="picker-name">{p.displayName}</div>
-                          <div className="picker-pos">{p.position}</div>
+                          <div className="picker-pos">{typeof p.position === 'string' ? p.position : p.position?.abbreviation || ''}</div>
                         </div>
                       </div>
                       <button

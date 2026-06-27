@@ -105,7 +105,7 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
                 <div className="player-viewed-first">{firstName}</div>
                 <div className="player-viewed-last">{lastName}</div>
                 <div className="player-viewed-sub">
-                  {p.position && <span>{p.position}</span>}
+                  {p.position && <span>{typeof p.position === 'string' ? p.position : p.position?.abbreviation || ''}</span>}
                   {p.jersey   && <span>{p.jersey.startsWith('#') ? p.jersey : `#${p.jersey}`}</span>}
                 </div>
                 {p.team && <div className="player-viewed-team">{p.team}</div>}
