@@ -54,8 +54,34 @@ export default function useMlbLiveFeed(gamePk, active = true) {
   // Current batter / pitcher from linescore
   const batterInfo  = offense.batter  || matchup.batter  || {};
   const pitcherInfo = defense.pitcher || matchup.pitcher || {};
-  const batSide  = matchup.batSide?.code  || 'R'; // 'L' or 'R'
+  const batSide  = matchup.batSide?.code  || 'R';
   const venueId  = data.gameData?.venue?.id ?? null;
+
+  // Derive which side is pitching vs batting this half-inning
+  const inningHalf     = ls.inningHalf || 'Top'; // 'Top' | 'Bottom'
+  const pitchingSide   = inningHalf === 'Top' ? 'home' : 'away';
+  const battingSide    = inningHalf === 'Top' ? 'away' : 'home';
+
+  // Live game stats from boxscore
+  const boxTeams = ld.boxscore?.teams || {};
+  const getPlayerStats = (side, pid, type) => {
+    const p = boxTeams[side]?.players?.[`ID${pid}`];
+    return p?.stats?.[type] || {};
+  };
+  const pitcherGameStats = pitcherInfo.id
+    ? getPlayerStats(pitchingSide, pitcherInfo.id, 'pitching') : {};
+  const batterGameStats  = batterInfo.id
+    ? getPlayerStats(battingSide,  batterInfo.id,  'batting')  : {};
+  const batterPosition   = boxTeams[battingSide]?.players?.[`ID${batterInfo.id}`]?.position?.abbreviation || '';
+
+  // On deck / in hole (MLB linescore)
+  const onDeck = offense.onDeck || null;
+  const inHole = offense.inHole || null;
+
+  // Inning display string (MLB.com format: "TOP 5" / "BOT 5")
+  const inningDisplay = ls.currentInning
+    ? `${inningHalf === 'Top' ? 'TOP' : 'BOT'} ${ls.currentInning}`
+    : '';
 
   // Current at-bat pitches
   const pitches   = (current.playEvents || []).filter((e) => e.type === 'pitch');
@@ -93,6 +119,9 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     recentAtBats,
     batSide,
     venueId,
+    pitcherGameStats, batterGameStats, batterPosition,
+    onDeck, inHole,
+    inningDisplay,
     gameState: data.gameData?.status?.detailedState,
     // Linescore — per-inning + totals
     innings: ld.linescore?.innings || [],

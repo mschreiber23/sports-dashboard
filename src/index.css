@@ -5360,3 +5360,106 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
 }
 .dashboard-me-arrow { margin-left: auto; color: var(--text2); font-size: 18px; }
+
+/* ── Compact MLB-style game header ───────────────────── */
+.bsp-compact-header {
+  display: flex;
+  align-items: center;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  gap: 8px;
+}
+.bsp-compact-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.15s;
+}
+.bsp-compact-side:hover { opacity: 0.8; }
+.bsp-compact-away { justify-content: flex-start; }
+.bsp-compact-home { justify-content: flex-end; flex-direction: row-reverse; }
+.bsp-compact-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
+.bsp-compact-info { display: flex; flex-direction: column; line-height: 1.2; }
+.bsp-compact-info-right { align-items: flex-end; }
+.bsp-compact-abbr { font-size: 14px; font-weight: 800; color: var(--text); }
+.bsp-compact-rec  { font-size: 11px; color: var(--text2); }
+.bsp-compact-score {
+  font-size: 34px;
+  font-weight: 900;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.bsp-compact-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 72px;
+}
+.bsp-compact-live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  display: inline-block;
+}
+.bsp-compact-inning {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Pitcher | Diamond | Batter row ──────────────────── */
+.gc-matchup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+.gc-matchup-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.gc-matchup-player-right { flex-direction: row-reverse; }
+.gc-matchup-photo {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  object-fit: cover; object-position: top;
+  background: var(--bg3);
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+.gc-matchup-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gc-matchup-info-right { align-items: flex-end; text-align: right; }
+.gc-matchup-name { font-size: 14px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.gc-matchup-hand { font-size: 11px; font-weight: 600; color: var(--text2); }
+.gc-matchup-pos  { font-size: 11px; font-weight: 600; color: var(--text2); }
+.gc-matchup-stats { font-size: 11px; color: var(--text2); white-space: nowrap; }
+
+.gc-matchup-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.gc-count-col-sm { gap: 2px; }
+.gc-count-col-sm .gc-count-row { gap: 2px; }
+
+/* On deck / In hole */
+.gc-on-deck {
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+  padding: 4px 0 8px;
+}
+.gc-on-deck-sep { margin: 0 4px; }

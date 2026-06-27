@@ -794,10 +794,11 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
     matchup: mlbMatchup, count: mlbCount,
     onFirst, onSecond, onThird, outs,
     recentAtBats, currentResult, currentAbout,
-    shortDetail: mlbShortDetail,
+    shortDetail: mlbShortDetail, inningDisplay,
+    pitcherGameStats, batterGameStats, batterPosition,
+    onDeck, inHole,
   } = feed;
 
-  // Use MLB data for count/bases when available, fall back to ESPN
   const balls   = mlbCount.balls   ?? situation?.balls   ?? 0;
   const strikes = mlbCount.strikes ?? situation?.strikes ?? 0;
   const outsVal = outs              ?? situation?.outs    ?? 0;
@@ -805,17 +806,16 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
   const base2   = feed.raw ? onSecond : !!situation?.onSecond;
   const base3   = feed.raw ? onThird  : !!situation?.onThird;
 
-  // Batter & pitcher from MLB (most accurate)
-  const batterName  = mlbMatchup?.batter?.fullName  || '';
-  const batterPhoto = mlbHeadshot(mlbMatchup?.batter?.id);
-  const pitcherName = mlbMatchup?.pitcher?.fullName || '';
-  const pitcherPhoto= mlbHeadshot(mlbMatchup?.pitcher?.id);
+  const batterId  = mlbMatchup?.batter?.id;
+  const pitcherId = mlbMatchup?.pitcher?.id;
+  const batterPhoto  = mlbHeadshot(batterId);
+  const pitcherPhoto = mlbHeadshot(pitcherId);
+  // Last name only for compact display
+  const lastName = (full) => full?.split(' ').slice(-1)[0] || full || '';
+  const batterLastName  = lastName(mlbMatchup?.batter?.fullName);
+  const pitcherLastName = lastName(mlbMatchup?.pitcher?.fullName);
 
-  // Inning display — prefer MLB, fall back to ESPN
-  const inningStr = mlbShortDetail || (() => {
-    const d = status?.type?.shortDetail || '';
-    return d.toLowerCase().startsWith('bot') ? `▼ ${d}` : `▲ ${d}`;
-  })();
+  const inningStr = inningDisplay || mlbShortDetail || status?.type?.shortDetail || '';
 
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
@@ -854,55 +854,70 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             teamAltColor={home?.team?.alternateColor}
           />
 
-          {/* Diamond + count + Now At Bat (all from MLB) */}
-          <div className="gc-at-bat">
-            {/* Pitcher (MLB) */}
-            {pitcherName && (
-              <div className="gc-player-block">
-                <div className="gc-player-role">PITCHING</div>
-                <div className="gc-player-row">
-                  {pitcherPhoto && (
-                    <img src={pitcherPhoto} alt="" className="gc-avatar"
-                      onError={(e) => { e.target.style.display='none'; }} />
-                  )}
-                  <div>
-                    <div className="gc-player-name">{pitcherName.replace(/^(\w)\w+ /, '$1. ')}</div>
-                  </div>
+          {/* MLB-style pitcher | diamond+count | batter row */}
+          <div className="gc-matchup-row">
+            {/* Pitcher */}
+            <div className="gc-matchup-player">
+              {pitcherPhoto && (
+                <img src={pitcherPhoto} alt="" className="gc-matchup-photo"
+                  onError={(e) => { e.target.style.display='none'; }} />
+              )}
+              <div className="gc-matchup-info">
+                <div className="gc-matchup-name">
+                  {pitcherLastName}
+                  {(feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand || pitcherGameStats.pitchHand) &&
+                    <span className="gc-matchup-hand"> {(feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand?.code || 'R')}HP</span>}
                 </div>
-              </div>
-            )}
-
-            {/* Diamond + count (MLB) */}
-            <div className="gc-count-diamond">
-              <BaseDiamond onFirst={base1} onSecond={base2} onThird={base3} size={52} />
-              <div className="gc-count-col">
-                <div className="gc-count-row"><span className="gc-count-label">B</span><CountDots filled={balls}   total={4} color="green" /></div>
-                <div className="gc-count-row"><span className="gc-count-label">S</span><CountDots filled={strikes} total={3} color="yellow" /></div>
-                <div className="gc-count-row"><span className="gc-count-label">O</span><CountDots filled={outsVal} total={3} color="red" /></div>
+                {(pitcherGameStats.numberOfPitches != null) && (
+                  <div className="gc-matchup-stats">
+                    {pitcherGameStats.numberOfPitches}P
+                    {pitcherGameStats.inningsPitched && ` · ${pitcherGameStats.inningsPitched} IP`}
+                    {pitcherGameStats.strikeOuts != null && `, ${pitcherGameStats.strikeOuts}K`}
+                    {pitcherGameStats.earnedRuns != null && `, ${pitcherGameStats.earnedRuns}ER`}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Batter (MLB) */}
-            {batterName && (
-              <div className="gc-player-block gc-player-block-right">
-                <div className="gc-player-role">NOW AT BAT</div>
-                <div className="gc-player-row">
-                  {batterPhoto && (
-                    <img src={batterPhoto} alt="" className="gc-avatar"
-                      onError={(e) => { e.target.style.display='none'; }} />
-                  )}
-                  <div>
-                    <div className="gc-player-name">{batterName.replace(/^(\w)\w+ /, '$1. ')}</div>
-                  </div>
-                </div>
+            {/* Diamond + B/S/O */}
+            <div className="gc-matchup-center">
+              <BaseDiamond onFirst={base1} onSecond={base2} onThird={base3} size={44} />
+              <div className="gc-count-col gc-count-col-sm">
+                <div className="gc-count-row"><CountDots filled={balls}   total={4} color="green" /></div>
+                <div className="gc-count-row"><CountDots filled={strikes} total={3} color="yellow" /></div>
+                <div className="gc-count-row"><CountDots filled={outsVal} total={3} color="red" /></div>
               </div>
-            )}
+            </div>
+
+            {/* Batter */}
+            <div className="gc-matchup-player gc-matchup-player-right">
+              <div className="gc-matchup-info gc-matchup-info-right">
+                <div className="gc-matchup-name">
+                  {batterLastName}
+                  {batterPosition && <span className="gc-matchup-pos"> {batterPosition}</span>}
+                </div>
+                {(batterGameStats.atBats != null) && (
+                  <div className="gc-matchup-stats">
+                    {batterGameStats.hits ?? 0}-{batterGameStats.atBats}
+                    {batterGameStats.strikeOuts != null && ` · ${batterGameStats.strikeOuts}K`}
+                  </div>
+                )}
+              </div>
+              {batterPhoto && (
+                <img src={batterPhoto} alt="" className="gc-matchup-photo"
+                  onError={(e) => { e.target.style.display='none'; }} />
+              )}
+            </div>
           </div>
 
-          {/* Situation probability notes (ESPN) */}
-          {(data?.situation?.situationNotes || []).map((n, i) => (
-            <div key={i} className="gc-note">{n.text}</div>
-          ))}
+          {/* On deck / In the hole */}
+          {(onDeck || inHole) && (
+            <div className="gc-on-deck">
+              {onDeck && <span>On deck: {lastName(onDeck.fullName)}</span>}
+              {onDeck && inHole && <span className="gc-on-deck-sep"> · </span>}
+              {inHole && <span>In the hole: {lastName(inHole.fullName)}</span>}
+            </div>
+          )}
 
           {/* At-Bat Pitch Log (MLB) */}
           {(currentAtBatForLog || recentAtBats.length > 0) && (
@@ -1236,37 +1251,45 @@ function LineScore({ competitors, sport, mlbInnings, mlbTotals }) {
 }
 
 /* ─── Game Header ────────────────────────────────────── */
-/* mlbTotals: { away:{runs,hits,errors}, home:{...} } — overrides ESPN scores */
-function GameHeader({ competitors, status, sport, mlbTotals }) {
+/* Compact MLB.com-style game header */
+function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay }) {
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
-  const isLive = status?.type?.state === 'in';
+  const isLive  = status?.type?.state === 'in';
   const isFinal = status?.type?.state === 'post';
+  const isPre   = status?.type?.state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
 
   const awayScore = mlbTotals?.away?.runs ?? getScore(away) ?? '—';
   const homeScore = mlbTotals?.home?.runs ?? getScore(home) ?? '—';
+  const centerLabel = mlbInningDisplay || (isFinal ? 'Final' : isPre ? shortDetail : shortDetail);
 
   return (
-    <div className="bsp-header">
-      <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-team tr-team-link">
-        <LogoImg team={away?.team} className="bsp-team-logo" />
-        <div className="bsp-team-abbr">{away?.team?.abbreviation}</div>
-        <div className="bsp-score">{awayScore}</div>
-        <div className="bsp-record">{away?.record?.[0]?.displayValue}</div>
+    <div className="bsp-compact-header">
+      {/* Away side */}
+      <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-compact-side bsp-compact-away tr-team-link">
+        <LogoImg team={away?.team} className="bsp-compact-logo" />
+        <div className="bsp-compact-info">
+          <span className="bsp-compact-abbr">{away?.team?.abbreviation}</span>
+          <span className="bsp-compact-rec">{away?.record?.[0]?.displayValue}</span>
+        </div>
+        <span className="bsp-compact-score">{awayScore}</span>
       </Link>
-      <div className="bsp-center">
-        {isLive && <span className="badge badge-live" style={{fontSize:11}}><span className="live-dot" /> LIVE</span>}
-        {isFinal && <span className="badge badge-final" style={{fontSize:11}}>Final</span>}
-        {!isLive && !isFinal && <span className="badge badge-pre" style={{fontSize:11}}>{shortDetail}</span>}
-        <div className="bsp-detail">{isLive ? shortDetail : ''}</div>
-        <BaseDiamond size={28} />
+
+      {/* Center */}
+      <div className="bsp-compact-center">
+        {isLive && <span className="live-dot bsp-compact-live-dot" />}
+        <span className="bsp-compact-inning">{centerLabel}</span>
       </div>
-      <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-team bsp-team-right tr-team-link">
-        <LogoImg team={home?.team} className="bsp-team-logo" />
-        <div className="bsp-team-abbr">{home?.team?.abbreviation}</div>
-        <div className="bsp-score">{homeScore}</div>
-        <div className="bsp-record">{home?.record?.[0]?.displayValue}</div>
+
+      {/* Home side */}
+      <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-compact-side bsp-compact-home tr-team-link">
+        <span className="bsp-compact-score">{homeScore}</span>
+        <div className="bsp-compact-info bsp-compact-info-right">
+          <span className="bsp-compact-abbr">{home?.team?.abbreviation}</span>
+          <span className="bsp-compact-rec">{home?.record?.[0]?.displayValue}</span>
+        </div>
+        <LogoImg team={home?.team} className="bsp-compact-logo" />
       </Link>
     </div>
   );
@@ -1290,8 +1313,9 @@ export default function BoxScorePage() {
 
   // Pull live innings + score from MLB feed for MLB games
   const mlbFeed = useMlbLiveFeed(mlbGamePk, sport === 'mlb');
-  const mlbInnings   = mlbFeed.innings      || [];
-  const mlbTotals    = mlbFeed.linescoreTotals || {}; // {away:{runs,hits,errors}, home:{...}}
+  const mlbInnings       = mlbFeed.innings           || [];
+  const mlbTotals        = mlbFeed.linescoreTotals   || {};
+  const mlbInningDisplay = mlbFeed.inningDisplay     || '';
 
   const comp   = data?.header?.competitions?.[0];
   const comps  = comp?.competitors || [];
@@ -1404,9 +1428,8 @@ export default function BoxScorePage() {
       {!loading && !error && data && (
         <>
           <GameHeader competitors={comps} status={status} sport={sport}
-            mlbTotals={mlbInnings.length > 0 ? mlbTotals : null} />
-          <LineScore competitors={comps} sport={sport}
-            mlbInnings={mlbInnings} mlbTotals={mlbTotals} />
+            mlbTotals={mlbInnings.length > 0 ? mlbTotals : null}
+            mlbInningDisplay={mlbInningDisplay} />
 
           {/* Tabs */}
           <div className="bsp-tabs-row">
@@ -1436,6 +1459,8 @@ export default function BoxScorePage() {
 
             {activeTab === 'Box Score' && (
               <div>
+                <LineScore competitors={comps} sport={sport}
+                  mlbInnings={mlbInnings} mlbTotals={mlbTotals} />
                 {groups.length > 1 && (
                   <div className="bsp-team-toggle">
                     <button className={`bsp-tab ${bsTeam === 0 ? 'bsp-tab-active' : ''}`} onClick={() => setBsTeam(0)}>
