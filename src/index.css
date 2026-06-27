@@ -795,10 +795,11 @@ body {
 /* Shared grid for both team rows — columns lock so scores always align */
 .f2-teams {
   display: grid;
-  grid-template-columns: 24px 1fr auto;
+  grid-template-columns: 24px auto auto;
   column-gap: 8px;
   row-gap: 6px;
   align-items: center;
+  width: fit-content;
 }
 .f2-logo { width: 24px; height: 24px; object-fit: contain; }
 .f2-team-info {
