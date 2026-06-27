@@ -792,34 +792,35 @@ body {
 .f2-final-pill {
   align-self: flex-start; margin-bottom: 10px;
 }
-.f2-team-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; min-width: 0;
+/* Shared grid for both team rows — columns lock so scores always align */
+.f2-teams {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: center;
 }
-.f2-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.f2-logo { width: 24px; height: 24px; object-fit: contain; }
 .f2-team-info {
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: 1px;
   min-width: 0; overflow: hidden;
 }
 .f2-team-name {
   font-size: 14px; font-weight: 400; color: var(--text2);
-  line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.f2-team-bold { font-weight: 800 !important; color: var(--text) !important; }
 .f2-team-rec {
   font-size: 11px; color: var(--text2); font-weight: 400;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.f2-score-wrap {
-  display: flex; align-items: center; flex-shrink: 0; margin-left: 6px;
-}
 .f2-score {
   font-size: 22px; font-weight: 400;
   font-variant-numeric: tabular-nums;
-  color: var(--text2); min-width: 22px; text-align: right; line-height: 1;
+  color: var(--text2); text-align: right; line-height: 1;
+  justify-self: end;
 }
-/* winning team: bold name + score */
-.f2-winner .f2-team-name { font-weight: 800; color: var(--text); }
-.f2-winner .f2-score     { font-weight: 900; color: var(--text); }
+.f2-score-bold { font-weight: 900 !important; color: var(--text) !important; }
 
 /* Right panel: decisions + buttons */
 .f2-right-panel {

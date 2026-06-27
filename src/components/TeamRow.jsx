@@ -268,13 +268,51 @@ function FinalMLBGame({ game, teamId, sport }) {
     );
   };
 
+  // Render both team rows as cells in a shared grid so scores always align
+  const awayScore = getScore(away);
+  const homeScore = getScore(home);
+  const makeInfo = (c) => {
+    const overall = c.records?.[0]?.summary || '';
+    const split = (c.homeAway === 'home'
+      ? (c.records?.find((r) => r.name === 'home' || r.type === 'home') || c.records?.[1])
+      : (c.records?.find((r) => r.name === 'road' || r.type === 'road') || c.records?.[2]))?.summary;
+    const splitLabel = c.homeAway === 'home' ? 'Home' : 'Away';
+    return { overall, split, splitLabel };
+  };
+  const awayInfo = makeInfo(away);
+  const homeInfo = makeInfo(home);
+
   return (
     <div className="f2-box">
-      {/* Left: FINAL pill + team score rows */}
+      {/* Left: FINAL pill + two-row team grid */}
       <div className="f2-left-panel">
         <span className="badge badge-final f2-final-pill">FINAL</span>
-        <TeamRow c={away} />
-        <TeamRow c={home} />
+        {/* Single shared grid: logo | info | score — both rows locked to same columns */}
+        <div className="f2-teams">
+          {/* Away */}
+          <LogoImg team={away.team} className="f2-logo" />
+          <div className="f2-team-info">
+            <span className={`f2-team-name${away.winner ? ' f2-team-bold' : ''}`}>
+              {away.team?.shortDisplayName || away.team?.displayName}
+            </span>
+            <span className="f2-team-rec">
+              ({awayInfo.overall}{awayInfo.split ? `, ${awayInfo.split} ${awayInfo.splitLabel}` : ''})
+            </span>
+          </div>
+          <span className={`f2-score${away.winner ? ' f2-score-bold' : ''}`}>{awayScore}</span>
+
+          {/* Home */}
+          <LogoImg team={home.team} className="f2-logo" />
+          <div className="f2-team-info">
+            <span className={`f2-team-name${home.winner ? ' f2-team-bold' : ''}`}>
+              {home.team?.shortDisplayName || home.team?.displayName}
+            </span>
+            <span className="f2-team-rec">
+              ({homeInfo.overall}{homeInfo.split ? `, ${homeInfo.split} ${homeInfo.splitLabel}` : ''})
+            </span>
+          </div>
+          <span className={`f2-score${home.winner ? ' f2-score-bold' : ''}`}>{homeScore}</span>
+        </div>
       </div>
 
       {/* Right: decisions + buttons */}
