@@ -94,6 +94,9 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     batSide,
     venueId,
     gameState: data.gameData?.status?.detailedState,
+    // Linescore — per-inning + totals
+    innings: ld.linescore?.innings || [],
+    linescoreTotals: ld.linescore?.teams || {},  // { away: {runs,hits,errors}, home: {...} }
     inning: ls.currentInning,
     inningHalf: ls.inningHalf,
     shortDetail: `${ls.inningHalf === 'Top' ? '▲' : '▼'} ${ls.currentInning}`,

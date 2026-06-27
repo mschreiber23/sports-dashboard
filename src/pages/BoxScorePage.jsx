@@ -840,25 +840,6 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             <span className={`gc-half ${inningStr.startsWith('▼') ? 'gc-bot' : 'gc-top'}`}>{inningStr}</span>
           </div>
 
-          {/* Teams R/H/E */}
-          <div className="gc-score-row">
-            {[away, home].filter(Boolean).sort((a,b) => a.homeAway==='away' ? -1 : 1).map((c) => (
-              <div key={c.team?.id} className="gc-team-score-row">
-                <LogoImg team={c.team} className="gc-team-logo" />
-                <span className="gc-team-abbr">{c.team?.abbreviation}</span>
-                <span className="gc-team-record">{c.record?.[0]?.displayValue}</span>
-                <div className="gc-rhe">
-                  <span className="gc-rhe-val">{getScore(c) ?? '0'}</span>
-                  <span className="gc-rhe-label">R</span>
-                  <span className="gc-rhe-val">{c.hits ?? '0'}</span>
-                  <span className="gc-rhe-label">H</span>
-                  <span className="gc-rhe-val">{c.errors ?? '0'}</span>
-                  <span className="gc-rhe-label">E</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* Pitch view */}
           <MlbPitchView
             pitches={pitches}
@@ -1198,16 +1179,21 @@ function TeamStats({ group, sport, teamDetails }) {
 }
 
 /* ─── Line Score ─────────────────────────────────────── */
-function LineScore({ competitors, sport }) {
+/* mlbInnings: [{num,away:{runs,hits,errors},home:{...}}]
+   mlbTotals:  {away:{runs,hits,errors}, home:{...}} */
+function LineScore({ competitors, sport, mlbInnings, mlbTotals }) {
   if (!['mlb','nhl'].includes(sport)) return null;
-  // Always show away on top, home on bottom (standard convention)
-  const sorted = [...competitors].sort((a, b) => {
-    if (a.homeAway === 'away') return -1;
-    if (b.homeAway === 'away') return 1;
-    return 0;
-  });
-  const maxPeriods = Math.max(...sorted.map((c) => (c.linescores||[]).length), sport === 'mlb' ? 9 : 3);
-  const cols = Array.from({length: maxPeriods}, (_, i) => i + 1);
+
+  const sorted = [...competitors].sort((a,b) => a.homeAway==='away' ? -1 : b.homeAway==='away' ? 1 : 0);
+
+  // Prefer MLB innings data for MLB games
+  const useMLB = sport === 'mlb' && mlbInnings?.length > 0;
+
+  const maxPeriods = useMLB
+    ? Math.max(mlbInnings.length, 9)
+    : Math.max(...sorted.map((c) => (c.linescores||[]).length), sport === 'mlb' ? 9 : 3);
+  const cols = Array.from({length: maxPeriods}, (_,i) => i+1);
+
   return (
     <div className="bsp-linescore-wrap">
       <table className="bsp-linescore">
@@ -1221,20 +1207,28 @@ function LineScore({ competitors, sport }) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((c) => (
-            <tr key={c.team?.id}>
-              <td className="bsp-ls-td bsp-ls-team-col">
-                <LogoImg team={c.team} className="bsp-ls-logo" />
-                <span className="bsp-ls-abbr">{c.team?.abbreviation}</span>
-              </td>
-              {cols.map((_,i) => (
-                <td key={i} className="bsp-ls-td">{c.linescores?.[i]?.displayValue ?? '—'}</td>
-              ))}
-              <td className="bsp-ls-td bsp-ls-rhe bsp-ls-bold">{c.score ?? '0'}</td>
-              <td className="bsp-ls-td bsp-ls-rhe">{c.hits ?? '0'}</td>
-              <td className="bsp-ls-td bsp-ls-rhe">{c.errors ?? '0'}</td>
-            </tr>
-          ))}
+          {sorted.map((c) => {
+            const side = c.homeAway; // 'away' or 'home'
+            const tot  = mlbTotals?.[side];
+            return (
+              <tr key={c.team?.id}>
+                <td className="bsp-ls-td bsp-ls-team-col">
+                  <LogoImg team={c.team} className="bsp-ls-logo" />
+                  <span className="bsp-ls-abbr">{c.team?.abbreviation}</span>
+                </td>
+                {cols.map((_,i) => {
+                  const inning = useMLB ? mlbInnings[i] : null;
+                  const val = useMLB
+                    ? (inning ? (inning[side]?.runs ?? '—') : '—')
+                    : (c.linescores?.[i]?.displayValue ?? '—');
+                  return <td key={i} className="bsp-ls-td">{val}</td>;
+                })}
+                <td className="bsp-ls-td bsp-ls-rhe bsp-ls-bold">{(useMLB ? tot?.runs : null) ?? c.score ?? '0'}</td>
+                <td className="bsp-ls-td bsp-ls-rhe">{(useMLB ? tot?.hits : null) ?? c.hits ?? '0'}</td>
+                <td className="bsp-ls-td bsp-ls-rhe">{(useMLB ? tot?.errors : null) ?? c.errors ?? '0'}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1242,18 +1236,23 @@ function LineScore({ competitors, sport }) {
 }
 
 /* ─── Game Header ────────────────────────────────────── */
-function GameHeader({ competitors, status, sport }) {
+/* mlbTotals: { away:{runs,hits,errors}, home:{...} } — overrides ESPN scores */
+function GameHeader({ competitors, status, sport, mlbTotals }) {
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
   const isLive = status?.type?.state === 'in';
   const isFinal = status?.type?.state === 'post';
   const shortDetail = status?.type?.shortDetail || '';
+
+  const awayScore = mlbTotals?.away?.runs ?? getScore(away) ?? '—';
+  const homeScore = mlbTotals?.home?.runs ?? getScore(home) ?? '—';
+
   return (
     <div className="bsp-header">
       <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-team tr-team-link">
         <LogoImg team={away?.team} className="bsp-team-logo" />
         <div className="bsp-team-abbr">{away?.team?.abbreviation}</div>
-        <div className="bsp-score">{getScore(away) ?? '—'}</div>
+        <div className="bsp-score">{awayScore}</div>
         <div className="bsp-record">{away?.record?.[0]?.displayValue}</div>
       </Link>
       <div className="bsp-center">
@@ -1266,7 +1265,7 @@ function GameHeader({ competitors, status, sport }) {
       <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-team bsp-team-right tr-team-link">
         <LogoImg team={home?.team} className="bsp-team-logo" />
         <div className="bsp-team-abbr">{home?.team?.abbreviation}</div>
-        <div className="bsp-score">{getScore(home) ?? '—'}</div>
+        <div className="bsp-score">{homeScore}</div>
         <div className="bsp-record">{home?.record?.[0]?.displayValue}</div>
       </Link>
     </div>
@@ -1286,8 +1285,13 @@ export default function BoxScorePage() {
   const [lineups, setLineups] = useState({ away: null, home: null });
   const [lineupLoading, setLineupLoading] = useState({ away: false, home: false });
 
-  // MLB live game PK (for pitch tracker)
+  // MLB live game PK (for pitch tracker + live scoring)
   const [mlbGamePk, setMlbGamePk] = useState(null);
+
+  // Pull live innings + score from MLB feed for MLB games
+  const mlbFeed = useMlbLiveFeed(mlbGamePk, sport === 'mlb');
+  const mlbInnings   = mlbFeed.innings      || [];
+  const mlbTotals    = mlbFeed.linescoreTotals || {}; // {away:{runs,hits,errors}, home:{...}}
 
   const comp   = data?.header?.competitions?.[0];
   const comps  = comp?.competitors || [];
@@ -1399,8 +1403,10 @@ export default function BoxScorePage() {
 
       {!loading && !error && data && (
         <>
-          <GameHeader competitors={comps} status={status} sport={sport} />
-          <LineScore competitors={comps} sport={sport} />
+          <GameHeader competitors={comps} status={status} sport={sport}
+            mlbTotals={mlbInnings.length > 0 ? mlbTotals : null} />
+          <LineScore competitors={comps} sport={sport}
+            mlbInnings={mlbInnings} mlbTotals={mlbTotals} />
 
           {/* Tabs */}
           <div className="bsp-tabs-row">
