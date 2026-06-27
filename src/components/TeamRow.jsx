@@ -99,12 +99,12 @@ function GameScore({ game, teamId, sport, onOpen }) {
                   </div>
                 ))}
               </div>
-              <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Gamecast</button>
+              <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Preview</button>
             </div>
           )}
-          {/* Gamecast btn when no pitchers (non-MLB) */}
+          {/* Preview btn when no pitchers (non-MLB) */}
           {probables.length === 0 && (
-            <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Gamecast</button>
+            <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Preview</button>
           )}
         </div>
       </div>
