@@ -3464,10 +3464,10 @@ body {
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
-/* On desktop where top-nav is visible, push ticker below it */
-@media (min-width: 641px) {
+/* On desktop where top-nav is visible (768px+), push ticker flush below it */
+@media (min-width: 768px) {
   .global-ticker-sticky {
-    top: 57px; /* top-nav height (12px padding × 2 + ~33px content) */
+    top: 53px; /* top-nav: 12px padding × 2 + 28px icon + 1px border */
   }
 }
 /* Remove the section margin/padding when compact ticker is in sticky header */
