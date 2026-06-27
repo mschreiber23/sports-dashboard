@@ -835,12 +835,7 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
     <div className="gamecast-wrap">
       {isLive && (
         <>
-          {/* Inning bar */}
-          <div className="gc-inning-bar">
-            <span className={`gc-half ${inningStr.startsWith('▼') ? 'gc-bot' : 'gc-top'}`}>{inningStr}</span>
-          </div>
-
-          {/* Pitch view */}
+          {/* Pitch view — inning already shown in compact header above */}
           <MlbPitchView
             pitches={pitches}
             lastPitch={lastPitch}
@@ -1262,25 +1257,29 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay })
 
   return (
     <div className="bsp-compact-header">
-      {/* Away side */}
-      <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-compact-side bsp-compact-away tr-team-link">
+      {/* Away: logo + info (outer) */}
+      <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-compact-team tr-team-link">
         <LogoImg team={away?.team} className="bsp-compact-logo" />
         <div className="bsp-compact-info">
           <span className="bsp-compact-abbr">{away?.team?.abbreviation}</span>
           <span className="bsp-compact-rec">{away?.record?.[0]?.displayValue}</span>
         </div>
-        <span className="bsp-compact-score">{awayScore}</span>
       </Link>
 
-      {/* Center */}
+      {/* Away score — sits right next to center */}
+      <span className="bsp-compact-score">{awayScore}</span>
+
+      {/* Center: inning */}
       <div className="bsp-compact-center">
         {isLive && <span className="live-dot bsp-compact-live-dot" />}
         <span className="bsp-compact-inning">{centerLabel}</span>
       </div>
 
-      {/* Home side */}
-      <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-compact-side bsp-compact-home tr-team-link">
-        <span className="bsp-compact-score">{homeScore}</span>
+      {/* Home score — sits right next to center */}
+      <span className="bsp-compact-score">{homeScore}</span>
+
+      {/* Home: info + logo (outer) */}
+      <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-compact-team bsp-compact-team-right tr-team-link">
         <div className="bsp-compact-info bsp-compact-info-right">
           <span className="bsp-compact-abbr">{home?.team?.abbreviation}</span>
           <span className="bsp-compact-rec">{home?.record?.[0]?.displayValue}</span>

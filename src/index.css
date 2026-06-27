@@ -5370,7 +5370,8 @@ thead .dfs-sticky-player {
   padding: 10px 16px;
   gap: 8px;
 }
-.bsp-compact-side {
+/* Team info block (logo + abbr/record) — sits at outer edge */
+.bsp-compact-team {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -5379,9 +5380,8 @@ thead .dfs-sticky-player {
   color: inherit;
   transition: opacity 0.15s;
 }
-.bsp-compact-side:hover { opacity: 0.8; }
-.bsp-compact-away { justify-content: flex-start; }
-.bsp-compact-home { justify-content: flex-end; }
+.bsp-compact-team:hover { opacity: 0.8; }
+.bsp-compact-team-right { justify-content: flex-end; }
 .bsp-compact-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
 .bsp-compact-info { display: flex; flex-direction: column; line-height: 1.2; }
 .bsp-compact-info-right { align-items: flex-end; }
