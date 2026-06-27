@@ -114,7 +114,22 @@ const platePts = (() => {
     .map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
 })();
 
-function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation, venueId }) {
+// Parse a hex team color and return a safe CSS color string for SVG use
+function teamGlowColor(hex, opacity) {
+  if (!hex) return `rgba(26,74,34,${opacity})`; // fallback green
+  const c = hex.startsWith('#') ? hex : `#${hex}`;
+  // Use adaptColorForDarkBg to ensure the color is visible
+  const [r, g, b] = c.slice(1).match(/.{2}/g).map((h) => parseInt(h, 16));
+  // Boost towards a readable brightness for glow effect
+  const maxC = Math.max(r, g, b);
+  const scale = maxC < 60 ? 2.5 : maxC < 120 ? 1.6 : 1;
+  const rr = Math.min(255, Math.round(r * scale));
+  const gg = Math.min(255, Math.round(g * scale));
+  const bb = Math.min(255, Math.round(b * scale));
+  return `rgba(${rr},${gg},${bb},${opacity})`;
+}
+
+function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation, venueId, teamColor, teamAltColor }) {
 
   // Zone bounds in SVG coords
   const zL = svgX(-0.83), zR = svgX(0.83);
@@ -142,14 +157,15 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
                 <stop offset="85%" stopColor="#12220a"/>
                 <stop offset="100%" stopColor="#1c1506"/>
               </linearGradient>
-              {/* Grass mound glow at pitcher distance */}
+              {/* Field glow — tinted with home team's primary color */}
               <radialGradient id="pvGrass" cx="50%" cy="35%" r="55%">
-                <stop offset="0%"   stopColor="#1a4a22" stopOpacity="0.65"/>
+                <stop offset="0%"   stopColor={teamGlowColor(teamColor, 0.55)}/>
+                <stop offset="60%"  stopColor={teamGlowColor(teamColor, 0.2)}/>
                 <stop offset="100%" stopColor="#050c0a" stopOpacity="0"/>
               </radialGradient>
-              {/* Dirt halo near plate */}
+              {/* Secondary color accent near plate (alt color or slightly different tint) */}
               <radialGradient id="pvDirt" cx="50%" cy="100%" r="60%">
-                <stop offset="0%"   stopColor="#3d2710" stopOpacity="0.55"/>
+                <stop offset="0%"   stopColor={teamGlowColor(teamAltColor || teamColor, 0.35)}/>
                 <stop offset="100%" stopColor="#1c1506" stopOpacity="0"/>
               </radialGradient>
               {/* Pitch tunnel glow */}
@@ -856,6 +872,8 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             count={mlbCount}
             situation={{ onFirst: base1, onSecond: base2, onThird: base3, balls, strikes, outs: outsVal }}
             venueId={home?.team?.id}
+            teamColor={home?.team?.color}
+            teamAltColor={home?.team?.alternateColor}
           />
 
           {/* Diamond + count + Now At Bat (all from MLB) */}
