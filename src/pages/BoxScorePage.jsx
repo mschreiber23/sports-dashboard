@@ -147,7 +147,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
     <div className="mlb-pitch-view">
 
       <div className="mlb-pv-batter">
-          <svg viewBox="0 0 360 440" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
+          <svg viewBox="0 120 360 310" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
             <defs>
               {/* Field background gradient */}
               <linearGradient id="pvBg" x1="0" y1="0" x2="0" y2="1">
@@ -219,9 +219,6 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
               <ellipse key={i} cx="180" cy="500" rx={r} ry={r * 0.28}
                 fill="none" stroke="rgba(255,255,255,0.025)" strokeWidth="0.8"/>
             ))}
-
-            {/* Mound highlight dot */}
-            <ellipse cx="180" cy="58" rx="22" ry="9" fill="rgba(140,100,40,0.18)"/>
 
             {/* Pitch tunnel cone */}
             <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},440 L${svgX(-1.6)},440 Z`}
