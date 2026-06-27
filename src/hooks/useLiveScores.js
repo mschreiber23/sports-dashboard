@@ -9,7 +9,11 @@ export default function useLiveScores(sport, favoriteTeamId, refreshInterval = 3
 
   const fetch = useCallback(async () => {
     try {
-      const events = await getScoreboard(sport);
+      const d = new Date();
+      const todayStr = d.getFullYear().toString()
+        + String(d.getMonth() + 1).padStart(2, '0')
+        + String(d.getDate()).padStart(2, '0');
+      const events = await getScoreboard(sport, todayStr);
       setGames(events);
       setLastUpdated(new Date());
       setError(null);

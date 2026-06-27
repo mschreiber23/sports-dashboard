@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { recordPlayerView } from './PlayersPage';
+import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
 
 /* Format a stat value:
@@ -344,6 +346,8 @@ function hasStats(data, sportKey) {
   });
 }
 
+function darkUrl(url){if(!url)return url;return url.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/,'$1$2-dark$3');}
+
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
   const navigate = useNavigate();
@@ -378,7 +382,22 @@ export default function PlayerPage() {
 
     // Load bio first
     getPlayerBio(sport, playerId)
-      .then(setBio)
+      .then((bioData) => {
+        setBio(bioData);
+        // Record this player view for the Players page recently-viewed list
+        const ath = bioData?.athlete || {};
+        if (ath.displayName) {
+          recordPlayerView({
+            id: playerId,
+            sport,
+            name: ath.displayName,
+            team: ath.team?.abbreviation || ath.team?.shortDisplayName || ath.team?.displayName || '',
+            headshot: ath.headshot?.href || `https://a.espncdn.com/i/headshots/${sport}/players/full/${playerId}.png`,
+            position: ath.position?.abbreviation || '',
+            jersey: ath.displayJersey || ath.jersey || '',
+          });
+        }
+      })
       .catch(() => {});
 
     // Game log
@@ -525,9 +544,12 @@ export default function PlayerPage() {
     }
   }, [careerTab, sport]);
 
+  const { favorites, addPlayer, removePlayer } = useFavorites();
   const athlete = bio?.athlete || {};
   const summary = athlete.statsSummary?.statistics || [];
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
+  const teamColor = athlete.team?.color ? `#${athlete.team.color}` : null;
+  const teamAltColor = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
 
   const careerTotals = (() => {
     if (!seasons.length) return {};
@@ -611,8 +633,12 @@ export default function PlayerPage() {
     return totals;
   })();
 
+  const pageStyle = teamColor
+    ? { '--accent': teamColor, '--accent2': teamColor }
+    : {};
+
   return (
-    <div className="pp-page">
+    <div className="pp-page" style={pageStyle}>
       <button className="tp-back" onClick={() => navigate(-1)}>← Back</button>
 
       {loading && <div className="tp-loading">Loading…</div>}
@@ -620,9 +646,15 @@ export default function PlayerPage() {
       {!loading && athlete.displayName && (
         <>
           <div className="pp-header">
+            {/* Colored top strip using team color */}
+            {teamColor && (
+              <div className="pp-team-stripe" style={{ background: teamColor }} />
+            )}
             <div className="pp-hero">
               {athlete.headshot?.href && (
-                <img src={athlete.headshot.href} alt={athlete.displayName} className="pp-headshot" />
+                <img src={athlete.headshot.href} alt={athlete.displayName} className="pp-headshot"
+                  style={teamColor ? { background: `linear-gradient(to bottom, color-mix(in srgb, ${teamColor} 30%, transparent), var(--bg3))` } : {}}
+                />
               )}
               <div className="pp-bio">
                 <div className="pp-name">
@@ -630,7 +662,7 @@ export default function PlayerPage() {
                   <span className="pp-lastname"> {athlete.lastName}</span>
                 </div>
                 <div className="pp-team-row">
-                  {teamLogo && <img src={teamLogo} alt="" className="pp-team-logo" />}
+                  <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
                   <span className="pp-team-name">{athlete.team?.displayName}</span>
                   {athlete.displayJersey && <span className="pp-meta"> · {athlete.displayJersey}</span>}
                   {athlete.position?.abbreviation && <span className="pp-meta"> · {athlete.position.abbreviation}</span>}
@@ -673,6 +705,35 @@ export default function PlayerPage() {
               </div>
             )}
           </div>
+
+          {/* Statcast button — MLB batters only */}
+          {sport === 'mlb' && sportKey === 'mlb_batting' && (
+            <Link to={`/statcast/mlb/${playerId}`} className="pp-statcast-btn">
+              <span className="pp-statcast-icon">⚡</span>
+              View Statcast Data
+              <span className="pp-statcast-badge">Powered by Baseball Savant</span>
+            </Link>
+          )}
+
+          {/* Add / Remove from My Players */}
+          {(()=>{
+            const isFav = favorites.players.some((p) => p.id === playerId);
+            return (
+              <button
+                className={`pp-fav-btn ${isFav ? 'pp-fav-btn-remove' : 'pp-fav-btn-add'}`}
+                onClick={() => isFav ? removePlayer(playerId) : addPlayer({
+                  id: playerId, sport,
+                  displayName: athlete.displayName,
+                  headshot: athlete.headshot,
+                  team: athlete.team,
+                  position: athlete.position,
+                  _position: athlete.position?.abbreviation || '',
+                })}
+              >
+                {isFav ? '✕  Remove from My Players' : '＋  Add to My Players'}
+              </button>
+            );
+          })()}
 
           {/* Career stats table */}
           <div className="pp-stats-section">

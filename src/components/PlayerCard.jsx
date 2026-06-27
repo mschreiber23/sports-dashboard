@@ -1,129 +1,187 @@
+import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
+import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
 
-function StatPill({ label, value }) {
-  return (
-    <div className="stat-pill">
-      <div className="stat-value">{value ?? '—'}</div>
-      <div className="stat-label">{label}</div>
-    </div>
-  );
-}
-
+/* ── Stat extraction — exactly 4 stats per position ─── */
 function extractSeasonStats(statsData, sport) {
   if (!statsData) return [];
-
-  // ESPN stats API returns categories with stats arrays
   const categories = statsData.splits?.categories || [];
+  const position = (statsData._position || '').toUpperCase();
+
+  const getCatStats = (cat) => {
+    if (!cat) return {};
+    const result = {};
+    (cat.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
+    return result;
+  };
+
+  const mergeAll = () => {
+    const s = {};
+    categories.forEach((cat) => Object.assign(s, getCatStats(cat)));
+    return s;
+  };
+
+  if (sport === 'mlb') {
+    const pitching = categories.find((c) => c.name === 'pitching');
+    const batting  = categories.find((c) => c.name === 'batting');
+    if (pitching) {
+      const s = getCatStats(pitching);
+      const g = getCatStats(categories.find((c) => c.name === 'general'));
+      const w = g['WINS'] || s['W'] || '—';
+      const l = s['L'] || '—';
+      return [
+        { label: 'W-L',  value: w && l && w !== '—' ? `${w}-${l}` : '—' },
+        { label: 'ERA',  value: s['ERA'] },
+        { label: 'WHIP', value: s['WHIP'] },
+        { label: 'K',    value: s['K'] || s['SO'] },
+      ];
+    }
+    const s = getCatStats(batting || categories[0]);
+    return [
+      { label: 'AVG', value: s['AVG'] },
+      { label: 'OBP', value: s['OBP'] },
+      { label: 'HR',  value: s['HR'] },
+      { label: 'RBI', value: s['RBI'] },
+    ];
+  }
 
   if (sport === 'nba') {
-    const general = categories.find((c) => c.name === 'general' || c.displayName?.toLowerCase().includes('general'));
-    const stats = general?.stats || categories[0]?.stats || [];
-    const get = (name) => stats.find((s) => s.name === name || s.abbreviation === name)?.displayValue;
+    const merged = statsData._merged;
+    const s = merged || mergeAll();
+    const stl = parseFloat(s['STL'] || 0);
+    const blk = parseFloat(s['BLK'] || 0);
+    const stocks = (stl + blk).toFixed(1);
     return [
-      { label: 'PPG', value: get('avgPoints') || get('PTS') },
-      { label: 'RPG', value: get('avgRebounds') || get('REB') },
-      { label: 'APG', value: get('avgAssists') || get('AST') },
-      { label: 'SPG', value: get('avgSteals') || get('STL') },
-      { label: 'BPG', value: get('avgBlocks') || get('BLK') },
-      { label: 'FG%', value: get('shootingPct') || get('FG%') },
+      { label: 'PTS',    value: s['PTS'] },
+      { label: 'REB',    value: s['REB'] },
+      { label: 'AST',    value: s['AST'] },
+      { label: 'STOCKS', value: stocks === '0.0' ? '—' : stocks },
     ];
   }
 
   if (sport === 'nfl') {
-    const passing = categories.find((c) => c.name === 'passing');
-    const rushing = categories.find((c) => c.name === 'rushing');
-    const receiving = categories.find((c) => c.name === 'receiving');
-    const src = passing || rushing || receiving || categories[0];
-    const stats = src?.stats || [];
-    const get = (name) => stats.find((s) => s.name === name || s.abbreviation === name)?.displayValue;
-    if (passing) return [
-      { label: 'YDS', value: get('passingYards') || get('YDS') },
-      { label: 'TD', value: get('passingTouchdowns') || get('TD') },
-      { label: 'INT', value: get('interceptions') || get('INT') },
-      { label: 'RTG', value: get('QBRating') || get('RTG') },
-    ];
-    if (rushing) return [
-      { label: 'YDS', value: get('rushingYards') || get('YDS') },
-      { label: 'TD', value: get('rushingTouchdowns') || get('TD') },
-      { label: 'ATT', value: get('rushingAttempts') || get('ATT') },
-      { label: 'AVG', value: get('avgRushingYards') || get('AVG') },
-    ];
+    const passing   = categories.find((c) => c.name?.includes('pass'));
+    const rushing   = categories.find((c) => c.name?.includes('rush'));
+    const receiving = categories.find((c) => c.name?.includes('receiv'));
+    const general   = categories.find((c) => c.name === 'general');
+    const gp = getCatStats(general)['GP'] || '—';
+
+    if (['QB'].includes(position) || (!position && passing)) {
+      const s = getCatStats(passing);
+      return [
+        { label: 'GP',  value: gp },
+        { label: 'YDS', value: s['YDS'] },
+        { label: 'TD',  value: s['TD'] },
+        { label: 'INT', value: s['INT'] },
+      ];
+    }
+    if (['RB','HB','FB'].includes(position) || (!position && rushing && !passing)) {
+      const s = getCatStats(rushing);
+      return [
+        { label: 'GP',  value: gp },
+        { label: 'CAR', value: s['CAR'] },
+        { label: 'YDS', value: s['YDS'] },
+        { label: 'TD',  value: s['TD'] },
+      ];
+    }
+    // WR / TE
+    const s = getCatStats(receiving);
     return [
-      { label: 'REC', value: get('receptions') || get('REC') },
-      { label: 'YDS', value: get('receivingYards') || get('YDS') },
-      { label: 'TD', value: get('receivingTouchdowns') || get('TD') },
+      { label: 'GP',  value: gp },
+      { label: 'REC', value: s['REC'] },
+      { label: 'YDS', value: s['YDS'] },
+      { label: 'TD',  value: s['TD'] },
     ];
   }
 
-  if (sport === 'mlb') {
-    const hitting = categories.find((c) => c.name === 'hitting');
-    const pitching = categories.find((c) => c.name === 'pitching');
-    const src = hitting || pitching || categories[0];
-    const stats = src?.stats || [];
-    const get = (name) => stats.find((s) => s.name === name || s.abbreviation === name)?.displayValue;
-    if (pitching) return [
-      { label: 'ERA', value: get('ERA') },
-      { label: 'W', value: get('wins') || get('W') },
-      { label: 'L', value: get('losses') || get('L') },
-      { label: 'SO', value: get('strikeouts') || get('SO') },
-    ];
+  if (sport === 'nhl') {
+    const NHL_GOALIE = ['G', 'GK'];
+    const s = mergeAll();
+    const off = getCatStats(categories.find((c) => c.name === 'offensive'));
+    Object.assign(s, off);
+
+    if (NHL_GOALIE.includes(position)) {
+      const def = getCatStats(categories.find((c) => c.name === 'defensive'));
+      const gen = getCatStats(categories.find((c) => c.name === 'general'));
+      return [
+        { label: 'W',   value: gen['WINS'] || s['W'] },
+        { label: 'GAA', value: def['GAA'] || s['GAA'] },
+        { label: 'SV%', value: def['SV%'] || s['SV%'] },
+        { label: 'SO',  value: def['SO'] || s['SO'] },
+      ];
+    }
+    // Skaters
     return [
-      { label: 'AVG', value: get('avg') || get('AVG') },
-      { label: 'HR', value: get('homeRuns') || get('HR') },
-      { label: 'RBI', value: get('RBI') },
-      { label: 'OPS', value: get('OPS') },
+      { label: 'G',   value: s['G'] },
+      { label: 'A',   value: s['A'] },
+      { label: 'PTS', value: s['PTS'] },
+      { label: '+/-', value: s['+/-'] },
     ];
   }
 
-  // Generic fallback: show first 6 stats
-  const stats = categories[0]?.stats || [];
-  return stats.slice(0, 6).map((s) => ({ label: s.abbreviation || s.name, value: s.displayValue }));
+  const s = getCatStats(categories[0]);
+  return Object.entries(s).slice(0, 4).map(([label, value]) => ({ label, value }));
 }
 
+/* ── Trading Card Component ─────────────────────────── */
 export default function PlayerCard({ player, sport }) {
-  const { removePlayer } = useFavorites();
+  const { } = useFavorites(); // remove button moved to edit mode
   const { stats, loading, error } = usePlayerStats(sport, player.id);
+  const liveBio = usePlayerBio(sport, player.id);
 
+  // Use live position from bio (most accurate), fall back to stored
+  const position = liveBio.position || player.position || '';
+  if (stats) stats._position = position;
   const seasonStats = extractSeasonStats(stats, sport);
 
-  return (
-    <div className="player-card">
-      <div className="player-card-header">
-        <div className="player-avatar-wrap">
-          {player.headshot ? (
-            <img src={player.headshot} alt={player.displayName} className="player-avatar" />
-          ) : (
-            <div className="player-avatar-placeholder">{player.displayName?.[0]}</div>
-          )}
-        </div>
-        <div className="player-meta">
-          <div className="player-name">{player.displayName}</div>
-          <div className="player-pos">{player.position}</div>
-        </div>
-        <button
-          className="remove-btn"
-          onClick={() => removePlayer(player.id)}
-          title="Remove player"
-        >
-          ×
-        </button>
-      </div>
+  // Team color: live from bio, then stored, then accent
+  const rawColor = liveBio.teamColor || player.teamColor;
+  const teamColor = rawColor ? `#${rawColor}` : '#7c3aed';
+  const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
 
-      <div className="player-stats-section">
-        <div className="stats-label">Season Stats</div>
-        {loading && <div className="stats-loading">Loading stats…</div>}
-        {error && <div className="stats-error">{error}</div>}
-        {!loading && !error && seasonStats.length === 0 && (
-          <div className="stats-error">No stats available.</div>
-        )}
+  return (
+    <div className="sports-card">
+      {/* Shine overlay */}
+      <div className="sports-card-shine" />
+
+
+      {/* Photo area */}
+      <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">
+        <div className="sports-card-photo-wrap" style={{ '--card-color': teamColor }}>
+          {player.headshot ? (
+            <img src={player.headshot} alt={player.displayName} className="sports-card-photo" />
+          ) : (
+            <div className="sports-card-photo-placeholder">{player.displayName?.[0]}</div>
+          )}
+          {/* Gradient fade at bottom of photo — stays in bottom 30% */}
+          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${teamColor}cc 100%)` }} />
+        </div>
+
+        {/* Player info strip */}
+          <div className="sports-card-info" style={{ background: teamColor }}>
+            <div className="sports-card-name">{player.displayName}</div>
+            <div className="sports-card-meta">{position} · {teamShort}</div>
+          </div>
+      </Link>
+
+      {/* Stats section */}
+      <div className="sports-card-stats">
+        {loading && <div className="sports-card-loading">Loading…</div>}
         {!loading && !error && seasonStats.length > 0 && (
-          <div className="stat-pills">
+          <div className="sports-card-stat-grid">
             {seasonStats.map((s) => (
-              <StatPill key={s.label} label={s.label} value={s.value} />
+              <div key={s.label} className="sports-card-stat">
+                <div className="sports-card-stat-value">{s.value ?? '—'}</div>
+                <div className="sports-card-stat-label">{s.label}</div>
+              </div>
             ))}
           </div>
         )}
+        {!loading && (error || seasonStats.length === 0) && (
+          <div className="sports-card-loading">No stats available</div>
+        )}
+        <div className="sports-card-season">2025-26 Season</div>
       </div>
     </div>
   );
