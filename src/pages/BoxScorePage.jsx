@@ -199,11 +199,15 @@ function GameLeaders({ leaders, away, home }) {
           <div key={catName} className="preview-leaders-cat">
             <div className="preview-leaders-cat-label">{catName}</div>
             <div className="preview-leaders-matchup">
-              {/* Away leader — left side */}
+              {/* Away leader — left side: avatar on far left, text right-aligned */}
               <div
                 className={`preview-leaders-player${awayL?.athlete?.id ? ' preview-leaders-player-link' : ''}`}
                 onClick={() => awayL?.athlete?.id && navigate(`/player/mlb/${awayL.athlete.id}`)}
               >
+                {awayL?.athlete?.headshot?.href
+                  ? <img src={awayL.athlete.headshot.href} alt="" className="preview-leaders-avatar" />
+                  : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />
+                }
                 <div className="preview-leaders-stat-col preview-leaders-stat-col-left">
                   <span className="preview-leaders-name">{awayL?.athlete?.shortName || awayL?.athlete?.displayName || '—'}</span>
                   <div className="preview-leaders-stats">
@@ -215,10 +219,6 @@ function GameLeaders({ leaders, away, home }) {
                     })}
                   </div>
                 </div>
-                {awayL?.athlete?.headshot?.href
-                  ? <img src={awayL.athlete.headshot.href} alt="" className="preview-leaders-avatar" />
-                  : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />
-                }
               </div>
 
               {/* Home leader — right side */}
