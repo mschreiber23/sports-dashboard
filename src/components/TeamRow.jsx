@@ -93,8 +93,7 @@ function GameScore({ game, teamId, sport, onOpen }) {
                   <div key={i} className="pregame-pitcher" onClick={() => p.id && navigate(`/player/${sport}/${p.id}`)} style={{ cursor: p.id ? 'pointer' : 'default' }}>
                     {p.headshot && <img src={p.headshot} alt="" className="pregame-pitcher-avatar" onError={(e) => { e.target.style.display='none'; }} />}
                     <div>
-                      <div className="pregame-pitcher-name" style={{ color: p.id ? 'var(--accent2)' : 'var(--text)' }}>{p.name}{p.jersey ? ` #${p.jersey}` : ''} · {p.team}</div>
-                      {p.record && <div className="pregame-pitcher-record">{p.record}</div>}
+                      <div className="pregame-pitcher-name" style={{ color: p.id ? 'var(--accent2)' : 'var(--text)' }}>{p.name}</div>
                     </div>
                   </div>
                 ))}
@@ -253,19 +252,13 @@ function FinalMLBGame({ game, teamId, sport }) {
 
   const Decision = ({ label, pitcher }) => {
     if (!pitcher) return null;
-    const detail = label === 'SAVE'
-      ? (pitcher.sv != null ? `(${pitcher.sv})` : '')
-      : `(${pitcher.wl}, ${pitcher.era})`;
     return (
       <div className="f2-decision" style={{ cursor: 'default' }}>
         <span className="f2-dec-label">{label}</span>
         <img src={pitcher.headshot} alt="" className="f2-dec-photo"
           onError={(e) => { e.target.style.display = 'none'; }} />
         <div className="f2-dec-info">
-          <span className="f2-dec-name">
-            {pitcher.shortName}{pitcher.jersey ? ` #${pitcher.jersey}` : ''}
-          </span>
-          {detail && <span className="f2-dec-stats">{detail}</span>}
+          <span className="f2-dec-name">{pitcher.shortName}</span>
         </div>
       </div>
     );
@@ -284,9 +277,9 @@ function FinalMLBGame({ game, teamId, sport }) {
       <div className="f2-right-panel">
         {decisions && (
           <div className="f2-decisions">
-            <Decision label="WIN"  pitcher={decisions.winner} />
-            <Decision label="LOSS" pitcher={decisions.loser}  />
-            {decisions.save && <Decision label="SAVE" pitcher={decisions.save} />}
+            <Decision label="W"  pitcher={decisions.winner} />
+            <Decision label="L" pitcher={decisions.loser}  />
+            {decisions.save && <Decision label="S" pitcher={decisions.save} />}
           </div>
         )}
         <div className="f2-buttons">
