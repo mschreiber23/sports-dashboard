@@ -114,7 +114,53 @@ const platePts = (() => {
     .map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
 })();
 
-function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation }) {
+/* ─── Batter silhouette (SVG, side-view batting stance) ─
+   RHB faces right (toward pitcher), placed left of plate.
+   LHB is the mirror image, placed right of plate.
+   Coordinate origin is at the batter's hip centre.
+──────────────────────────────────────────────────────── */
+function BatterSilhouette({ isLeft }) {
+  const col = 'rgba(0,0,0,0.72)';
+  // Anchor: hip centre at (0,0); figure faces RIGHT
+  const g = (
+    <g fill={col} stroke="none">
+      {/* Helmet dome */}
+      <ellipse cx={32} cy={-138} rx={17} ry={19} />
+      {/* Helmet brim (extends right toward pitcher) */}
+      <path d="M14,-126 Q34,-118 58,-130 L55,-123 Q34,-112 13,-120 Z" />
+      {/* Neck */}
+      <rect x={24} y={-118} width={13} height={16} rx={5} />
+      {/* Torso — leaning forward */}
+      <path d="M14,-100 Q34,-88 36,-50 Q33,-35 28,-22 Q13,-20 4,-27 Q0,-43 3,-58 Q6,-84 14,-100 Z" />
+      {/* Back arm + bat handle */}
+      <path d="M28,-78 Q52,-62 74,-48 Q64,-56 46,-72 Z" />
+      {/* Bat (long, angled up-right) */}
+      <path d="M72,-46 L130,-130 L123,-134 L65,-50 Z" />
+      {/* Bat grip flair */}
+      <ellipse cx={72} cy={-46} rx={7} ry={5} transform="rotate(-38 72 -46)" />
+      {/* Front arm (below, parallel) */}
+      <path d="M17,-72 Q38,-60 66,-50 Q56,-57 36,-68 Z" />
+      {/* Hip / seat */}
+      <path d="M5,-22 Q20,-17 33,-22 Q31,-4 26,18 Q14,15 4,18 Q2,-4 5,-22 Z" />
+      {/* Back leg (more visible) */}
+      <path d="M5,18 Q-5,58 -12,88 Q-8,118 -6,124 L1,124 Q-1,118 -5,88 Q-2,58 11,22 Z" />
+      {/* Back foot */}
+      <path d="M-6,124 Q-18,130 -28,126 L-26,120 Q-16,123 -5,118 Z" />
+      {/* Front leg */}
+      <path d="M22,18 Q30,58 33,90 Q38,118 40,124 L46,124 Q44,118 40,90 Q37,58 29,22 Z" />
+      {/* Front foot */}
+      <path d="M40,124 Q50,132 62,128 L60,122 Q50,126 40,118 Z" />
+    </g>
+  );
+
+  if (!isLeft) {
+    // LHB: mirror horizontally around the centre of the batter's x extent (~40)
+    return <g transform="scale(-1,1) translate(-80,0)">{g}</g>;
+  }
+  return g;
+}
+
+function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation, batSide, venueId }) {
 
   // Zone bounds in SVG coords
   const zL = svgX(-0.83), zR = svgX(0.83);
@@ -172,9 +218,31 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
             </defs>
 
             {/* ── Backgrounds ── */}
+            {/* Dark base */}
             <rect x="0" y="0" width="360" height="440" fill="url(#pvBg)"/>
+
+            {/* Venue photo — ESPN CDN, stadium day image */}
+            {venueId && (
+              <image
+                href={`https://a.espncdn.com/i/venues/mlb/day/${venueId}.jpg`}
+                x="0" y="0" width="360" height="440"
+                preserveAspectRatio="xMidYMid slice"
+                opacity="0.22"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            )}
+
+            {/* Atmospheric overlays on top of venue photo */}
             <ellipse cx="180" cy="170" rx="220" ry="140" fill="url(#pvGrass)"/>
             <ellipse cx="180" cy="440" rx="210" ry="90"  fill="url(#pvDirt)"/>
+            {/* Dark vignette edges so venue photo blends */}
+            <defs>
+              <radialGradient id="pvVignette" cx="50%" cy="50%" r="60%">
+                <stop offset="0%" stopColor="transparent"/>
+                <stop offset="100%" stopColor="rgba(4,9,12,0.7)"/>
+              </radialGradient>
+            </defs>
+            <rect x="0" y="0" width="360" height="440" fill="url(#pvVignette)"/>
 
             {/* Faint infield arc lines for depth cue */}
             {[55, 90, 130].map((r, i) => (
@@ -184,6 +252,14 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
 
             {/* Mound highlight dot */}
             <ellipse cx="180" cy="58" rx="22" ry="9" fill="rgba(140,100,40,0.18)"/>
+
+            {/* ── Batter silhouette (positioned by handedness) ── */}
+            {/* RHB on left (pX negative side), LHB on right (pX positive side) */}
+            <g transform={batSide === 'L'
+              ? `translate(${svgX(1.6)}, ${svgY(1.65)})`
+              : `translate(${svgX(-1.65)}, ${svgY(1.65)})`}>
+              <BatterSilhouette isLeft={batSide !== 'L'} />
+            </g>
 
             {/* Pitch tunnel cone */}
             <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},440 L${svgX(-1.6)},440 Z`}
@@ -760,6 +836,7 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
     onFirst, onSecond, onThird, outs,
     recentAtBats, currentResult, currentAbout,
     shortDetail: mlbShortDetail,
+    batSide, venueId,
   } = feed;
 
   // Use MLB data for count/bases when available, fall back to ESPN
@@ -833,6 +910,8 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             matchup={mlbMatchup}
             count={mlbCount}
             situation={{ onFirst: base1, onSecond: base2, onThird: base3, balls, strikes, outs: outsVal }}
+            batSide={batSide}
+            venueId={venueId}
           />
 
           {/* Diamond + count + Now At Bat (all from MLB) */}

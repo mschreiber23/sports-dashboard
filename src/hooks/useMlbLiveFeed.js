@@ -54,6 +54,8 @@ export default function useMlbLiveFeed(gamePk, active = true) {
   // Current batter / pitcher from linescore
   const batterInfo  = offense.batter  || matchup.batter  || {};
   const pitcherInfo = defense.pitcher || matchup.pitcher || {};
+  const batSide  = matchup.batSide?.code  || 'R'; // 'L' or 'R'
+  const venueId  = data.gameData?.venue?.id ?? null;
 
   // Current at-bat pitches
   const pitches   = (current.playEvents || []).filter((e) => e.type === 'pitch');
@@ -89,6 +91,8 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     currentAbout: current.about || {},
     // Recent at-bats for pitch log
     recentAtBats,
+    batSide,
+    venueId,
     gameState: data.gameData?.status?.detailedState,
     inning: ls.currentInning,
     inningHalf: ls.inningHalf,
