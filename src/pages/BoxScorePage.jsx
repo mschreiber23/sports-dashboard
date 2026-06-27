@@ -285,7 +285,6 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
             ))}
           </div>
         </div>
-      )}
 
     </div>
   );
