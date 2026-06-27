@@ -741,8 +741,10 @@ body {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow: hidden; /* keeps border-radius clipping for inner content */
   transition: border-color 0.15s;
+  /* ensure grid children don't overflow the card on narrow screens */
+  min-width: 0;
 }
 .tr2-card:hover { border-color: rgba(255,255,255,0.15); }
 
@@ -773,26 +775,30 @@ body {
 .tr2-no-game { font-size: 13px; color: var(--text2); padding: 14px 16px; }
 
 /* ── Final MLB game — ESPN-style R/H/E with decisions ─────────────── */
-/* ── f2 = Final MLB game v2 (ESPN-style) ─────────────────────────── */
+/* ── f2 = Final MLB game v2 (ESPN-style two-column) ─────────────── */
 .f2-box {
-  display: flex; flex-direction: row; align-items: flex-start;
-  gap: 0; padding: 14px 16px 12px; border-top: 1px solid var(--border);
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: 1fr 155px;
+  gap: 0;
+  padding: 14px 16px 12px;
+  border-top: 1px solid var(--border);
 }
 /* Left panel: FINAL + team rows */
 .f2-left-panel {
-  display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 0;
+  min-width: 0; overflow: hidden;
 }
 .f2-final-pill {
   align-self: flex-start; margin-bottom: 10px;
 }
 .f2-team-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 5px 0;
+  padding: 5px 0; min-width: 0;
 }
 .f2-logo { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
 .f2-team-info {
-  display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  flex: 1; min-width: 0; overflow: hidden;
 }
 .f2-team-name {
   font-size: 16px; font-weight: 800; color: var(--text);
@@ -800,63 +806,71 @@ body {
 }
 .f2-team-rec {
   font-size: 11px; color: var(--text2); font-weight: 400;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .f2-score-wrap {
-  display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 8px;
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 4px;
 }
-.f2-arrow {
-  font-size: 10px; color: var(--text); margin-right: 2px;
-}
+.f2-arrow { font-size: 10px; color: var(--text); margin-right: 2px; }
 .f2-score {
   font-size: 26px; font-weight: 900;
   font-variant-numeric: tabular-nums;
-  color: var(--text2); min-width: 28px; text-align: right; line-height: 1;
+  color: var(--text2); min-width: 26px; text-align: right; line-height: 1;
 }
 .f2-score-win { color: var(--text); }
+
 /* Right panel: decisions + buttons */
 .f2-right-panel {
   display: flex; flex-direction: column; justify-content: flex-start;
-  padding-left: 14px; border-left: 1px solid var(--border);
-  min-width: 0; flex-shrink: 0; width: 160px;
+  padding-left: 12px; border-left: 1px solid var(--border);
+  overflow: hidden;
 }
 .f2-decisions {
-  display: flex; flex-direction: column; gap: 7px; flex: 1;
+  display: flex; flex-direction: column; gap: 7px;
 }
 .f2-decision {
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; gap: 6px; cursor: default;
 }
+.f2-decision[style*="pointer"] { cursor: pointer; }
 .f2-decision:hover .f2-dec-name { text-decoration: underline; }
 .f2-dec-label {
   font-size: 9px; font-weight: 800; color: var(--text2);
-  letter-spacing: 0.5px; width: 32px; flex-shrink: 0;
+  letter-spacing: 0.5px; width: 28px; flex-shrink: 0; text-transform: uppercase;
 }
 .f2-dec-photo {
-  width: 34px; height: 34px; border-radius: 50%;
+  width: 30px; height: 30px; border-radius: 50%;
   object-fit: cover; object-position: top center;
   background: var(--bg3); flex-shrink: 0;
 }
 .f2-dec-photo-empty { background: var(--bg3); }
-.f2-dec-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.f2-dec-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; }
 .f2-dec-name {
-  font-size: 12px; font-weight: 700; color: var(--text);
+  font-size: 11px; font-weight: 700; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.f2-dec-stats { font-size: 11px; font-weight: 700; color: var(--text2); }
+.f2-dec-stats { font-size: 10px; font-weight: 700; color: var(--text2); }
 .f2-buttons {
-  display: flex; flex-direction: row; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 5px; margin-top: 10px;
 }
 .f2-btn {
-  flex: 1; padding: 6px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  padding: 5px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;
   background: transparent; border: 1.5px solid var(--accent2); color: var(--accent2);
   cursor: pointer; white-space: nowrap; transition: all 0.15s; text-align: center;
+  display: block; width: 100%;
 }
 .f2-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
-@media (max-width: 420px) {
-  .f2-right-panel { width: 148px; }
+
+@media (max-width: 380px) {
+  .f2-box { grid-template-columns: 1fr 140px; }
   .f2-team-name { font-size: 14px; }
   .f2-score { font-size: 22px; }
-  .f2-dec-name { font-size: 11px; }
-  .f2-dec-photo { width: 28px; height: 28px; }
+  .f2-dec-photo { width: 26px; height: 26px; }
+}
+@media (max-width: 320px) {
+  /* Stack vertically on very small screens */
+  .f2-box { grid-template-columns: 1fr; }
+  .f2-right-panel { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 10px; margin-top: 8px; }
+  .f2-buttons { flex-direction: row; }
 }
 
 .tr2-game {
