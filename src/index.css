@@ -801,6 +801,13 @@ body {
   align-items: center;
   width: fit-content;
 }
+.f2-score {
+  font-size: 22px; font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--text2); text-align: right; line-height: 1;
+  justify-self: end;
+  padding-left: 16px;
+}
 .f2-logo { width: 24px; height: 24px; object-fit: contain; }
 .f2-team-info {
   display: flex; flex-direction: column; gap: 1px;
@@ -814,12 +821,6 @@ body {
 .f2-team-rec {
   font-size: 11px; color: var(--text2); font-weight: 400;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.f2-score {
-  font-size: 22px; font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  color: var(--text2); text-align: right; line-height: 1;
-  justify-self: end;
 }
 .f2-score-bold { font-weight: 900 !important; color: var(--text) !important; }
 
