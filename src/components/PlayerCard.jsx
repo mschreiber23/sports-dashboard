@@ -141,8 +141,11 @@ export default function PlayerCard({ player, sport }) {
   const rawAltColor = liveBio.teamAltColor || player.teamAltColor || player.team?.alternateColor;
   const primaryHex  = rawColor    ? `#${rawColor}`    : null;
   const altHex      = rawAltColor ? `#${rawAltColor}` : null;
-  // Adapt color so very dark team colors are visible on the dark background
+  // Info strip accent: adapted so dark primaries are visible as a solid bg color
   const teamColor = adaptColorForDarkBg(primaryHex, altHex);
+  // Photo gradient: use the secondary/alternate color directly — dark saturated colors
+  // look great as a subtle gradient tint without needing the lightness boost
+  const cardColor = altHex || primaryHex || '#7c3aed';
   const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
 
   return (
@@ -153,14 +156,14 @@ export default function PlayerCard({ player, sport }) {
 
       {/* Photo area */}
       <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">
-        <div className="sports-card-photo-wrap" style={{ '--card-color': teamColor }}>
+        <div className="sports-card-photo-wrap" style={{ '--card-color': cardColor }}>
           {player.headshot ? (
             <img src={player.headshot} alt={player.displayName} className="sports-card-photo" />
           ) : (
             <div className="sports-card-photo-placeholder">{player.displayName?.[0]}</div>
           )}
-          {/* Gradient fade at bottom of photo — stays in bottom 30% */}
-          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${teamColor}cc 100%)` }} />
+          {/* Gradient fade at bottom of photo — uses secondary color for natural team feel */}
+          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${cardColor}cc 100%)` }} />
         </div>
 
         {/* Player info strip */}
