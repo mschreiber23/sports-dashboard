@@ -212,6 +212,14 @@ export async function getTeamNews(sport, teamId, limit = 10) {
   return data.articles || [];
 }
 
+export async function getTeamDepthChart(sport, teamId) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/site/v2/sports/${league}/teams/${teamId}/depthcharts`
+  );
+  return data;
+}
+
 export async function getStandings(sport, level = 3) {
   const { league } = SPORTS[sport];
   const year = new Date().getFullYear();

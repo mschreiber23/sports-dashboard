@@ -4480,3 +4480,267 @@ thead .dfs-sticky-player {
   .scores-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-pills { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ══════════════════════════════════════════════════════
+   TEAM PAGE — NEW TABS (Home · Stats · Roster · Depth · Injuries)
+   ══════════════════════════════════════════════════════ */
+
+/* Scrollable tab row */
+.tp-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.tp-tabs::-webkit-scrollbar { display: none; }
+.tp-tab { white-space: nowrap; }
+
+/* ── Schedule row clickable ── */
+.tp-row-clickable { cursor: pointer; }
+.tp-row-clickable:hover { background: var(--bg3); }
+
+/* ── View Full Schedule button ── */
+.tp-view-schedule-btn {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tp-view-schedule-btn:hover { background: var(--bg3); }
+
+/* ── Stats Tab ── */
+.tp-stats-wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.tp-stats-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tp-stats-type-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tp-stats-type-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tp-stats-type-tab:hover { color: var(--text); border-color: var(--text2); }
+.tp-stats-type-active {
+  background: color-mix(in srgb, var(--team-color, var(--accent)) 15%, var(--bg3));
+  border-color: var(--team-color, var(--accent));
+  color: var(--team-color, var(--accent));
+}
+
+.tp-stats-dropdowns { display: flex; gap: 8px; flex-wrap: wrap; }
+.tp-stats-select {
+  padding: 6px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+.tp-stats-select:focus { border-color: var(--team-color, var(--accent)); }
+
+.tp-stats-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tp-stats-table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tp-stats-th {
+  padding: 8px 10px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tp-stats-th-name { text-align: left; padding-left: 12px; min-width: 160px; }
+.tp-stats-tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.tp-stats-tr-link { cursor: pointer; }
+.tp-stats-tr-link:hover { background: var(--bg3); }
+.tp-stats-td {
+  padding: 8px 10px;
+  text-align: right;
+  color: var(--text);
+  white-space: nowrap;
+}
+.tp-stats-td-name { text-align: left; padding-left: 12px; }
+.tp-stats-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  object-fit: cover; object-position: top;
+  background: var(--bg2);
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.tp-stats-name-col { display: inline-flex; flex-direction: column; vertical-align: middle; }
+.tp-stats-name { font-weight: 700; color: var(--text); font-size: 13px; line-height: 1.2; }
+.tp-stats-pos { font-size: 11px; color: var(--text2); }
+.tp-stats-empty { color: var(--text2); font-style: italic; padding: 20px 12px; }
+
+/* ── Roster Tab ── */
+.tp-roster-wrap { display: flex; flex-direction: column; gap: 20px; }
+.tp-roster-group-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--team-color, var(--accent));
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.tp-roster-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tp-roster-table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tp-roster-th {
+  padding: 7px 10px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tp-roster-th-num { width: 36px; }
+.tp-roster-th-name { text-align: left; min-width: 160px; }
+.tp-roster-th-hw { min-width: 100px; }
+.tp-roster-tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.tp-roster-tr-link { cursor: pointer; }
+.tp-roster-tr-link:hover { background: var(--bg3); }
+.tp-roster-td {
+  padding: 8px 10px;
+  text-align: center;
+  color: var(--text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.tp-roster-td-num { color: var(--text2); font-weight: 600; }
+.tp-roster-td-name { text-align: left; display: flex; align-items: center; gap: 10px; }
+.tp-roster-td-hw { font-size: 12px; color: var(--text2); }
+.tp-roster-headshot {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  object-fit: cover; object-position: top;
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.tp-roster-name { font-weight: 700; color: var(--text); }
+
+/* ── Depth Chart Tab ── */
+.tp-depth-wrap { display: flex; flex-direction: column; gap: 0; }
+.tp-depth-position {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+.tp-depth-pos-label {
+  width: 36px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--team-color, var(--accent));
+  padding-top: 3px;
+}
+.tp-depth-players { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.tp-depth-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+.tp-depth-player-link { cursor: pointer; }
+.tp-depth-player-link:hover { background: var(--bg3); }
+.tp-depth-rank {
+  width: 18px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-align: center;
+  flex-shrink: 0;
+}
+.tp-depth-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+/* ── Injuries Tab ── */
+.tp-injuries-wrap { display: flex; flex-direction: column; gap: 0; }
+.tp-injuries-empty { text-align: center; padding: 40px 20px; color: var(--text2); }
+.tp-injuries-empty .empty-icon { font-size: 32px; margin-bottom: 8px; }
+.tp-inj-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.tp-inj-row-link { cursor: pointer; }
+.tp-inj-row-link:hover { background: var(--bg3); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
+.tp-inj-headshot {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  object-fit: cover; object-position: top;
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.tp-inj-info { flex: 1; min-width: 0; }
+.tp-inj-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.tp-inj-pos { font-size: 12px; color: var(--text2); margin-bottom: 3px; }
+.tp-inj-comment { font-size: 12px; color: var(--text2); line-height: 1.4; }
+.tp-inj-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.tp-inj-date { font-size: 11px; color: var(--text2); }
+
+/* Injury badges */
+.tp-inj-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.tp-inj-tag-sm { font-size: 9px; padding: 1px 5px; margin-top: 2px; }
+.tp-inj-tag-il60 { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+.tp-inj-tag-il10 { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+.tp-inj-tag-day  { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+
+@media (max-width: 600px) {
+  .tp-stats-controls { flex-direction: column; align-items: flex-start; }
+  .tp-stats-dropdowns { width: 100%; }
+  .tp-stats-select { flex: 1; }
+  .tp-depth-pos-label { width: 28px; font-size: 10px; }
+}
