@@ -148,17 +148,28 @@ async function fetchMlbDecisions(gameDate, homeTeamAbbr) {
   const mlbTeamId = ESPN_ABB_TO_MLB_ID[homeTeamAbbr];
   if (!mlbTeamId) return null;
 
-  // ESPN uses local game date; subtract a day to match MLB Stats API UTC date
-  const d = new Date(gameDate);
-  d.setDate(d.getDate() - 1);
-  const dateStr = d.toISOString().slice(0, 10);
+  // ESPN game dates are UTC timestamps. Most US games are in the evening local time,
+  // so the UTC date matches. But late west-coast games (after midnight UTC) roll into
+  // the next UTC day while still being the previous local date.
+  // Strategy: try the ESPN date as-is, then the day before as a fallback.
+  const d0 = new Date(gameDate);
+  const d1 = new Date(gameDate);
+  d1.setDate(d1.getDate() - 1);
+  const candidates = [d0.toISOString().slice(0, 10), d1.toISOString().slice(0, 10)];
 
-  // 1. Find game PK
-  const schedRes = await fetch(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${mlbTeamId}`
-  );
-  const schedData = await schedRes.json();
-  const gamePk = schedData.dates?.[0]?.games?.[0]?.gamePk;
+  // 1. Find game PK — try each candidate date, pick the first with a Final game
+  let gamePk = null;
+  for (const dateStr of candidates) {
+    const schedRes = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${mlbTeamId}`
+    );
+    const schedData = await schedRes.json();
+    const games = schedData.dates?.[0]?.games || [];
+    const finalGame = games.find(
+      (g) => g.status?.abstractGameState === 'Final' || g.status?.detailedState === 'Final'
+    );
+    if (finalGame?.gamePk) { gamePk = finalGame.gamePk; break; }
+  }
   if (!gamePk) return null;
 
   // 2. Get decisions
