@@ -5175,3 +5175,37 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Player search in dashboard picker ───────────────── */
+.pr-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 12px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.pr-search-wrap:focus-within { border-color: var(--accent); }
+.pr-search-icon { font-size: 15px; flex-shrink: 0; }
+.pr-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 14px;
+  padding: 12px 0;
+}
+.pr-search-input::placeholder { color: var(--text2); }
+.pr-search-clear {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
+}
