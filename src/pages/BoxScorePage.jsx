@@ -2,6 +2,170 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import useMlbLiveFeed from '../hooks/useMlbLiveFeed';
+
+/* ─── Pitch type metadata ────────────────────────────── */
+const PITCH_META = {
+  FF: { label: 'Four-Seam',  color: '#ef4444' },
+  FA: { label: 'Fastball',   color: '#ef4444' },
+  FT: { label: 'Two-Seam',   color: '#f97316' },
+  SI: { label: 'Sinker',     color: '#f97316' },
+  FC: { label: 'Cutter',     color: '#a855f7' },
+  CH: { label: 'Changeup',   color: '#22c55e' },
+  CU: { label: 'Curveball',  color: '#60a5fa' },
+  KC: { label: 'Knuckle Curve', color: '#3b82f6' },
+  SL: { label: 'Slider',     color: '#eab308' },
+  SV: { label: 'Slurve',     color: '#fbbf24' },
+  FS: { label: 'Splitter',   color: '#06b6d4' },
+  FO: { label: 'Forkball',   color: '#06b6d4' },
+  KN: { label: 'Knuckleball',color: '#f1f5f9' },
+  EP: { label: 'Eephus',     color: '#9ca3af' },
+};
+function pitchColor(code) { return PITCH_META[code]?.color || '#9ca3af'; }
+function pitchLabel(code, desc) { return PITCH_META[code]?.label || desc || code || '?'; }
+
+/* ─── Pitch Plot SVG ─────────────────────────────────── */
+/*
+  Coordinate space mirrors MLB's: pX = 0 is plate center,
+  positive pX is to the catcher's right (inside to a RHB),
+  pZ = 0 is ground level.
+
+  SVG viewBox "0 0 200 220":
+    Displayed range  pX: -2.5 → +2.5 ft  (200 px, 40 px/ft)
+    Displayed range  pZ:  0   →  5.5 ft  (220 px, 40 px/ft)
+    svgX(pX) = pX*40 + 100
+    svgY(pZ) = 220 - pZ*40
+*/
+const toX = (pX) => pX * 40 + 100;
+const toY = (pZ) => 220 - pZ * 40;
+
+// Home plate pentagon (pZ ≈ 0.15 ft above ground)
+const PLATE_PTS = (() => {
+  const cx = 100, cy = toY(0.1);
+  const hw = 0.7083 * 40; // half-plate width (8.5in)
+  return [
+    [cx - hw, cy - 6],
+    [cx + hw, cy - 6],
+    [cx + hw, cy + 2],
+    [cx,      cy + 9],
+    [cx - hw, cy + 2],
+  ].map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+})();
+
+function PitchPlot({ pitches, szTop, szBot }) {
+  const zoneLeft  = toX(-0.83);
+  const zoneRight = toX( 0.83);
+  const zoneTop   = toY(szTop);
+  const zoneBot   = toY(szBot);
+  const zoneW = zoneRight - zoneLeft;
+  const zoneH = zoneBot   - zoneTop;
+
+  // Strike-zone 3×3 grid lines
+  const col1 = zoneLeft + zoneW / 3;
+  const col2 = zoneLeft + (zoneW * 2) / 3;
+  const row1 = zoneTop  + zoneH / 3;
+  const row2 = zoneTop  + (zoneH * 2) / 3;
+
+  return (
+    <svg viewBox="0 0 200 220" className="pitch-plot-svg" aria-label="Pitch location plot">
+      {/* Background */}
+      <rect x="0" y="0" width="200" height="220" fill="transparent" />
+
+      {/* Shadow ball-zone ring */}
+      <circle cx="100" cy={toY(2.45)} r={toX(1.5) - 100} fill="none"
+        stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+
+      {/* Strike zone */}
+      <rect x={zoneLeft} y={zoneTop} width={zoneW} height={zoneH}
+        fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" />
+
+      {/* 3×3 inner grid */}
+      {[col1, col2].map((x, i) => (
+        <line key={`col${i}`} x1={x} y1={zoneTop} x2={x} y2={zoneBot}
+          stroke="rgba(255,255,255,0.2)" strokeWidth="0.75" />
+      ))}
+      {[row1, row2].map((y, i) => (
+        <line key={`row${i}`} x1={zoneLeft} y1={y} x2={zoneRight} y2={y}
+          stroke="rgba(255,255,255,0.2)" strokeWidth="0.75" />
+      ))}
+
+      {/* Home plate */}
+      <polygon points={PLATE_PTS} fill="rgba(255,255,255,0.85)" />
+
+      {/* Pitches — oldest first so newest is on top */}
+      {pitches.map((p, i) => {
+        const coords = p.pitchData?.coordinates;
+        if (!coords?.pX == null || coords?.pZ == null) return null;
+        const cx = toX(coords.pX);
+        const cy = toY(coords.pZ);
+        const code = p.details?.type?.code || '';
+        const fill = pitchColor(code);
+        const isStrike = p.details?.isStrike;
+        const isInPlay = p.details?.isInPlay;
+        const isBall   = p.details?.isBall;
+        const isLast   = i === pitches.length - 1;
+        return (
+          <g key={i}>
+            {isLast && (
+              <circle cx={cx} cy={cy} r="12" fill="none"
+                stroke={fill} strokeWidth="1.5" opacity="0.4" />
+            )}
+            <circle cx={cx} cy={cy} r={isLast ? 7 : 6}
+              fill={fill}
+              stroke={isStrike || isInPlay ? '#fff' : isBall ? 'rgba(255,255,255,0.3)' : 'none'}
+              strokeWidth={isStrike || isInPlay ? 1.5 : 1}
+              opacity={isLast ? 1 : 0.7}
+            />
+            {/* Pitch number */}
+            <text x={cx} y={cy + 4} textAnchor="middle"
+              fontSize="7" fontWeight="bold" fill="#000" opacity={isLast ? 1 : 0.8}>
+              {i + 1}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ─── Pitch legend entry ─────────────────────────────── */
+function PitchLegend({ pitches }) {
+  const seen = {};
+  pitches.forEach((p) => {
+    const code = p.details?.type?.code;
+    if (code && !seen[code]) seen[code] = p.details?.type?.description || code;
+  });
+  const entries = Object.entries(seen);
+  if (!entries.length) return null;
+  return (
+    <div className="pitch-legend">
+      {entries.map(([code, desc]) => (
+        <div key={code} className="pitch-legend-item">
+          <span className="pitch-legend-dot" style={{ background: pitchColor(code) }} />
+          <span>{pitchLabel(code, desc)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Last pitch badge ───────────────────────────────── */
+function LastPitchBadge({ pitch }) {
+  if (!pitch) return null;
+  const code  = pitch.details?.type?.code || '';
+  const desc  = pitch.details?.type?.description || '';
+  const speed = pitch.pitchData?.startSpeed;
+  const result = pitch.details?.description || '';
+  const color = pitchColor(code);
+  return (
+    <div className="last-pitch-badge">
+      <span className="last-pitch-dot" style={{ background: color }} />
+      <span className="last-pitch-label">{pitchLabel(code, desc)}</span>
+      {speed && <span className="last-pitch-speed">{Math.round(speed)} mph</span>}
+      {result && <span className="last-pitch-result">{result}</span>}
+    </div>
+  );
+}
 
 /* ─── MLB Stats API helpers (lineups) ───────────────────────────── */
 const STATSAPI = 'https://statsapi.mlb.com/api/v1';
@@ -464,7 +628,9 @@ function CountDots({ filled, total, color }) {
   );
 }
 
-function MlbGamecast({ data, rosters, situation, competitors, status }) {
+function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk }) {
+  const feed = useMlbLiveFeed(mlbGamePk, status?.type?.state === 'in');
+  const { pitches, lastPitch, szTop, szBot, matchup: feedMatchup, count: feedCount } = feed;
   const rosterMap = buildRosterMap(rosters);
   const pitcher = rosterMap[String(situation?.pitcher?.playerId)];
   const batter  = rosterMap[String(situation?.batter?.playerId)];
@@ -516,6 +682,48 @@ function MlbGamecast({ data, rosters, situation, competitors, status }) {
               </div>
             ))}
           </div>
+
+          {/* Pitch Tracker */}
+          {pitches.length > 0 && (
+            <div className="pitch-tracker-card">
+              <div className="pitch-tracker-plot">
+                <PitchPlot pitches={pitches} szTop={szTop} szBot={szBot} />
+                <PitchLegend pitches={pitches} />
+              </div>
+              <div className="pitch-tracker-info">
+                <div className="pitch-tracker-header">AT BAT · {pitches.length} pitch{pitches.length !== 1 ? 'es' : ''}</div>
+                {feedMatchup?.batter?.fullName && (
+                  <div className="pitch-tracker-player">
+                    <span className="pitch-tracker-role">Batter</span>
+                    <span className="pitch-tracker-name">{feedMatchup.batter.fullName}</span>
+                  </div>
+                )}
+                {feedMatchup?.pitcher?.fullName && (
+                  <div className="pitch-tracker-player">
+                    <span className="pitch-tracker-role">Pitcher</span>
+                    <span className="pitch-tracker-name">{feedMatchup.pitcher.fullName}</span>
+                  </div>
+                )}
+                <div className="pitch-tracker-count">
+                  <div className="pitch-tracker-count-item">
+                    <span className="pitch-tracker-count-val" style={{color:'#4ade80'}}>{feedCount.balls ?? situation.balls ?? 0}</span>
+                    <span className="pitch-tracker-count-label">B</span>
+                  </div>
+                  <div className="pitch-tracker-count-sep">-</div>
+                  <div className="pitch-tracker-count-item">
+                    <span className="pitch-tracker-count-val" style={{color:'#fbbf24'}}>{feedCount.strikes ?? situation.strikes ?? 0}</span>
+                    <span className="pitch-tracker-count-label">S</span>
+                  </div>
+                  <div className="pitch-tracker-count-sep">·</div>
+                  <div className="pitch-tracker-count-item">
+                    <span className="pitch-tracker-count-val" style={{color:'#f87171'}}>{feedCount.outs ?? situation.outs ?? 0}</span>
+                    <span className="pitch-tracker-count-label">Out{(feedCount.outs ?? situation.outs ?? 0) !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <LastPitchBadge pitch={lastPitch} />
+              </div>
+            </div>
+          )}
 
           {/* Pitcher / Count / Batter */}
           <div className="gc-at-bat">
@@ -926,6 +1134,9 @@ export default function BoxScorePage() {
   const [lineups, setLineups] = useState({ away: null, home: null });
   const [lineupLoading, setLineupLoading] = useState({ away: false, home: false });
 
+  // MLB live game PK (for pitch tracker)
+  const [mlbGamePk, setMlbGamePk] = useState(null);
+
   const comp   = data?.header?.competitions?.[0];
   const comps  = comp?.competitors || [];
   const status = comp?.status;
@@ -1000,6 +1211,18 @@ export default function BoxScorePage() {
     return () => { cancelled = true; ctrl.abort(); };
   }, [isPre, sport, data, gameId]);
 
+  // Resolve MLB gamePk for live pitch tracker
+  useEffect(() => {
+    if (sport !== 'mlb' || !data) return;
+    const awayTeam = away?.team;
+    const homeTeam = home?.team;
+    const gameDate = comp?.date?.slice(0, 10);
+    if (!awayTeam || !homeTeam || !gameDate) return;
+    getMlbGameForDate(gameDate, awayTeam.displayName, homeTeam.displayName)
+      .then((game) => { if (game?.gamePk) setMlbGamePk(game.gamePk); })
+      .catch(() => {});
+  }, [sport, data, gameId]);
+
   // Auto-select best tab only if no tab was passed via navigation state
   useEffect(() => {
     if (!loading && !location.state?.tab) {
@@ -1049,7 +1272,7 @@ export default function BoxScorePage() {
 
             {activeTab === 'Gamecast' && (
               sport === 'mlb'
-                ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} />
+                ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 

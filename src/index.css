@@ -4765,3 +4765,148 @@ thead .dfs-sticky-player {
 .pp-team-identity { display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit; }
 .pp-team-identity:hover .pp-team-name { color: var(--accent2); }
 .tp-opp-link { display: flex; align-items: center; gap: 4px; }
+
+/* ── Pitch Tracker ────────────────────────────────────── */
+.pitch-tracker-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+.pitch-tracker-plot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.pitch-plot-svg {
+  width: 160px;
+  height: 176px;
+  display: block;
+}
+.pitch-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: center;
+  max-width: 160px;
+}
+.pitch-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.pitch-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pitch-tracker-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.pitch-tracker-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text2);
+}
+.pitch-tracker-player {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pitch-tracker-role {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text2);
+  letter-spacing: 0.4px;
+}
+.pitch-tracker-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pitch-tracker-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.pitch-tracker-count-item {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.pitch-tracker-count-val {
+  font-size: 22px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.pitch-tracker-count-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.pitch-tracker-count-sep {
+  color: var(--text2);
+  font-size: 14px;
+}
+
+.last-pitch-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  background: var(--bg2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.last-pitch-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.last-pitch-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.last-pitch-speed {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent2);
+}
+.last-pitch-result {
+  font-size: 11px;
+  color: var(--text2);
+  flex-basis: 100%;
+  padding-left: 15px;
+}
+
+@media (max-width: 480px) {
+  .pitch-tracker-card { flex-direction: column; align-items: center; }
+  .pitch-tracker-info { width: 100%; }
+}
