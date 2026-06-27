@@ -131,8 +131,11 @@ export default function PlayerCard({ player, sport }) {
   const { stats, loading, error } = usePlayerStats(sport, player.id);
   const liveBio = usePlayerBio(sport, player.id);
 
-  // Use live position from bio (most accurate), fall back to stored
-  const position = liveBio.position || player.position || '';
+  // Use live position from bio (most accurate), fall back to stored.
+  // player.position may be a full ESPN position object {id,name,abbreviation,...} — extract the string safely.
+  const rawStoredPos = player.position;
+  const storedPos = typeof rawStoredPos === 'string' ? rawStoredPos : rawStoredPos?.abbreviation || player._position || '';
+  const position = liveBio.position || storedPos;
   if (stats) stats._position = position;
   const seasonStats = extractSeasonStats(stats, sport);
 
