@@ -71,7 +71,7 @@ export default function ProfilePage() {
           <div className="me-empty">No favorite players yet. <Link to="/" className="me-link">Add from dashboard →</Link></div>
         ) : (
           <div className="me-players-grid">
-            {players.filter((p) => !p.hidden).map((player) => {
+            {players.map((player) => {
               const headshot = typeof player.headshot === 'string'
                 ? player.headshot
                 : player.headshot?.href;
