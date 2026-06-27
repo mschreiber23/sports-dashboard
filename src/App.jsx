@@ -31,7 +31,6 @@ function Dashboard() {
 
   return (
     <main className="main">
-      <TodaysScores />
       <MyTeams editMode={editMode} setEditMode={setEditMode} />
       <PlayerRoster editMode={editMode} setEditMode={setEditMode} />
       {hasContent && (
