@@ -62,13 +62,12 @@ function AppShell({ userId }) {
   return (
     <FavoritesProvider userId={userId}>
       <div className="app">
-        <TopNav />
-        <InstallBanner />
-        {showStickyTicker && (
-          <div className="global-ticker-sticky">
-            <TodaysScores compact />
-          </div>
-        )}
+        {/* Nav + ticker wrapped together so they form one seamless sticky block */}
+        <div className="app-sticky-header">
+          <TopNav />
+          <InstallBanner />
+          {showStickyTicker && <TodaysScores compact />}
+        </div>
         <div className="app-body">
           <Routes>
             <Route path="/"          element={<Dashboard />} />

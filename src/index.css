@@ -43,14 +43,10 @@ body {
   gap: 40px;
 }
 
-/* ── Header ── */
+/* ── Header (legacy, kept for any remaining uses) ── */
 .header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  backdrop-filter: blur(12px);
 }
 
 .header-inner {
@@ -3457,27 +3453,24 @@ body {
 
 /* Top nav (desktop — hidden on mobile) */
 /* ── Global sticky ticker (shows on non-home pages) ── */
-.global-ticker-sticky {
+/* Single sticky block: nav + ticker always flush together at the top */
+.app-sticky-header {
   position: sticky;
   top: 0;
-  z-index: 50;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  z-index: 100;
+  background: var(--bg2);
 }
-/* On desktop where top-nav is visible (768px+), push ticker flush below it */
-@media (min-width: 768px) {
-  .global-ticker-sticky {
-    top: 53px; /* top-nav: 12px padding × 2 + 28px icon + 1px border */
-  }
-}
-/* Remove the section margin/padding when compact ticker is in sticky header */
-.global-ticker-sticky .ts-section {
+/* Compact ticker inside the sticky header */
+.app-sticky-header .ts-section {
   padding: 0;
   margin: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
 }
-.global-ticker-sticky .ts-ticker-bar {
+.app-sticky-header .ts-ticker-bar {
   border-radius: 0;
   border: none;
+  border-bottom: 1px solid var(--border);
 }
 
 .top-nav {
