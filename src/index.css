@@ -2298,6 +2298,227 @@ body {
 .preview-dot-w { background: rgba(34,197,94,0.2); color: var(--live); border: 1.5px solid var(--live); }
 .preview-dot-l { background: rgba(239,68,68,0.15); color: var(--danger); border: 1.5px solid var(--danger); }
 
+/* ── Game Leaders ─────────────────────────────────────── */
+.preview-leaders-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.preview-leaders-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.preview-leaders-tab:hover { color: var(--text); }
+.preview-leaders-tab-active { color: var(--accent) !important; border-bottom-color: var(--accent) !important; }
+
+.preview-leaders-team-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0 6px;
+}
+.preview-leaders-th-side {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.preview-leaders-th-right { flex-direction: row-reverse; }
+.preview-leaders-th-abbr { font-size: 12px; font-weight: 800; color: var(--text2); }
+
+.preview-leaders-cat {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.preview-leaders-cat-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+}
+.preview-leaders-matchup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.preview-leaders-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.preview-leaders-player-link { cursor: pointer; }
+.preview-leaders-player-link:hover .preview-leaders-name { color: var(--accent); }
+.preview-leaders-player-right { flex-direction: row-reverse; }
+
+.preview-leaders-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg2);
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+.preview-leaders-avatar-empty {
+  background: var(--bg2);
+  border: 2px solid var(--border);
+}
+
+.preview-leaders-stat-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.preview-leaders-stat-col-left { align-items: flex-end; text-align: right; }
+.preview-leaders-stat-col-right { align-items: flex-start; text-align: left; }
+
+.preview-leaders-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s;
+}
+.preview-leaders-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+.preview-leaders-stats { justify-content: flex-end; }
+.preview-leaders-stats-right { justify-content: flex-start; }
+.preview-leaders-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.preview-leaders-val-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.preview-leaders-extra {
+  font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+/* ── Batting Lineups ──────────────────────────────────── */
+.preview-lineups-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.preview-lineup-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.preview-lineup-side-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.preview-lineup-side-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.preview-lineup-team-abbr {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.preview-lineup-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+  width: fit-content;
+}
+.preview-lineup-badge-confirmed {
+  background: rgba(34,197,94,0.15);
+  color: var(--live);
+  border: 1px solid rgba(34,197,94,0.3);
+}
+.preview-lineup-badge-projected {
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.25);
+}
+.preview-lineup-badge-loading {
+  background: var(--bg2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.preview-lineup-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.preview-lineup-row:last-child { border-bottom: none; }
+.preview-lineup-row-link { cursor: pointer; }
+.preview-lineup-row-link:hover .preview-lineup-name { color: var(--accent); }
+.preview-lineup-num {
+  width: 16px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  text-align: center;
+}
+.preview-lineup-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s;
+}
+.preview-lineup-pos {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.preview-lineup-empty {
+  font-size: 12px;
+  color: var(--text2);
+  font-style: italic;
+  padding: 8px 0;
+}
+@media (max-width: 480px) {
+  .preview-lineups-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Gamecast ── */
 .gamecast-wrap { display: flex; flex-direction: column; gap: 12px; }
 

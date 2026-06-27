@@ -1,7 +1,80 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
+
+/* ─── MLB Stats API helpers (lineups) ───────────────────────────── */
+const STATSAPI = 'https://statsapi.mlb.com/api/v1';
+
+async function mlbFetch(url, signal) {
+  const res = await fetch(url, signal ? { signal } : undefined);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function getMlbGameForDate(dateStr, awayName, homeName) {
+  const data = await mlbFetch(
+    `${STATSAPI}/schedule?sportId=1&date=${dateStr}&hydrate=lineups,teams`
+  );
+  const games = data.dates?.[0]?.games || [];
+  // Match by team display names (exact match first, then partial)
+  const norm = (s) => (s || '').toLowerCase();
+  const match = games.find((g) => {
+    const a = norm(g.teams?.away?.team?.name);
+    const h = norm(g.teams?.home?.team?.name);
+    return a === norm(awayName) && h === norm(homeName);
+  }) || games.find((g) => {
+    const a = norm(g.teams?.away?.team?.name);
+    const h = norm(g.teams?.home?.team?.name);
+    return norm(awayName).includes(a.split(' ').pop()) && norm(homeName).includes(h.split(' ').pop());
+  });
+  return match || null;
+}
+
+async function getProjectedLineup(teamId, signal) {
+  const teamNum = Number(teamId);
+  const end   = new Date(); end.setDate(end.getDate() - 1);
+  const start = new Date(); start.setDate(start.getDate() - 21);
+  const fmt   = (d) => d.toISOString().slice(0, 10);
+
+  const schedule = await mlbFetch(
+    `${STATSAPI}/schedule?sportId=1&teamId=${teamId}&startDate=${fmt(start)}&endDate=${fmt(end)}&gameType=R`,
+    signal
+  );
+
+  for (const dateObj of [...(schedule.dates || [])].reverse()) {
+    for (const game of [...(dateObj.games || [])].reverse()) {
+      if (game.status?.abstractGameState !== 'Final') continue;
+      const homeId = Number(game.teams?.home?.team?.id);
+      const awayId = Number(game.teams?.away?.team?.id);
+      if (homeId !== teamNum && awayId !== teamNum) continue;
+      try {
+        const bs = await mlbFetch(`${STATSAPI}/game/${game.gamePk}/boxscore`, signal);
+        const homeTeam = bs.teams?.home;
+        const awayTeam = bs.teams?.away;
+        const teamBs   = Number(homeTeam?.team?.id) === teamNum ? homeTeam : awayTeam;
+        if (!teamBs || Number(teamBs.team?.id) !== teamNum) continue;
+        const battingOrder = teamBs.battingOrder || [];
+        const playerMap    = teamBs.players || {};
+        if (battingOrder.length === 0) continue;
+        const players = battingOrder.map((id) => {
+          const entry = playerMap[`ID${id}`];
+          return entry ? {
+            id:              entry.person?.id,
+            fullName:        entry.person?.fullName || '',
+            useName:         entry.person?.useName  || '',
+            primaryPosition: entry.position || {},
+            batSide:         entry.person?.batSide  || {},
+          } : null;
+        }).filter(Boolean);
+        if (players.length > 0) return { players, confirmed: false, fromDate: dateObj.date };
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+      }
+    }
+  }
+  return { players: [], confirmed: false, fromDate: null };
+}
 
 /* ─── helpers ──────────────────────────────────────── */
 function teamLogo(team) { return team?.logo || team?.logos?.[0]?.href || null; }
@@ -42,16 +115,216 @@ function BaseDiamond({ onFirst, onSecond, onThird, size = 44 }) {
   );
 }
 
+/* ─── GAME LEADERS ─────────────────────────────────── */
+const BATTING_CATS  = ['Batting Average', 'Home Runs', 'Runs Batted In'];
+const PITCHING_CATS = ['Earned Run Average', 'Wins', 'Strikeouts'];
+
+// Additional stats to show per leader category
+const LEADER_EXTRA = {
+  'Batting Average':   ['OBP', 'SLG'],
+  'Home Runs':         ['AVG', 'RBI'],
+  'Runs Batted In':    ['HR', 'AVG'],
+  'Earned Run Average':['WHIP'],
+  'Wins':              ['ERA'],
+  'Strikeouts':        ['ERA'],
+};
+const CAT_LABEL = {
+  'Batting Average': 'AVG', 'Home Runs': 'HR', 'Runs Batted In': 'RBI',
+  'Earned Run Average': 'ERA', 'Wins': 'W', 'Strikeouts': 'K',
+};
+
+function GameLeaders({ leaders, away, home }) {
+  const [tab, setTab] = useState('batting');
+  if (!leaders?.length) return null;
+
+  // Build map: teamId → categories
+  const byTeam = {};
+  leaders.forEach((tl) => { byTeam[tl.team?.id] = tl.leaders || []; });
+
+  const awayLeaders = byTeam[away?.team?.id] || [];
+  const homeLeaders = byTeam[home?.team?.id] || [];
+
+  const cats = tab === 'batting' ? BATTING_CATS : PITCHING_CATS;
+
+  const getLeader = (teamLeaders, catName) => {
+    const cat = teamLeaders.find((c) => c.displayName === catName);
+    return cat?.leaders?.[0] || null;
+  };
+
+  const navigate = useNavigate();
+
+  return (
+    <div className="preview-card">
+      <div className="preview-leaders-tabs">
+        <button
+          className={`preview-leaders-tab ${tab === 'batting' ? 'preview-leaders-tab-active' : ''}`}
+          onClick={() => setTab('batting')}
+        >
+          Batting Leaders
+        </button>
+        <button
+          className={`preview-leaders-tab ${tab === 'pitching' ? 'preview-leaders-tab-active' : ''}`}
+          onClick={() => setTab('pitching')}
+        >
+          Pitching Leaders
+        </button>
+      </div>
+
+      {/* Team logo header */}
+      <div className="preview-leaders-team-header">
+        <div className="preview-leaders-th-side">
+          <LogoImg team={away?.team} className="preview-team-logo" />
+          <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+        </div>
+        <div className="preview-leaders-th-side preview-leaders-th-right">
+          <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
+          <LogoImg team={home?.team} className="preview-team-logo" />
+        </div>
+      </div>
+
+      {cats.map((catName) => {
+        const awayL = getLeader(awayLeaders, catName);
+        const homeL = getLeader(homeLeaders, catName);
+        const extras = LEADER_EXTRA[catName] || [];
+        const catLabel = CAT_LABEL[catName] || catName;
+
+        const getStats = (leader) => {
+          if (!leader) return {};
+          const map = {};
+          (leader.statistics || []).forEach((s) => { map[s.abbreviation] = s.displayValue; });
+          return map;
+        };
+
+        return (
+          <div key={catName} className="preview-leaders-cat">
+            <div className="preview-leaders-cat-label">{catName}</div>
+            <div className="preview-leaders-matchup">
+              {/* Away leader — left side */}
+              <div
+                className={`preview-leaders-player${awayL?.athlete?.id ? ' preview-leaders-player-link' : ''}`}
+                onClick={() => awayL?.athlete?.id && navigate(`/player/mlb/${awayL.athlete.id}`)}
+              >
+                <div className="preview-leaders-stat-col preview-leaders-stat-col-left">
+                  <span className="preview-leaders-name">{awayL?.athlete?.shortName || awayL?.athlete?.displayName || '—'}</span>
+                  <div className="preview-leaders-stats">
+                    <span className="preview-leaders-val">{awayL?.displayValue ?? '—'}</span>
+                    <span className="preview-leaders-val-label">{catLabel}</span>
+                    {extras.map((k) => {
+                      const v = getStats(awayL)[k];
+                      return v ? <span key={k} className="preview-leaders-extra">{v} {k}</span> : null;
+                    })}
+                  </div>
+                </div>
+                {awayL?.athlete?.headshot?.href
+                  ? <img src={awayL.athlete.headshot.href} alt="" className="preview-leaders-avatar" />
+                  : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />
+                }
+              </div>
+
+              {/* Home leader — right side */}
+              <div
+                className={`preview-leaders-player preview-leaders-player-right${homeL?.athlete?.id ? ' preview-leaders-player-link' : ''}`}
+                onClick={() => homeL?.athlete?.id && navigate(`/player/mlb/${homeL.athlete.id}`)}
+              >
+                {homeL?.athlete?.headshot?.href
+                  ? <img src={homeL.athlete.headshot.href} alt="" className="preview-leaders-avatar" />
+                  : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />
+                }
+                <div className="preview-leaders-stat-col preview-leaders-stat-col-right">
+                  <span className="preview-leaders-name">{homeL?.athlete?.shortName || homeL?.athlete?.displayName || '—'}</span>
+                  <div className="preview-leaders-stats preview-leaders-stats-right">
+                    <span className="preview-leaders-val">{homeL?.displayValue ?? '—'}</span>
+                    <span className="preview-leaders-val-label">{catLabel}</span>
+                    {extras.map((k) => {
+                      const v = getStats(homeL)[k];
+                      return v ? <span key={k} className="preview-leaders-extra">{v} {k}</span> : null;
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── BATTING LINEUPS ────────────────────────────────── */
+function BattingLineups({ lineups, lineupLoading, away, home }) {
+  const navigate = useNavigate();
+
+  const renderSide = (side) => {
+    const isHome = side === 'home';
+    const team = isHome ? home : away;
+    const lu = isHome ? lineups.home : lineups.away;
+    const loading = isHome ? lineupLoading.home : lineupLoading.away;
+
+    return (
+      <div className="preview-lineup-side">
+        <div className="preview-lineup-side-header">
+          <LogoImg team={team?.team} className="preview-team-logo" />
+          <div className="preview-lineup-side-info">
+            <span className="preview-lineup-team-abbr">{team?.team?.abbreviation}</span>
+            {(loading || lu === null)
+              ? <span className="preview-lineup-badge preview-lineup-badge-loading">Loading…</span>
+              : lu.confirmed
+                ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓ Confirmed</span>
+                : lu.fromDate
+                  ? <span className="preview-lineup-badge preview-lineup-badge-projected">⟳ Projected</span>
+                  : null
+            }
+          </div>
+        </div>
+
+        {/* null = not yet fetched, treat same as loading */}
+        {(loading || lu === null)
+          ? null
+          : (!lu.players?.length)
+            ? <div className="preview-lineup-empty">Lineup not available</div>
+            : lu.players.map((p, i) => {
+            const pos = p.primaryPosition?.abbreviation || p.primaryPosition?.name?.charAt(0) || '';
+            const name = p.useName && p.lastName
+              ? `${p.useName} ${p.lastName}`
+              : p.fullName || '';
+            return (
+              <div
+                key={p.id || i}
+                className={`preview-lineup-row${p.id ? ' preview-lineup-row-link' : ''}`}
+                onClick={() => p.id && navigate(`/player/mlb/${p.id}`)}
+              >
+                <span className="preview-lineup-num">{i + 1}</span>
+                <span className="preview-lineup-name">{name}</span>
+                <span className="preview-lineup-pos">{pos}</span>
+              </div>
+            );
+          })
+        }
+      </div>
+    );
+  };
+
+  return (
+    <div className="preview-card">
+      <div className="preview-card-title">Batting Lineups</div>
+      <div className="preview-lineups-grid">
+        {renderSide('away')}
+        {renderSide('home')}
+      </div>
+    </div>
+  );
+}
+
 /* ─── PREVIEW TAB ──────────────────────────────────── */
 const WEATHER_ICONS = { '1':'☀️','2':'⛅','3':'🌥','4':'☁️','5':'🌧','6':'🌦','7':'🌩','8':'❄️','11':'🌫','12':'🌧','13':'🌨','14':'⛈','15':'⛈','16':'❄️','17':'⛈','18':'🌧','19':'🌨','20':'🌨','21':'🌨','22':'❄️','23':'🌬','25':'🌧','26':'🌧','29':'🌧','30':'🌡️','31':'🧊','32':'☀️','33':'🌙','34':'⛅','35':'⛅','36':'🌥','37':'🌧','38':'⛈','39':'🌧','40':'🌧','41':'❄️','42':'❄️','43':'❄️','44':'⛅' };
 
-function PreviewTab({ data, competitors, status, sport }) {
+function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading }) {
   const gameInfo = data?.gameInfo || {};
-  const weather = gameInfo.venue ? gameInfo : null;
   const venue = gameInfo.venue?.fullName;
   const wx = gameInfo.weather;
   const predictor = data?.predictor;
   const lastFiveGames = data?.lastFiveGames || [];
+  const leaders = data?.leaders || [];
 
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
@@ -132,6 +405,16 @@ function PreviewTab({ data, competitors, status, sport }) {
             })}
           </div>
         </div>
+      )}
+
+      {/* MLB: Season leaders */}
+      {sport === 'mlb' && leaders.length > 0 && (
+        <GameLeaders leaders={leaders} away={away} home={home} />
+      )}
+
+      {/* MLB: Batting lineups */}
+      {sport === 'mlb' && (
+        <BattingLineups lineups={lineups} lineupLoading={lineupLoading} away={away} home={home} />
       )}
 
       {/* Last 5 games */}
@@ -639,6 +922,10 @@ export default function BoxScorePage() {
   const [activeTab, setActiveTab] = useState(() => location.state?.tab || 'Gamecast');
   const [bsTeam, setBsTeam] = useState(0);
 
+  // Lineup state (MLB pre-game only)
+  const [lineups, setLineups] = useState({ away: null, home: null });
+  const [lineupLoading, setLineupLoading] = useState({ away: false, home: false });
+
   const comp   = data?.header?.competitions?.[0];
   const comps  = comp?.competitors || [];
   const status = comp?.status;
@@ -660,6 +947,58 @@ export default function BoxScorePage() {
   const groupDetails = [awayDetails, homeDetails];
 
   const isPre = status?.type?.state === 'pre';
+
+  // Fetch MLB batting lineups for pre-game pages
+  useEffect(() => {
+    if (!isPre || sport !== 'mlb' || !data) return;
+
+    const awayTeam = away?.team;
+    const homeTeam = home?.team;
+    if (!awayTeam || !homeTeam) return;
+
+    const gameDate = comp?.date?.slice(0, 10); // "YYYY-MM-DD"
+    if (!gameDate) return;
+
+    const ctrl = new AbortController();
+    let cancelled = false;
+
+    setLineups({ away: null, home: null });
+    setLineupLoading({ away: true, home: true });
+
+    getMlbGameForDate(gameDate, awayTeam.displayName, homeTeam.displayName).then(async (mlbGame) => {
+      if (cancelled || !mlbGame) {
+        setLineupLoading({ away: false, home: false });
+        return;
+      }
+
+      const awayId = mlbGame.teams?.away?.team?.id;
+      const homeId = mlbGame.teams?.home?.team?.id;
+
+      const confirmedAway = mlbGame.lineups?.awayPlayers;
+      const confirmedHome = mlbGame.lineups?.homePlayers;
+
+      // Fetch both sides in parallel (confirmed if available, else projected)
+      const [awayResult, homeResult] = await Promise.allSettled([
+        confirmedAway?.length > 0
+          ? Promise.resolve({ players: confirmedAway, confirmed: true, fromDate: null })
+          : awayId ? getProjectedLineup(awayId, ctrl.signal) : Promise.resolve({ players: [], confirmed: false, fromDate: null }),
+        confirmedHome?.length > 0
+          ? Promise.resolve({ players: confirmedHome, confirmed: true, fromDate: null })
+          : homeId ? getProjectedLineup(homeId, ctrl.signal) : Promise.resolve({ players: [], confirmed: false, fromDate: null }),
+      ]);
+
+      if (cancelled) return;
+      setLineups({
+        away: awayResult.status === 'fulfilled' ? awayResult.value : { players: [], confirmed: false, fromDate: null },
+        home: homeResult.status === 'fulfilled' ? homeResult.value : { players: [], confirmed: false, fromDate: null },
+      });
+      setLineupLoading({ away: false, home: false });
+    }).catch(() => {
+      if (!cancelled) setLineupLoading({ away: false, home: false });
+    });
+
+    return () => { cancelled = true; ctrl.abort(); };
+  }, [isPre, sport, data, gameId]);
 
   // Auto-select best tab only if no tab was passed via navigation state
   useEffect(() => {
@@ -704,7 +1043,8 @@ export default function BoxScorePage() {
           {/* Tab content */}
           <div className="bsp-tab-content">
             {activeTab === 'Preview' && (
-              <PreviewTab data={data} competitors={comps} status={status} sport={sport} />
+              <PreviewTab data={data} competitors={comps} status={status} sport={sport}
+                lineups={lineups} lineupLoading={lineupLoading} />
             )}
 
             {activeTab === 'Gamecast' && (
