@@ -28,7 +28,13 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     return () => { cancelled = true; clearInterval(timerRef.current); };
   }, [gamePk, active]);
 
-  if (!data) return { raw: null, pitches: [], lastPitch: null, szTop: 3.38, szBot: 1.53 };
+  if (!data) return {
+    raw: null, pitches: [], lastPitch: null, szTop: 3.38, szBot: 1.53,
+    matchup: {}, count: { balls: 0, strikes: 0, outs: 0 },
+    onFirst: false, onSecond: false, onThird: false, outs: 0,
+    recentAtBats: [], currentResult: null, currentAbout: {},
+    shortDetail: '', inning: null, inningHalf: null,
+  };
 
   const ld      = data.liveData  || {};
   const plays   = ld.plays       || {};
