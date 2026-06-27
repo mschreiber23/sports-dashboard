@@ -1,61 +1,91 @@
 import { useState, useEffect, useRef } from 'react';
 
-const POLL_MS = 6000;
+const POLL_MS = 5000;
+
+// MLB CDN headshot
+export function mlbHeadshot(mlbId) {
+  return mlbId
+    ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`
+    : null;
+}
 
 export default function useMlbLiveFeed(gamePk, active = true) {
   const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (!gamePk || !active) {
-      setData(null);
-      return;
-    }
-
+    if (!gamePk || !active) { setData(null); return; }
     let cancelled = false;
 
-    const fetch_ = () => {
+    const poll = () =>
       fetch(`https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`)
         .then((r) => r.json())
         .then((d) => { if (!cancelled) setData(d); })
-        .catch((e) => { if (!cancelled) setError(e); });
-    };
+        .catch(() => {});
 
-    fetch_();
-    timerRef.current = setInterval(fetch_, POLL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(timerRef.current);
-    };
+    poll();
+    timerRef.current = setInterval(poll, POLL_MS);
+    return () => { cancelled = true; clearInterval(timerRef.current); };
   }, [gamePk, active]);
 
-  const plays   = data?.liveData?.plays;
-  const current = plays?.currentPlay;
-  const matchup = current?.matchup || {};
-  const count   = current?.count   || {};
-  const pitches = (current?.playEvents || []).filter((e) => e.type === 'pitch');
+  if (!data) return { raw: null, pitches: [], lastPitch: null, szTop: 3.38, szBot: 1.53 };
+
+  const ld      = data.liveData  || {};
+  const plays   = ld.plays       || {};
+  const ls      = ld.linescore   || {};
+  const offense = ls.offense     || {};
+  const defense = ls.defense     || {};
+  const current = plays.currentPlay || {};
+  const matchup = current.matchup   || {};
+  const count   = current.count     || {};
+
+  // Base runners from linescore (most accurate)
+  const onFirst  = !!offense.first;
+  const onSecond = !!offense.second;
+  const onThird  = !!offense.third;
+  const outs     = ls.outs ?? count.outs ?? 0;
+
+  // Current batter / pitcher from linescore
+  const batterInfo  = offense.batter  || matchup.batter  || {};
+  const pitcherInfo = defense.pitcher || matchup.pitcher || {};
+
+  // Current at-bat pitches
+  const pitches   = (current.playEvents || []).filter((e) => e.type === 'pitch');
   const lastPitch = pitches[pitches.length - 1] || null;
 
-  // Strike zone — fall back to MLB average if not on matchup
-  const szTop = matchup.strikeZoneTop
-    ?? lastPitch?.pitchData?.strikeZoneTop
-    ?? 3.38;
-  const szBot = matchup.strikeZoneBottom
-    ?? lastPitch?.pitchData?.strikeZoneBottom
-    ?? 1.53;
+  // Strike zone
+  const szTop = matchup.strikeZoneTop  ?? lastPitch?.pitchData?.strikeZoneTop  ?? 3.38;
+  const szBot = matchup.strikeZoneBottom ?? lastPitch?.pitchData?.strikeZoneBottom ?? 1.53;
+
+  // Recent completed at-bats (last 5, newest first)
+  const allPlays = plays.allPlays || [];
+  const recentAtBats = allPlays
+    .filter((p) => p.about?.isComplete && (p.playEvents || []).some((e) => e.type === 'pitch'))
+    .slice(-5)
+    .reverse();
+
+  // Current at-bat result (if just completed)
+  const currentResult = current.about?.isComplete ? current.result : null;
 
   return {
     raw: data,
-    error,
-    current,
-    matchup,
-    count,
     pitches,
     lastPitch,
     szTop,
     szBot,
-    gameState: data?.gameData?.status?.detailedState,
+    // MLB matchup
+    matchup: { batter: batterInfo, pitcher: pitcherInfo },
+    count: { balls: count.balls ?? 0, strikes: count.strikes ?? 0, outs },
+    // Base runners (from linescore)
+    onFirst, onSecond, onThird, outs,
+    // Current at-bat
+    currentResult,
+    currentAbout: current.about || {},
+    // Recent at-bats for pitch log
+    recentAtBats,
+    gameState: data.gameData?.status?.detailedState,
+    inning: ls.currentInning,
+    inningHalf: ls.inningHalf,
+    shortDetail: `${ls.inningHalf === 'Top' ? '▲' : '▼'} ${ls.currentInning}`,
   };
 }

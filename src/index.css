@@ -5064,3 +5064,114 @@ thead .dfs-sticky-player {
   .mlb-pitch-view { margin: 0; }
   .mlb-pv-svg { max-height: 480px; width: auto; margin: 0 auto; }
 }
+
+/* ── At-Bat Pitch Log ─────────────────────────────────── */
+.ab-log-section { display: flex; flex-direction: column; gap: 0; }
+.ab-log-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text2);
+  padding: 12px 0 6px;
+  text-transform: uppercase;
+}
+.ab-entry {
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
+}
+.ab-result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0 10px;
+}
+.ab-headshot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.ab-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.ab-event-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg3);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  width: fit-content;
+}
+.ab-event-strikeout { background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3); }
+.ab-event-groundout, .ab-event-flyout, .ab-event-lineout,
+.ab-event-doubleplay, .ab-event-forceout { background: rgba(99,102,241,0.15); color: #818cf8; border-color: rgba(99,102,241,0.3); }
+.ab-event-single, .ab-event-double, .ab-event-triple,
+.ab-event-homerun { background: rgba(34,197,94,0.15); color: #4ade80; border-color: rgba(34,197,94,0.3); }
+.ab-event-walk, .ab-event-intentionalwalk { background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+.ab-result-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.ab-pitches { display: flex; flex-direction: column; }
+.ab-pitch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ab-pitch-row:last-child { border-bottom: none; }
+.ab-pitch-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.ab-pitch-info { flex: 1; min-width: 0; }
+.ab-pitch-result {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  line-height: 1.3;
+}
+.ab-pitch-detail {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 1px;
+}
+.ab-pitch-speed {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+.ab-pitch-type {
+  font-size: 12px;
+  color: var(--text2);
+}
+.ab-pitch-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}

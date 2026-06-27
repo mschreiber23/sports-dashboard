@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
-import useMlbLiveFeed from '../hooks/useMlbLiveFeed';
+import useMlbLiveFeed, { mlbHeadshot } from '../hooks/useMlbLiveFeed';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
 const PITCH_NAMES = {
@@ -23,6 +23,69 @@ function resultColor(details) {
   if (details.isStrike)                        return '#ef4444'; // red
   if (details.isBall)                          return '#22c55e'; // green
   return '#6b7280';
+}
+
+/* ─── At-Bat Pitch Log ───────────────────────────────────
+   Shows pitch-by-pitch log for recent at-bats, like MLB.com
+──────────────────────────────────────────────────────── */
+function AtBatEntry({ atBat, isCurrent }) {
+  const pitches = (atBat.playEvents || []).filter((e) => e.type === 'pitch');
+  if (!pitches.length) return null;
+
+  const result = atBat.result || {};
+  const batter = atBat.matchup?.batter || {};
+  const batterId = batter.id;
+  const headshot = mlbHeadshot(batterId);
+
+  return (
+    <div className="ab-entry">
+      {/* At-bat result header */}
+      {result.description && (
+        <div className="ab-result-header">
+          {headshot && (
+            <img src={headshot} alt="" className="ab-headshot"
+              onError={(e) => { e.target.style.display = 'none'; }} />
+          )}
+          <div className="ab-result-body">
+            <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`}>
+              {result.event}
+            </span>
+            <span className="ab-result-desc">
+              {result.description}
+              {atBat.count?.outs != null && <strong> {atBat.count.outs} out{atBat.count.outs!==1?'s':''}.</strong>}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Pitch list — newest first */}
+      <div className="ab-pitches">
+        {[...pitches].reverse().map((p, i) => {
+          const det  = p.details || {};
+          const pd   = p.pitchData || {};
+          const cnt  = p.count || {};
+          const col  = resultColor(det);
+          const num  = pitches.length - i;
+          const desc = det.description || '';
+          const type = det.type?.description || '';
+          const spd  = pd.startSpeed;
+          return (
+            <div key={i} className="ab-pitch-row">
+              <div className="ab-pitch-dot" style={{ background: col }}>{num}</div>
+              <div className="ab-pitch-info">
+                <span className="ab-pitch-result">{desc}</span>
+                <span className="ab-pitch-detail">
+                  {spd && <span className="ab-pitch-speed">{spd.toFixed(1)} mph</span>}
+                  {type && <span className="ab-pitch-type">{type}</span>}
+                </span>
+              </div>
+              <div className="ab-pitch-count">{cnt.balls ?? 0} - {cnt.strikes ?? 0}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /* ─── Full-width immersive pitch view ────────────────────
@@ -724,44 +787,62 @@ function CountDots({ filled, total, color }) {
 }
 
 function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk }) {
-  const feed = useMlbLiveFeed(mlbGamePk, status?.type?.state === 'in');
-  const { pitches, lastPitch, szTop, szBot, matchup: feedMatchup, count: feedCount } = feed;
-  const rosterMap = buildRosterMap(rosters);
-  const pitcher = rosterMap[String(situation?.pitcher?.playerId)];
-  const batter  = rosterMap[String(situation?.batter?.playerId)];
-
   const isLive = status?.type?.state === 'in';
-  const shortDetail = status?.type?.shortDetail || '';
-  const isBot = shortDetail.toLowerCase().startsWith('bot');
+  const feed = useMlbLiveFeed(mlbGamePk, isLive);
+  const {
+    pitches, lastPitch, szTop, szBot,
+    matchup: mlbMatchup, count: mlbCount,
+    onFirst, onSecond, onThird, outs,
+    recentAtBats, currentResult, currentAbout,
+    shortDetail: mlbShortDetail,
+  } = feed;
 
-  const plays = data?.plays || [];
-  // Recent plays (last 10 non-event plays)
-  const recentPlays = plays.filter((p) => {
-    const t = p.type?.type || '';
-    return !['start-inning','end-inning'].includes(t);
-  }).slice(-8).reverse();
+  // Use MLB data for count/bases when available, fall back to ESPN
+  const balls   = mlbCount.balls   ?? situation?.balls   ?? 0;
+  const strikes = mlbCount.strikes ?? situation?.strikes ?? 0;
+  const outsVal = outs              ?? situation?.outs    ?? 0;
+  const base1   = feed.raw ? onFirst  : !!situation?.onFirst;
+  const base2   = feed.raw ? onSecond : !!situation?.onSecond;
+  const base3   = feed.raw ? onThird  : !!situation?.onThird;
 
-  // Scoring plays
-  const scoringPlays = plays.filter((p) => p.scoringPlay).slice(-5).reverse();
+  // Batter & pitcher from MLB (most accurate)
+  const batterName  = mlbMatchup?.batter?.fullName  || '';
+  const batterPhoto = mlbHeadshot(mlbMatchup?.batter?.id);
+  const pitcherName = mlbMatchup?.pitcher?.fullName || '';
+  const pitcherPhoto= mlbHeadshot(mlbMatchup?.pitcher?.id);
+
+  // Inning display — prefer MLB, fall back to ESPN
+  const inningStr = mlbShortDetail || (() => {
+    const d = status?.type?.shortDetail || '';
+    return d.toLowerCase().startsWith('bot') ? `▼ ${d}` : `▲ ${d}`;
+  })();
 
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
 
+  // Build the at-bat log: current at-bat (if has pitches) + recent completed
+  const currentAtBatForLog = (pitches.length > 0) ? {
+    result: currentResult,
+    matchup: mlbMatchup,
+    playEvents: pitches.map((p) => ({ ...p, type: 'pitch' })),
+    count: mlbCount,
+    about: currentAbout,
+  } : null;
+
+  const scoringPlays = (data?.plays || []).filter((p) => p.scoringPlay).slice(-5).reverse();
+
   return (
     <div className="gamecast-wrap">
-      {/* Situation */}
-      {isLive && situation && (
+      {isLive && (
         <>
+          {/* Inning bar */}
           <div className="gc-inning-bar">
-            <span className={`gc-half ${isBot ? 'gc-bot' : 'gc-top'}`}>{isBot ? '▼' : '▲'} {shortDetail}</span>
-            {situation.lastPlay?.id && recentPlays[0]?.text && (
-              <span className="gc-last-play">{recentPlays[0].text}</span>
-            )}
+            <span className={`gc-half ${inningStr.startsWith('▼') ? 'gc-bot' : 'gc-top'}`}>{inningStr}</span>
           </div>
 
-      {/* Teams score bar — away on top, home on bottom */}
-      <div className="gc-score-row">
-        {[away, home].filter(Boolean).sort((a,b) => a.homeAway==='away' ? -1 : 1).map((c) => (
+          {/* Teams R/H/E */}
+          <div className="gc-score-row">
+            {[away, home].filter(Boolean).sort((a,b) => a.homeAway==='away' ? -1 : 1).map((c) => (
               <div key={c.team?.id} className="gc-team-score-row">
                 <LogoImg team={c.team} className="gc-team-logo" />
                 <span className="gc-team-abbr">{c.team?.abbreviation}</span>
@@ -778,74 +859,78 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             ))}
           </div>
 
-          {/* Full-width Pitch Tracker */}
+          {/* Pitch view */}
           <MlbPitchView
             pitches={pitches}
             lastPitch={lastPitch}
             szTop={szTop}
             szBot={szBot}
-            matchup={feedMatchup}
-            count={feedCount}
-            situation={situation}
+            matchup={mlbMatchup}
+            count={mlbCount}
+            situation={{ onFirst: base1, onSecond: base2, onThird: base3, balls, strikes, outs: outsVal }}
           />
 
-          {/* Pitcher / Count / Batter */}
+          {/* Diamond + count + Now At Bat (all from MLB) */}
           <div className="gc-at-bat">
-            {pitcher && (
+            {/* Pitcher (MLB) */}
+            {pitcherName && (
               <div className="gc-player-block">
                 <div className="gc-player-role">PITCHING</div>
                 <div className="gc-player-row">
-                  {pitcher.headshot?.href && <img src={pitcher.headshot.href} alt="" className="gc-avatar" />}
+                  {pitcherPhoto && (
+                    <img src={pitcherPhoto} alt="" className="gc-avatar"
+                      onError={(e) => { e.target.style.display='none'; }} />
+                  )}
                   <div>
-                    <div className="gc-player-name">{pitcher.shortName || pitcher.displayName}</div>
-                    {pitcher.jersey && <div className="gc-player-sub">#{pitcher.jersey}</div>}
+                    <div className="gc-player-name">{pitcherName.replace(/^(\w)\w+ /, '$1. ')}</div>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Diamond + count (MLB) */}
             <div className="gc-count-diamond">
-              <BaseDiamond onFirst={!!situation.onFirst} onSecond={!!situation.onSecond} onThird={!!situation.onThird} size={52} />
+              <BaseDiamond onFirst={base1} onSecond={base2} onThird={base3} size={52} />
               <div className="gc-count-col">
-                <div className="gc-count-row"><span className="gc-count-label">B</span><CountDots filled={situation.balls||0} total={4} color="green" /></div>
-                <div className="gc-count-row"><span className="gc-count-label">S</span><CountDots filled={situation.strikes||0} total={3} color="yellow" /></div>
-                <div className="gc-count-row"><span className="gc-count-label">O</span><CountDots filled={situation.outs||0} total={3} color="red" /></div>
+                <div className="gc-count-row"><span className="gc-count-label">B</span><CountDots filled={balls}   total={4} color="green" /></div>
+                <div className="gc-count-row"><span className="gc-count-label">S</span><CountDots filled={strikes} total={3} color="yellow" /></div>
+                <div className="gc-count-row"><span className="gc-count-label">O</span><CountDots filled={outsVal} total={3} color="red" /></div>
               </div>
             </div>
 
-            {batter && (
+            {/* Batter (MLB) */}
+            {batterName && (
               <div className="gc-player-block gc-player-block-right">
                 <div className="gc-player-role">NOW AT BAT</div>
                 <div className="gc-player-row">
-                  {batter.headshot?.href && <img src={batter.headshot.href} alt="" className="gc-avatar" />}
+                  {batterPhoto && (
+                    <img src={batterPhoto} alt="" className="gc-avatar"
+                      onError={(e) => { e.target.style.display='none'; }} />
+                  )}
                   <div>
-                    <div className="gc-player-name">{batter.shortName || batter.displayName}</div>
-                    {batter.jersey && <div className="gc-player-sub">#{batter.jersey}</div>}
+                    <div className="gc-player-name">{batterName.replace(/^(\w)\w+ /, '$1. ')}</div>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Situation notes */}
+          {/* Situation probability notes (ESPN) */}
           {(data?.situation?.situationNotes || []).map((n, i) => (
             <div key={i} className="gc-note">{n.text}</div>
           ))}
-        </>
-      )}
 
-      {/* Recent plays */}
-      {recentPlays.length > 0 && (
-        <div className="gc-plays-section">
-          <div className="gc-section-label">Recent Plays</div>
-          {recentPlays.slice(0, 6).map((p) => (
-            <div key={p.id} className={`gc-play-row ${p.scoringPlay ? 'gc-play-scoring' : ''}`}>
-              <div className="gc-play-period">{p.period?.displayValue}</div>
-              <div className="gc-play-text">{p.text}</div>
-              {p.scoringPlay && <div className="gc-play-score">{p.awayScore}-{p.homeScore}</div>}
+          {/* At-Bat Pitch Log (MLB) */}
+          {(currentAtBatForLog || recentAtBats.length > 0) && (
+            <div className="ab-log-section">
+              <div className="ab-log-label">RECENT PLAYS</div>
+              {currentAtBatForLog && <AtBatEntry atBat={currentAtBatForLog} isCurrent />}
+              {recentAtBats.map((ab, i) => (
+                <AtBatEntry key={i} atBat={ab} />
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {!isLive && scoringPlays.length > 0 && (
