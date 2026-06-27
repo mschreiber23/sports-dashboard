@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route, useLocation, matchPath } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, matchPath, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import { BottomNav, TopNav } from './components/Nav';
@@ -41,11 +41,12 @@ function Dashboard() {
           {editMode ? '✓ Done Editing' : '✎ Edit Dashboard'}
         </button>
       )}
-      {/* Account + sign out at the bottom of the dashboard */}
-      <div className="dashboard-account">
-        {user?.email && <span className="dashboard-account-email">{user.email}</span>}
-        <button className="dashboard-signout-btn" onClick={signOut}>Sign Out</button>
-      </div>
+      {/* Me page link at the bottom */}
+      <Link to="/me" className="dashboard-me-link">
+        <span className="dashboard-me-avatar">{user?.email?.[0]?.toUpperCase() || '?'}</span>
+        <span>My Profile</span>
+        <span className="dashboard-me-arrow">›</span>
+      </Link>
     </main>
   );
 }
