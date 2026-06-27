@@ -778,7 +778,7 @@ body {
 /* ── f2 = Final MLB game v2 (ESPN-style two-column) ─────────────── */
 .f2-box {
   display: grid;
-  grid-template-columns: 1fr 130px;
+  grid-template-columns: 1fr 145px;
   gap: 0;
   padding: 14px 16px 12px;
   border-top: 1px solid var(--border);
@@ -861,7 +861,7 @@ body {
 .f2-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 
 @media (max-width: 380px) {
-  .f2-box { grid-template-columns: 1fr 120px; }
+  .f2-box { grid-template-columns: 1fr 132px; }
   .f2-score { font-size: 22px; }
   .f2-dec-photo { width: 26px; height: 26px; }
 }

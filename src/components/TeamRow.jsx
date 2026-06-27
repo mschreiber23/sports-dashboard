@@ -94,6 +94,7 @@ function GameScore({ game, teamId, sport, onOpen }) {
                     {p.headshot && <img src={p.headshot} alt="" className="pregame-pitcher-avatar" onError={(e) => { e.target.style.display='none'; }} />}
                     <div>
                       <div className="pregame-pitcher-name" style={{ color: p.id ? 'var(--accent2)' : 'var(--text)' }}>{p.name}</div>
+                      {p.record && <div className="pregame-pitcher-record">{p.record}</div>}
                     </div>
                   </div>
                 ))}
@@ -252,6 +253,9 @@ function FinalMLBGame({ game, teamId, sport }) {
 
   const Decision = ({ label, pitcher }) => {
     if (!pitcher) return null;
+    const detail = label === 'S'
+      ? (pitcher.sv != null ? `(${pitcher.sv})` : '')
+      : `(${pitcher.wl}, ${pitcher.era})`;
     return (
       <div className="f2-decision" style={{ cursor: 'default' }}>
         <span className="f2-dec-label">{label}</span>
@@ -259,6 +263,7 @@ function FinalMLBGame({ game, teamId, sport }) {
           onError={(e) => { e.target.style.display = 'none'; }} />
         <div className="f2-dec-info">
           <span className="f2-dec-name">{pitcher.shortName}</span>
+          {detail && <span className="f2-dec-stats">{detail}</span>}
         </div>
       </div>
     );
