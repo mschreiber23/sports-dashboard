@@ -327,7 +327,7 @@ function StatsTab({ sport, teamId }) {
   const types = STAT_TYPES[sport] || STAT_TYPES.mlb;
 
   const buildRows = () => {
-    if (!playerData.length) return [];
+    if (!playerData.length) return { cols: [], rows: [] };
 
     const getStat = (p, category, col) => {
       if (statsSplit) {
