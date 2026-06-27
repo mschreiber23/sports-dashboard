@@ -667,8 +667,17 @@ export default function PlayerPage() {
                   <span className="pp-lastname"> {athlete.lastName}</span>
                 </div>
                 <div className="pp-team-row">
-                  <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
-                  <span className="pp-team-name">{athlete.team?.displayName}</span>
+                  {athlete.team?.id ? (
+                    <Link to={`/team/${sport}/${athlete.team.id}`} className="pp-team-identity tr-team-link">
+                      <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
+                      <span className="pp-team-name">{athlete.team?.displayName}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
+                      <span className="pp-team-name">{athlete.team?.displayName}</span>
+                    </>
+                  )}
                   {athlete.displayJersey && <span className="pp-meta"> · {athlete.displayJersey}</span>}
                   {athlete.position?.abbreviation && <span className="pp-meta"> · {athlete.position.abbreviation}</span>}
                 </div>

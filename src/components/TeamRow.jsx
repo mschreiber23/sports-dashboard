@@ -71,7 +71,9 @@ function GameScore({ game, teamId, sport, onOpen }) {
                   : (c.records?.find((r) => r.name === 'road' || r.type === 'road') || c.records?.[2])?.summary;
                 const splitLabel = c.homeAway === 'home' ? 'Home' : 'Away';
                 return (
-                  <div key={c.team?.id} className={`pregame-team ${c.team?.id === String(teamId) ? 'pregame-my-team' : ''}`}>
+                  <Link key={c.team?.id} to={`/team/${sport}/${c.team?.id}`}
+                    className={`pregame-team tr-team-link ${c.team?.id === String(teamId) ? 'pregame-my-team' : ''}`}
+                    onClick={e => e.stopPropagation()}>
                     <LogoImg team={c.team} className="pregame-logo" />
                     <div>
                       <div className="pregame-name">{c.team?.shortDisplayName || c.team?.displayName}</div>
@@ -79,7 +81,7 @@ function GameScore({ game, teamId, sport, onOpen }) {
                         ({overallRec}{splitRec ? `, ${splitRec} ${splitLabel}` : ''})
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -122,8 +124,8 @@ function GameScore({ game, teamId, sport, onOpen }) {
         {isFinal && <span className="badge badge-final">Final</span>}
       </div>
       <div className="tr2-matchup">
-        <TeamScoreRow competitor={away} teamId={teamId} showScore={showScore} />
-        <TeamScoreRow competitor={home} teamId={teamId} showScore={showScore} />
+        <TeamScoreRow competitor={away} teamId={teamId} sport={sport} showScore={showScore} />
+        <TeamScoreRow competitor={home} teamId={teamId} sport={sport} showScore={showScore} />
       </div>
       <div className="tr2-tap-hint">Box Score →</div>
     </button>
@@ -290,8 +292,10 @@ function FinalMLBGame({ game, teamId, sport }) {
         {/* Single shared grid: logo | info | score — both rows locked to same columns */}
         <div className="f2-teams">
           {/* Away */}
-          <LogoImg team={away.team} className="f2-logo" />
-          <div className="f2-team-info">
+          <LogoImg team={away.team} className="f2-logo f2-clickable"
+            onClick={(e) => { e.stopPropagation(); away.team?.id && navigate(`/team/${sport}/${away.team.id}`); }} />
+          <div className="f2-team-info f2-clickable"
+            onClick={(e) => { e.stopPropagation(); away.team?.id && navigate(`/team/${sport}/${away.team.id}`); }}>
             <span className={`f2-team-name${away.winner ? ' f2-team-bold' : ''}`}>
               {away.team?.shortDisplayName || away.team?.displayName}
             </span>
@@ -302,8 +306,10 @@ function FinalMLBGame({ game, teamId, sport }) {
           <span className={`f2-score${away.winner ? ' f2-score-bold' : ''}`}>{awayScore}</span>
 
           {/* Home */}
-          <LogoImg team={home.team} className="f2-logo" />
-          <div className="f2-team-info">
+          <LogoImg team={home.team} className="f2-logo f2-clickable"
+            onClick={(e) => { e.stopPropagation(); home.team?.id && navigate(`/team/${sport}/${home.team.id}`); }} />
+          <div className="f2-team-info f2-clickable"
+            onClick={(e) => { e.stopPropagation(); home.team?.id && navigate(`/team/${sport}/${home.team.id}`); }}>
             <span className={`f2-team-name${home.winner ? ' f2-team-bold' : ''}`}>
               {home.team?.shortDisplayName || home.team?.displayName}
             </span>
@@ -333,7 +339,7 @@ function FinalMLBGame({ game, teamId, sport }) {
   );
 }
 
-function TeamScoreRow({ competitor, teamId, showScore }) {
+function TeamScoreRow({ competitor, teamId, sport, showScore }) {
   const team = competitor?.team || {};
   const isMine = team.id === String(teamId);
   const score = getScore(competitor);
@@ -341,7 +347,8 @@ function TeamScoreRow({ competitor, teamId, showScore }) {
 
   return (
     <div className={`tr2-team-row ${isMine ? 'tr2-mine' : ''}`}>
-      <div className="tr2-team-left">
+      <Link to={`/team/${sport}/${team.id}`} className="tr2-team-left tr-team-link"
+        onClick={e => e.stopPropagation()}>
         <LogoImg team={team} className="tr2-team-logo" />
         <div>
           <span className={`tr2-team-name ${isMine ? 'tr2-mine-name' : ''}`}>
@@ -351,7 +358,7 @@ function TeamScoreRow({ competitor, teamId, showScore }) {
             <span className="tr2-record"> · {competitor.records[0].summary}</span>
           )}
         </div>
-      </div>
+      </Link>
       {showScore && score != null && (
         <span className={`tr2-score ${won ? 'tr2-winner-score' : ''}`}>{score}</span>
       )}
@@ -408,13 +415,13 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
             </div>
             {[away, home].filter(Boolean).map((c) => (
               <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
-                <div className="lv-team-left">
+                <Link to={`/team/${sport}/${c.team?.id}`} className="lv-team-left tr-team-link" onClick={e=>e.stopPropagation()}>
                   <LogoImg team={c.team} className="lv-logo" />
                   <div>
                     <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary} · {c.homeAway === 'home' ? 'Home' : 'Away'}</div>}
                   </div>
-                </div>
+                </Link>
                 <span className="lv-rhe-val">{getScore(c) ?? '0'}</span>
                 <span className="lv-rhe-val lv-rhe-secondary">{c.hits ?? '0'}</span>
                 <span className="lv-rhe-val lv-rhe-secondary">{c.errors ?? '0'}</span>
@@ -484,13 +491,13 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           <div className="lv-teams-section">
             {[away, home].filter(Boolean).map((c) => (
               <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
-                <div className="lv-team-left">
+                <Link to={`/team/${sport}/${c.team?.id}`} className="lv-team-left tr-team-link" onClick={e=>e.stopPropagation()}>
                   <LogoImg team={c.team} className="lv-logo" />
                   <div>
                     <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary}</div>}
                   </div>
-                </div>
+                </Link>
                 <span className="lv-rhe-val">{getScore(c) ?? '0'}</span>
               </div>
             ))}
@@ -527,13 +534,13 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
           <div className="lv-teams-section">
             {[away, home].filter(Boolean).map((c) => (
               <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
-                <div className="lv-team-left">
+                <Link to={`/team/${sport}/${c.team?.id}`} className="lv-team-left tr-team-link" onClick={e=>e.stopPropagation()}>
                   <LogoImg team={c.team} className="lv-logo" />
                   <div>
                     <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary}</div>}
                   </div>
-                </div>
+                </Link>
                 <span className="lv-rhe-val">{getScore(c) ?? '0'}</span>
               </div>
             ))}
@@ -568,13 +575,13 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
         <div className="lv-teams-section">
           {[away, home].filter(Boolean).map((c) => (
             <div key={c.team?.id} className={`lv-team-row ${c.team?.id === String(teamId) ? 'lv-my-team' : ''}`}>
-              <div className="lv-team-left">
+              <Link to={`/team/${sport}/${c.team?.id}`} className="lv-team-left tr-team-link" onClick={e=>e.stopPropagation()}>
                 <LogoImg team={c.team} className="lv-logo" />
                 <div>
                   <div className="lv-name">{c.team?.shortDisplayName || c.team?.abbreviation}</div>
                   {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary}</div>}
                 </div>
-              </div>
+              </Link>
               <span className="lv-rhe-val">{getScore(c) ?? '0'}</span>
             </div>
           ))}

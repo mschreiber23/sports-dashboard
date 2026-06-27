@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 
@@ -882,7 +882,7 @@ function LineScore({ competitors, sport }) {
 }
 
 /* ─── Game Header ────────────────────────────────────── */
-function GameHeader({ competitors, status }) {
+function GameHeader({ competitors, status, sport }) {
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
   const isLive = status?.type?.state === 'in';
@@ -890,12 +890,12 @@ function GameHeader({ competitors, status }) {
   const shortDetail = status?.type?.shortDetail || '';
   return (
     <div className="bsp-header">
-      <div className="bsp-team">
+      <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-team tr-team-link">
         <LogoImg team={away?.team} className="bsp-team-logo" />
         <div className="bsp-team-abbr">{away?.team?.abbreviation}</div>
         <div className="bsp-score">{getScore(away) ?? '—'}</div>
         <div className="bsp-record">{away?.record?.[0]?.displayValue}</div>
-      </div>
+      </Link>
       <div className="bsp-center">
         {isLive && <span className="badge badge-live" style={{fontSize:11}}><span className="live-dot" /> LIVE</span>}
         {isFinal && <span className="badge badge-final" style={{fontSize:11}}>Final</span>}
@@ -903,12 +903,12 @@ function GameHeader({ competitors, status }) {
         <div className="bsp-detail">{isLive ? shortDetail : ''}</div>
         <BaseDiamond size={28} />
       </div>
-      <div className="bsp-team bsp-team-right">
+      <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-team bsp-team-right tr-team-link">
         <LogoImg team={home?.team} className="bsp-team-logo" />
         <div className="bsp-team-abbr">{home?.team?.abbreviation}</div>
         <div className="bsp-score">{getScore(home) ?? '—'}</div>
         <div className="bsp-record">{home?.record?.[0]?.displayValue}</div>
-      </div>
+      </Link>
     </div>
   );
 }
@@ -1024,7 +1024,7 @@ export default function BoxScorePage() {
 
       {!loading && !error && data && (
         <>
-          <GameHeader competitors={comps} status={status} />
+          <GameHeader competitors={comps} status={status} sport={sport} />
           <LineScore competitors={comps} sport={sport} />
 
           {/* Tabs */}

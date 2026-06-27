@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { recordTeamView } from './TeamsPage';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   getTeamInfo, getTeamSchedule, getTeamNews, getStandings,
   getTeamRoster, getTeamDepthChart, getPlayerSeasonStats, getPlayerSplits,
@@ -31,7 +31,7 @@ function getScore(c) {
 }
 
 /* ─── Schedule Row (shared) ─────────────────────────── */
-function ScheduleRow({ event, teamId, onClick }) {
+function ScheduleRow({ event, teamId, sport, onClick }) {
   const navigate = useNavigate();
   const comp = event.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -57,8 +57,18 @@ function ScheduleRow({ event, teamId, onClick }) {
       </div>
       <div className="tp-row-opponent">
         <span className="tp-row-ha">{isHome ? 'vs' : '@'}</span>
-        {opponent?.team?.logo && <DLogo url={opponent.team.logo} className="tp-row-logo" />}
-        <span className="tp-row-opp-name">{opponent?.team?.shortDisplayName || opponent?.team?.displayName}</span>
+        {opponent?.team?.id ? (
+          <Link to={`/team/${sport}/${opponent.team.id}`} className="tp-opp-link tr-team-link"
+            onClick={e => e.stopPropagation()}>
+            {opponent.team.logo && <DLogo url={opponent.team.logo} className="tp-row-logo" />}
+            <span className="tp-row-opp-name">{opponent.team.shortDisplayName || opponent.team.displayName}</span>
+          </Link>
+        ) : (
+          <>
+            {opponent?.team?.logo && <DLogo url={opponent.team.logo} className="tp-row-logo" />}
+            <span className="tp-row-opp-name">{opponent?.team?.shortDisplayName || opponent?.team?.displayName}</span>
+          </>
+        )}
       </div>
       <div className="tp-row-result">
         {isLive && <span className="badge badge-live" style={{ fontSize: 11 }}><span className="live-dot" /> {status?.type?.shortDetail}</span>}
@@ -102,7 +112,7 @@ function HomeTab({ sport, teamId, onViewSchedule }) {
   return (
     <div className="tp-schedule">
       {displayed.length === 0 && <div className="tp-loading">No schedule available.</div>}
-      {displayed.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} />)}
+      {displayed.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} sport={sport} />)}
       {events.length > 0 && (
         <button className="tp-view-schedule-btn" onClick={onViewSchedule}>
           View Full Schedule →
@@ -136,19 +146,19 @@ function FullScheduleTab({ sport, teamId }) {
       {live.length > 0 && (
         <div className="tp-schedule-section">
           <div className="tp-schedule-label">In Progress</div>
-          {live.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} />)}
+          {live.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} sport={sport} />)}
         </div>
       )}
       {future.length > 0 && (
         <div className="tp-schedule-section">
           <div className="tp-schedule-label">Upcoming</div>
-          {future.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} />)}
+          {future.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} sport={sport} />)}
         </div>
       )}
       {past.length > 0 && (
         <div className="tp-schedule-section">
           <div className="tp-schedule-label">Results</div>
-          {past.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} />)}
+          {past.map((e) => <ScheduleRow key={e.id} event={e} teamId={teamId} sport={sport} />)}
         </div>
       )}
     </div>

@@ -4737,3 +4737,31 @@ thead .dfs-sticky-player {
   .tp-stats-select { flex: 1; }
   .tp-depth-pos-label { width: 28px; font-size: 10px; }
 }
+
+/* ── Clickable team links ─────────────────────────────── */
+.tr-team-link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+.tr-team-link:hover .pregame-name,
+.tr-team-link:hover .lv-name,
+.tr-team-link:hover .f2-team-name,
+.tr-team-link:hover .tr2-team-name,
+.tr-team-link:hover .bsp-team-abbr,
+.tr-team-link:hover .tp-row-opp-name,
+.tr-team-link:hover .pp-team-name { color: var(--accent2); }
+.standings-team-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+.standings-team-link:hover .standings-abbr { color: var(--accent2); }
+.f2-clickable { cursor: pointer; }
+.f2-clickable:hover { opacity: 0.8; }
+.pp-team-identity { display: flex; align-items: center; gap: 6px; text-decoration: none; color: inherit; }
+.pp-team-identity:hover .pp-team-name { color: var(--accent2); }
+.tp-opp-link { display: flex; align-items: center; gap: 4px; }
