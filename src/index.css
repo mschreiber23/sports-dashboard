@@ -5418,38 +5418,39 @@ thead .dfs-sticky-player {
 /* ── Pitcher | Diamond | Batter row ──────────────────── */
 .gc-matchup-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  padding: 10px 0 4px;
+  padding: 12px 0 4px;
 }
 .gc-matchup-player {
   flex: 1;
   display: flex;
+  flex-direction: column; /* vertical stack: photo → name → stats */
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   min-width: 0;
+  text-align: center;
 }
-.gc-matchup-player-right { flex-direction: row-reverse; }
+.gc-matchup-player-right { align-items: center; } /* same vertical stack for batter */
 .gc-matchup-photo {
-  width: 52px; height: 52px;
+  width: 56px; height: 56px;
   border-radius: 50%;
   object-fit: cover; object-position: top;
   background: var(--bg3);
   border: 2px solid var(--border);
   flex-shrink: 0;
 }
-.gc-matchup-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.gc-matchup-info-right { align-items: flex-end; text-align: right; }
-.gc-matchup-name { font-size: 14px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.gc-matchup-name { font-size: 14px; font-weight: 800; color: var(--text); white-space: nowrap; text-align: center; }
 .gc-matchup-hand { font-size: 11px; font-weight: 600; color: var(--text2); }
 .gc-matchup-pos  { font-size: 11px; font-weight: 600; color: var(--text2); }
-.gc-matchup-stats { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.gc-matchup-stats { font-size: 11px; color: var(--text2); white-space: nowrap; text-align: center; }
 
 .gc-matchup-center {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  padding-top: 4px;
   flex-shrink: 0;
 }
 .gc-count-col-sm { gap: 2px; }

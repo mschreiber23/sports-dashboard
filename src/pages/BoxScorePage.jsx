@@ -854,29 +854,27 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
             teamAltColor={home?.team?.alternateColor}
           />
 
-          {/* MLB-style pitcher | diamond+count | batter row */}
+          {/* MLB-style pitcher | diamond+count | batter row — vertical stacking */}
           <div className="gc-matchup-row">
-            {/* Pitcher */}
+            {/* Pitcher — stacked: photo → name/hand → stats */}
             <div className="gc-matchup-player">
               {pitcherPhoto && (
                 <img src={pitcherPhoto} alt="" className="gc-matchup-photo"
                   onError={(e) => { e.target.style.display='none'; }} />
               )}
-              <div className="gc-matchup-info">
-                <div className="gc-matchup-name">
-                  {pitcherLastName}
-                  {feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand?.code &&
-                    <span className="gc-matchup-hand"> {feed.raw.liveData.linescore.defense.pitcher.pitchHand.code}HP</span>}
-                </div>
-                {(pitcherGameStats.numberOfPitches != null) && (
-                  <div className="gc-matchup-stats">
-                    {pitcherGameStats.numberOfPitches}P
-                    {pitcherGameStats.inningsPitched && ` · ${pitcherGameStats.inningsPitched} IP`}
-                    {pitcherGameStats.strikeOuts != null && `, ${pitcherGameStats.strikeOuts}K`}
-                    {pitcherGameStats.earnedRuns != null && `, ${pitcherGameStats.earnedRuns}ER`}
-                  </div>
-                )}
+              <div className="gc-matchup-name">
+                {pitcherLastName}
+                {feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand?.code &&
+                  <span className="gc-matchup-hand"> {feed.raw.liveData.linescore.defense.pitcher.pitchHand.code}HP</span>}
               </div>
+              {(pitcherGameStats.numberOfPitches != null) && (
+                <div className="gc-matchup-stats">
+                  {pitcherGameStats.numberOfPitches}P
+                  {pitcherGameStats.inningsPitched && ` · ${pitcherGameStats.inningsPitched} IP`}
+                  {pitcherGameStats.strikeOuts != null && `, ${pitcherGameStats.strikeOuts}K`}
+                  {pitcherGameStats.earnedRuns != null && `, ${pitcherGameStats.earnedRuns}ER`}
+                </div>
+              )}
             </div>
 
             {/* Diamond + B/S/O */}
@@ -889,23 +887,21 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
               </div>
             </div>
 
-            {/* Batter */}
+            {/* Batter — stacked: photo → name/pos → stats */}
             <div className="gc-matchup-player gc-matchup-player-right">
-              <div className="gc-matchup-info gc-matchup-info-right">
-                <div className="gc-matchup-name">
-                  {batterLastName}
-                  {batterPosition && <span className="gc-matchup-pos"> {batterPosition}</span>}
-                </div>
-                {(batterGameStats.atBats != null) && (
-                  <div className="gc-matchup-stats">
-                    {batterGameStats.hits ?? 0}-{batterGameStats.atBats}
-                    {batterGameStats.strikeOuts != null && ` · ${batterGameStats.strikeOuts}K`}
-                  </div>
-                )}
-              </div>
               {batterPhoto && (
                 <img src={batterPhoto} alt="" className="gc-matchup-photo"
                   onError={(e) => { e.target.style.display='none'; }} />
+              )}
+              <div className="gc-matchup-name">
+                {batterLastName}
+                {batterPosition && <span className="gc-matchup-pos"> {batterPosition}</span>}
+              </div>
+              {(batterGameStats.atBats != null) && (
+                <div className="gc-matchup-stats">
+                  {batterGameStats.hits ?? 0}-{batterGameStats.atBats}
+                  {batterGameStats.strikeOuts != null && ` · ${batterGameStats.strikeOuts}K`}
+                </div>
               )}
             </div>
           </div>
