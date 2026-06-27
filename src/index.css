@@ -2362,7 +2362,7 @@ body {
 }
 .preview-leaders-player-link { cursor: pointer; }
 .preview-leaders-player-link:hover .preview-leaders-name { color: var(--accent); }
-.preview-leaders-player-right { flex-direction: row-reverse; }
+/* home side: avatar naturally first in DOM = left edge (center of matchup) */
 
 .preview-leaders-avatar {
   width: 48px;
