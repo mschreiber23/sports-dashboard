@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
 import { useFavorites } from '../context/FavoritesContext';
-import { SPORTS, getTeamLogo, getTeamLogoFallback, getGameBoxscore } from '../api/espn';
+import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 
 function LogoImg({ team, className, style }) {
   const dark = getTeamLogo(team);
@@ -130,6 +130,74 @@ function GameScore({ game, teamId, sport, onOpen }) {
   );
 }
 
+/* ESPN abbreviation → MLB Stats API team ID */
+const ESPN_ABB_TO_MLB_ID = {
+  ARI: 109, ATH: 133, ATL: 144, BAL: 110, BOS: 111,
+  CHC: 112, CHW: 145, CIN: 113, CLE: 114, COL: 115,
+  DET: 116, HOU: 117, KC:  118, LAA: 108, LAD: 119,
+  MIA: 146, MIL: 158, MIN: 142, NYM: 121, NYY: 147,
+  PHI: 143, PIT: 134, SD:  135, SEA: 136, SF:  137,
+  STL: 138, TB:  139, TEX: 140, TOR: 141, WSH: 120,
+};
+
+/** Fetch pitcher decisions for a final MLB game via MLB Stats API.
+ *  Returns { winner, loser, save? } where each is
+ *  { mlbId, fullName, jersey, wl, era, sv, headshot }
+ */
+async function fetchMlbDecisions(gameDate, homeTeamAbbr) {
+  const mlbTeamId = ESPN_ABB_TO_MLB_ID[homeTeamAbbr];
+  if (!mlbTeamId) return null;
+
+  // ESPN uses local game date; subtract a day to match MLB Stats API UTC date
+  const d = new Date(gameDate);
+  d.setDate(d.getDate() - 1);
+  const dateStr = d.toISOString().slice(0, 10);
+
+  // 1. Find game PK
+  const schedRes = await fetch(
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${mlbTeamId}`
+  );
+  const schedData = await schedRes.json();
+  const gamePk = schedData.dates?.[0]?.games?.[0]?.gamePk;
+  if (!gamePk) return null;
+
+  // 2. Get decisions
+  const feedRes = await fetch(
+    `https://statsapi.mlb.com/api/v1.1/game/${gamePk}/feed/live`
+  );
+  const feedData = await feedRes.json();
+  const dec = feedData.liveData?.decisions;
+  if (!dec?.winner?.id) return null;
+
+  // 3. Batch-fetch pitcher stats (jersey, W-L, ERA, saves)
+  const ids = [dec.winner.id, dec.loser.id, dec.save?.id].filter(Boolean).join(',');
+  const peopleRes = await fetch(
+    `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=currentTeam,stats(group=pitching,type=season)`
+  );
+  const peopleData = await peopleRes.json();
+
+  const byId = {};
+  for (const p of peopleData.people || []) {
+    const sp = p.stats?.[0]?.splits?.[0]?.stat || {};
+    byId[p.id] = {
+      mlbId: p.id,
+      fullName: p.fullName,
+      shortName: p.fullName?.replace(/^(\w)\w+\s/, '$1. ') || p.fullName,
+      jersey: p.primaryNumber,
+      wl: `${sp.wins ?? '?'}-${sp.losses ?? '?'}`,
+      era: sp.era || '—',
+      sv: sp.saves ?? null,
+      headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${p.id}/headshot/67/current`,
+    };
+  }
+
+  return {
+    winner: byId[dec.winner.id],
+    loser:  byId[dec.loser.id],
+    save:   dec.save?.id ? byId[dec.save.id] : null,
+  };
+}
+
 /* ── Final MLB game — matches ESPN mobile style exactly ───────────── */
 function FinalMLBGame({ game, teamId, sport }) {
   const navigate = useNavigate();
@@ -141,8 +209,11 @@ function FinalMLBGame({ game, teamId, sport }) {
   const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
 
   useEffect(() => {
-    getGameBoxscore(sport, game.id)
-      .then((data) => { if (data.decisions) setDecisions(data.decisions); })
+    const homeAbbr = home?.team?.abbreviation;
+    const gameDate = game.date || comp?.date;
+    if (!homeAbbr || !gameDate) return;
+    fetchMlbDecisions(gameDate, homeAbbr)
+      .then((dec) => { if (dec) setDecisions(dec); })
       .catch(() => {});
   }, [game.id]);
 
@@ -170,28 +241,19 @@ function FinalMLBGame({ game, teamId, sport }) {
   };
 
   const Decision = ({ label, pitcher }) => {
-    if (!pitcher?.athlete) return null;
-    const ath = pitcher.athlete;
-    const headshot = typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href;
-    const stats = pitcher.statistics || [];
-    const wl  = stats.find((s) => s.abbreviation === 'W-L' || s.abbreviation === 'record');
-    const era = stats.find((s) => s.abbreviation === 'ERA');
-    const sv  = stats.find((s) => s.abbreviation === 'SV');
+    if (!pitcher) return null;
     const detail = label === 'SAVE'
-      ? (sv?.displayValue ? `(${sv.displayValue})` : '')
-      : (() => {
-          const parts = [wl, era].filter(Boolean).map(s => s.displayValue);
-          return parts.length ? `(${parts.join(', ')})` : '';
-        })();
+      ? (pitcher.sv != null ? `(${pitcher.sv})` : '')
+      : `(${pitcher.wl}, ${pitcher.era})`;
     return (
-      <div className="f2-decision" onClick={() => ath.id && navigate(`/player/${sport}/${ath.id}`)}
-        style={{ cursor: ath.id ? 'pointer' : 'default' }}>
+      <div className="f2-decision" style={{ cursor: 'default' }}>
         <span className="f2-dec-label">{label}</span>
-        {headshot
-          ? <img src={headshot} alt="" className="f2-dec-photo" onError={(e) => { e.target.style.display='none'; }} />
-          : <div className="f2-dec-photo f2-dec-photo-empty" />}
+        <img src={pitcher.headshot} alt="" className="f2-dec-photo"
+          onError={(e) => { e.target.style.display = 'none'; }} />
         <div className="f2-dec-info">
-          <span className="f2-dec-name">{ath.shortName || ath.displayName}{ath.jersey ? ` #${ath.jersey}` : ''}</span>
+          <span className="f2-dec-name">
+            {pitcher.shortName}{pitcher.jersey ? ` #${pitcher.jersey}` : ''}
+          </span>
           {detail && <span className="f2-dec-stats">{detail}</span>}
         </div>
       </div>
@@ -212,7 +274,7 @@ function FinalMLBGame({ game, teamId, sport }) {
         {decisions && (
           <div className="f2-decisions">
             <Decision label="WIN"  pitcher={decisions.winner} />
-            <Decision label="LOSS" pitcher={decisions.loser} />
+            <Decision label="LOSS" pitcher={decisions.loser}  />
             {decisions.save && <Decision label="SAVE" pitcher={decisions.save} />}
           </div>
         )}
