@@ -34,6 +34,10 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     onFirst: false, onSecond: false, onThird: false, outs: 0,
     recentAtBats: [], currentResult: null, currentAbout: {},
     shortDetail: '', inning: null, inningHalf: null,
+    innings: [], linescoreTotals: {},
+    pitcherGameStats: {}, batterGameStats: {}, batterPosition: '',
+    onDeck: null, inHole: null, inningDisplay: '',
+    batSide: 'R', venueId: null,
   };
 
   const ld      = data.liveData  || {};

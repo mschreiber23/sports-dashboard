@@ -865,8 +865,8 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
               <div className="gc-matchup-info">
                 <div className="gc-matchup-name">
                   {pitcherLastName}
-                  {(feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand || pitcherGameStats.pitchHand) &&
-                    <span className="gc-matchup-hand"> {(feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand?.code || 'R')}HP</span>}
+                  {feed.raw?.liveData?.linescore?.defense?.pitcher?.pitchHand?.code &&
+                    <span className="gc-matchup-hand"> {feed.raw.liveData.linescore.defense.pitcher.pitchHand.code}HP</span>}
                 </div>
                 {(pitcherGameStats.numberOfPitches != null) && (
                   <div className="gc-matchup-stats">
