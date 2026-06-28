@@ -1361,13 +1361,78 @@ function getColKey(sport, type) {
   return null;
 }
 
-function StatsTable({ statGroup, sport }) {
+/* ─── Player AB sheet (for Box Score tab) ───────────── */
+function PlayerAbsSheet({ playerName, atBats, venueId, teamColor, teamAltColor, onClose }) {
+  const [detailAtBat, setDetailAtBat] = useState(null);
+  if (!atBats.length) {
+    return (
+      <div className="ab-modal-overlay" onClick={onClose}>
+        <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ab-modal-header">
+            <span className="ab-modal-title">{playerName} — ABs</span>
+            <button className="ab-modal-close" onClick={onClose}>✕</button>
+          </div>
+          <div style={{padding:24, color:'var(--text2)', textAlign:'center'}}>No at-bats recorded yet.</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="ab-modal-overlay" onClick={onClose}>
+      <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ab-modal-header">
+          <span className="ab-modal-title">{playerName}</span>
+          <button className="ab-modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="ab-modal-pitches" style={{paddingTop:0}}>
+          {atBats.map((ab, i) => {
+            const result = ab.result || {};
+            const pitches = (ab.playEvents || []).filter((e) => e.type === 'pitch');
+            const inning  = ab.about?.inning;
+            const half    = ab.about?.halfInning === 'top' ? '▲' : '▼';
+            return (
+              <div key={i}
+                className={`ab-modal-pitch-row${pitches.length ? ' abs-row-clickable' : ''}`}
+                style={{alignItems:'flex-start', paddingTop:12, paddingBottom:12}}
+                onClick={pitches.length ? () => setDetailAtBat(ab) : undefined}>
+                <div className="abs-inning-chip">{half}{inning}</div>
+                <div className="ab-modal-pitch-info">
+                  <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`} style={{marginBottom:3}}>
+                    {result.event}
+                  </span>
+                  <span className="ab-modal-pitch-result" style={{fontSize:13}}>{result.description}</span>
+                  <span className="ab-modal-pitch-detail" style={{fontSize:11}}>
+                    {pitches.length} pitch{pitches.length!==1?'es':''}
+                    {ab.count && ` · ${ab.count.balls}-${ab.count.strikes}`}
+                  </span>
+                </div>
+                {pitches.length > 0 && <span className="mlb-pbp-chevron">›</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {detailAtBat && (
+        <AtBatModal
+          atBat={detailAtBat}
+          venueId={venueId}
+          teamColor={teamColor}
+          teamAltColor={teamAltColor}
+          onClose={() => setDetailAtBat(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor, teamAltColor }) {
   const navigate = useNavigate();
   const labels   = statGroup.labels || [];
   const athletes = statGroup.athletes || [];
   const totals   = statGroup.totals || [];
   const type     = (statGroup.type || statGroup.name || '').toLowerCase();
   const isMlbBat = sport === 'mlb' && type !== 'pitching';
+  const showAbs  = isMlbBat && !!allAtBats?.length;
   const key  = getColKey(sport, type);
   const want = key ? COLS[key] : [];
   const cols = want.length
@@ -1375,6 +1440,20 @@ function StatsTable({ statGroup, sport }) {
     : labels.map((l, i) => ({ label: l, index: i })).slice(0, 8);
   const hl = HL[sport] || [];
   if (!athletes.length) return null;
+
+  // Normalize a name for matching (strip diacritics, lowercase, letters only)
+  const norm = (s) => (s||'').toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z]/g,'');
+
+  const getPlayerAbs = (playerName) => {
+    if (!allAtBats?.length || !playerName) return [];
+    // Match by last name (last word of the display name)
+    const lastName = norm(playerName.split(' ').pop());
+    return allAtBats.filter((ab) => {
+      const battFull = norm(ab.matchup?.batter?.fullName || '');
+      return battFull.includes(lastName);
+    });
+  };
 
   return (
     <div className="bsp-table-wrap">
@@ -1390,8 +1469,9 @@ function StatsTable({ statGroup, sport }) {
             const player = a.athlete || {};
             const stats  = a.stats || [];
             const dnp    = a.didNotPlay || !stats.length;
-            // MLB: indent substitute players (starter===false)
             const isSub  = isMlbBat && a.starter === false;
+            const playerName = player.displayName || player.shortName || '';
+            const playerAbs  = showAbs ? getPlayerAbs(playerName) : [];
             return (
               <tr key={i} className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${player.id ? 'bsp-tr-clickable' : ''} ${isSub ? 'bsp-tr-sub' : ''}`}
                 onClick={() => player.id && navigate(`/player/${sport}/${player.id}`)}>
@@ -1401,6 +1481,14 @@ function StatsTable({ statGroup, sport }) {
                       <span className="bsp-player-name">{player.shortName || player.displayName}</span>
                       <span className="bsp-player-pos"> {a.position?.abbreviation || ''}</span>
                     </div>
+                    {showAbs && (
+                      <button className="abs-pill" onClick={(e) => {
+                        e.stopPropagation();
+                        onShowAbs?.({ name: playerName, atBats: playerAbs });
+                      }}>
+                        ABs{playerAbs.length > 0 ? ` ${playerAbs.length}` : ''}
+                      </button>
+                    )}
                   </div>
                 </td>
                 {dnp
@@ -1449,7 +1537,7 @@ function MLBGameNotes({ details }) {
   );
 }
 
-function TeamStats({ group, sport, teamDetails }) {
+function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, teamColor, teamAltColor }) {
   const team    = group?.team || {};
   const stats   = group?.statistics || [];
   const batting  = stats.find((s) => (s.type||s.name) === 'batting')  || stats[0];
@@ -1461,7 +1549,9 @@ function TeamStats({ group, sport, teamDetails }) {
           <LogoImg team={team} style={{width:20,height:20,objectFit:'contain'}} />
           <span>{team.displayName} Hitting</span>
         </div>
-        <StatsTable statGroup={batting} sport={sport} />
+        <StatsTable statGroup={batting} sport={sport}
+          allAtBats={allAtBats} onShowAbs={onShowAbs}
+          venueId={venueId} teamColor={teamColor} teamAltColor={teamAltColor} />
         {sport === 'mlb' && <MLBGameNotes details={teamDetails} />}
       </>)}
       {pitching && (<>
@@ -1596,6 +1686,8 @@ export default function BoxScorePage() {
 
   // MLB live game PK (for pitch tracker + live scoring)
   const [mlbGamePk, setMlbGamePk] = useState(null);
+  // AB sheet state (Box Score tab)
+  const [playerAbsData, setPlayerAbsData] = useState(null); // {name, atBats[]}
 
   // Pull live innings + score from MLB feed for MLB games
   const mlbFeed = useMlbLiveFeed(mlbGamePk, sport === 'mlb');
@@ -1757,7 +1849,26 @@ export default function BoxScorePage() {
                     </button>
                   </div>
                 )}
-                {groups[bsTeam] && <TeamStats group={groups[bsTeam]} sport={sport} teamDetails={groupDetails[bsTeam]} />}
+                {playerAbsData && (
+                  <PlayerAbsSheet
+                    playerName={playerAbsData.name}
+                    atBats={playerAbsData.atBats}
+                    venueId={home?.team?.id}
+                    teamColor={home?.team?.color}
+                    teamAltColor={home?.team?.alternateColor}
+                    onClose={() => setPlayerAbsData(null)}
+                  />
+                )}
+                {groups[bsTeam] && (
+                  <TeamStats
+                    group={groups[bsTeam]} sport={sport} teamDetails={groupDetails[bsTeam]}
+                    allAtBats={mlbFeed.allAtBats || []}
+                    onShowAbs={setPlayerAbsData}
+                    venueId={home?.team?.id}
+                    teamColor={home?.team?.color}
+                    teamAltColor={home?.team?.alternateColor}
+                  />
+                )}
                 {!groups.length && <div className="empty-state"><div className="empty-icon">📋</div><p>Box score not available yet.</p></div>}
               </div>
             )}
