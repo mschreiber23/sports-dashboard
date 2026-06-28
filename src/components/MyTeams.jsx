@@ -217,7 +217,7 @@ export default function MyTeams({ editMode = false, setEditMode }) {
 
       {!editMode && (
         <>
-          <div className="teams-list">
+          <div className="teams-grid">
             {favorites.teams.map(({ sport, team }) => {
               const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
               if (isHidden && !showHidden) return null;

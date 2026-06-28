@@ -6065,3 +6065,165 @@ thead .dfs-sticky-player {
 
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
+
+/* ══════════════════════════════════════════════════════
+   MLB Clean Card — dark mode (all three states)
+   ══════════════════════════════════════════════════════ */
+
+/* Grid for My Teams section */
+.teams-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 768px) {
+  .teams-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Base card */
+.mlbc-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.mlbc-card:hover { border-color: rgba(255,255,255,0.2); }
+.mlbc-loading { padding: 16px; color: var(--text2); font-size: 13px; }
+.mlbc-divider { height: 1px; background: var(--border); }
+
+/* Header row */
+.mlbc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 8px;
+}
+.mlbc-live-header { padding: 8px 14px 6px; }
+.mlbc-time { font-size: 14px; font-weight: 700; color: var(--text); }
+.mlbc-broadcast { font-size: 12px; color: var(--text2); }
+.mlbc-final-label { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text2); }
+.mlbc-inning { font-size: 14px; font-weight: 700; color: var(--text); }
+
+/* Team rows */
+.mlbc-teams { padding: 6px 14px 8px; display: flex; flex-direction: column; gap: 4px; }
+.mlbc-rhe-header {
+  display: grid;
+  grid-template-columns: 26px 1fr auto 28px 28px 28px;
+  gap: 0;
+  padding: 2px 0;
+}
+.mlbc-rhe-header span { font-size: 11px; font-weight: 600; color: var(--text2); text-align: right; }
+.mlbc-rhe-spacer { grid-column: span 3; }
+.mlbc-team-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto 28px 28px 28px;
+  align-items: center;
+  gap: 0;
+  padding: 3px 0;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+.mlbc-team-row:hover { background: rgba(255,255,255,0.04); }
+.mlbc-logo { width: 22px; height: 22px; object-fit: contain; }
+.mlbc-name { font-size: 14px; font-weight: 700; color: var(--text); padding-left: 6px; }
+.mlbc-rec  { font-size: 11px; color: var(--text2); padding-left: 4px; white-space: nowrap; }
+.mlbc-spacer { flex: 1; }
+.mlbc-stat { font-size: 14px; font-weight: 600; color: var(--text); text-align: right; padding-right: 2px; }
+.mlbc-dim   { color: var(--text2); font-weight: 400; }
+.mlbc-winner { font-weight: 800; }
+
+/* Live card body: teams + diamond side by side */
+.mlbc-live-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-right: 14px;
+}
+.mlbc-live-body .mlbc-teams { flex: 1; padding-right: 0; }
+.mlbc-diamond-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0 6px;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+.mlbc-count-dots { display: flex; flex-direction: column; gap: 2px; }
+.mlbc-dot-row { display: flex; gap: 3px; }
+.mlbc-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.mlbc-dot-g { background: #22c55e; }
+.mlbc-dot-y { background: #fbbf24; }
+.mlbc-dot-r { background: #f87171; }
+.mlbc-count-num { font-size: 12px; font-weight: 800; color: var(--text); }
+
+/* Pitchers section (pre-game) */
+.mlbc-pitchers-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.mlbc-pitcher-col { display: flex; flex-direction: column; gap: 6px; }
+.mlbc-pitcher-team { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--text2); text-transform: uppercase; }
+.mlbc-pitcher-info { display: flex; align-items: center; gap: 8px; }
+.mlbc-pitcher-photo {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  object-fit: cover; object-position: center 15%;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.mlbc-pitcher-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.mlbc-hand { font-size: 11px; color: var(--text2); font-weight: 500; }
+.mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
+
+/* Pitcher/batter matchup (live) and W/L decisions (final) */
+.mlbc-matchup-row, .mlbc-decisions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.mlbc-matchup-col, .mlbc-decision-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+.mlbc-decision-col { flex-direction: row; align-items: center; gap: 8px; cursor: default; }
+.mlbc-matchup-label { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--text2); text-transform: uppercase; }
+.mlbc-matchup-info  { display: flex; align-items: center; gap: 8px; }
+.mlbc-matchup-photo {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  object-fit: cover; object-position: center 15%;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.mlbc-matchup-name  { font-size: 13px; font-weight: 700; color: var(--text); }
+.mlbc-matchup-stats { font-size: 11px; color: var(--text2); }
+.mlbc-decision-label { font-size: 11px; color: var(--text2); }
+.mlbc-decision-label .mlbc-matchup-name { font-size: 13px; }
+
+/* Action buttons */
+.mlbc-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 10px 14px;
+}
+.mlbc-action-btn {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.mlbc-action-btn:hover { color: var(--accent2); }

@@ -29,9 +29,231 @@ function getScore(c) {
 }
 
 /* ── Score display for non-live ─────────────────────── */
-function GameScore({ game, teamId, sport, onOpen }) {
+/* ══════════════════════════════════════════════════════
+   NEW MLB CARD COMPONENTS — clean card design (dark mode)
+   ══════════════════════════════════════════════════════ */
+function MlbTeamRows({ away, home, sport, mlbTotals, showRHE }) {
+  const navigate = useNavigate();
+  const rec = (c) => c.records?.[0]?.summary || '';
+  const r = (c) => { const t = mlbTotals?.[c.homeAway]; return t?.runs ?? (typeof c.score === 'object' ? c.score?.displayValue : c.score) ?? '—'; };
+  const h = (c) => mlbTotals?.[c.homeAway]?.hits ?? c.hits ?? '—';
+  const e = (c) => mlbTotals?.[c.homeAway]?.errors ?? c.errors ?? '—';
+  return (
+    <div className="mlbc-teams">
+      {showRHE && (
+        <div className="mlbc-rhe-header">
+          <span className="mlbc-rhe-spacer"/><span>R</span><span>H</span><span>E</span>
+        </div>
+      )}
+      {[away, home].filter(Boolean).map((c) => (
+        <div key={c.team?.id} className="mlbc-team-row"
+          onClick={(ev) => { ev.stopPropagation(); c.team?.id && navigate(`/team/${sport}/${c.team.id}`); }}>
+          <LogoImg team={c.team} className="mlbc-logo" />
+          <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
+          <span className="mlbc-rec">{rec(c)}</span>
+          <span className="mlbc-spacer" />
+          {showRHE && (
+            <>
+              <span className={`mlbc-stat${c.winner ? ' mlbc-winner' : ''}`}>{r(c)}</span>
+              <span className="mlbc-stat mlbc-dim">{h(c)}</span>
+              <span className="mlbc-stat mlbc-dim">{e(c)}</span>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MlbPreCard({ game, sport, navigate }) {
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
+  const broadcast = comp?.broadcasts?.[0]?.names?.join('/') || '';
+  const shortDetail = comp?.status?.type?.shortDetail || '';
+  const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
+  const probables = [away, home].filter(Boolean).map((c) => {
+    const prob = c.probables?.[0]; if (!prob) return null;
+    const ath = prob.athlete || {};
+    const headshot = typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href;
+    const sm = {}; (prob.statistics?.splits?.categories || []).forEach((s) => { sm[s.abbreviation] = s.displayValue; });
+    return { id: ath.id, team: c.team, name: ath.shortName || ath.displayName, headshot, hand: ath.throws?.abbreviation || '', record: sm.W && sm.L ? `${sm.W}-${sm.L}` : '', era: sm.ERA || '' };
+  }).filter(Boolean);
+  return (
+    <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
+      <div className="mlbc-header">
+        <span className="mlbc-time">{timeStr}</span>
+        {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+      </div>
+      <div className="mlbc-divider" />
+      <MlbTeamRows away={away} home={home} sport={sport} showRHE={false} />
+      {probables.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="mlbc-pitchers-row">
+            {probables.map((p, i) => (
+              <div key={i} className="mlbc-pitcher-col"
+                onClick={(ev) => { ev.stopPropagation(); p.id && navigate(`/player/${sport}/${p.id}`); }}>
+                <div className="mlbc-pitcher-team">{p.team?.abbreviation}</div>
+                <div className="mlbc-pitcher-info">
+                  {p.headshot && <img src={p.headshot} alt="" className="mlbc-pitcher-photo" onError={(ev)=>ev.target.style.display='none'} />}
+                  <div>
+                    <div className="mlbc-pitcher-name">{p.name}{p.hand && <span className="mlbc-hand"> {p.hand}HP</span>}</div>
+                    <div className="mlbc-pitcher-stats">{[p.record, p.era && `${p.era} ERA`].filter(Boolean).join(' · ')}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="mlbc-divider" />
+      <div className="mlbc-actions">
+        <span className="mlbc-action-btn">Preview</span>
+      </div>
+    </div>
+  );
+}
+
+function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData }) {
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
+  const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const sit = liveData?.situation || {};
+  const mlbTotals = mlbFeed?.linescoreTotals || {};
+  const inningStr = mlbFeed?.inningDisplay || comp?.status?.type?.shortDetail || '';
+  const balls   = mlbFeed?.count?.balls   ?? sit.balls   ?? 0;
+  const strikes = mlbFeed?.count?.strikes ?? sit.strikes ?? 0;
+  const outs    = mlbFeed?.outs           ?? sit.outs    ?? 0;
+  const on1 = mlbFeed?.raw ? !!mlbFeed.onFirst  : !!sit.onFirst;
+  const on2 = mlbFeed?.raw ? !!mlbFeed.onSecond : !!sit.onSecond;
+  const on3 = mlbFeed?.raw ? !!mlbFeed.onThird  : !!sit.onThird;
+  const pName  = mlbFeed?.matchup?.pitcher?.fullName;
+  const pPhoto = pName ? mlbHeadshot(mlbFeed.matchup.pitcher.id) : null;
+  const bName  = mlbFeed?.matchup?.batter?.fullName;
+  const bPhoto = bName ? mlbHeadshot(mlbFeed.matchup.batter.id)  : null;
+  const pStats = mlbFeed?.pitcherGameStats || {};
+  const bStats = mlbFeed?.batterGameStats  || {};
+  const pitchingTeamAbbr = inningStr.startsWith('BOT') ? home?.team?.abbreviation : away?.team?.abbreviation;
+  const battingTeamAbbr  = inningStr.startsWith('BOT') ? away?.team?.abbreviation : home?.team?.abbreviation;
+  return (
+    <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
+      <div className="mlbc-header mlbc-live-header">
+        <span className="badge badge-live" style={{fontSize:10}}><span className="live-dot"/>LIVE</span>
+        <span className="mlbc-inning">{inningStr}</span>
+        {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+      </div>
+      <div className="mlbc-divider" />
+      <div className="mlbc-live-body">
+        <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE />
+        <div className="mlbc-diamond-col">
+          <SmallDiamond onFirst={on1} onSecond={on2} onThird={on3} />
+          <div className="mlbc-count-dots">
+            <div className="mlbc-dot-row">{Array.from({length:4}).map((_,i)=><span key={i} className={`mlbc-dot ${i<balls?'mlbc-dot-g':''}`}/>)}</div>
+            <div className="mlbc-dot-row">{Array.from({length:3}).map((_,i)=><span key={i} className={`mlbc-dot ${i<strikes?'mlbc-dot-y':''}`}/>)}</div>
+            <div className="mlbc-dot-row">{Array.from({length:3}).map((_,i)=><span key={i} className={`mlbc-dot ${i<outs?'mlbc-dot-r':''}`}/>)}</div>
+          </div>
+          <div className="mlbc-count-num">{balls} - {strikes}</div>
+        </div>
+      </div>
+      {(pName || bName) && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="mlbc-matchup-row">
+            {pName && (
+              <div className="mlbc-matchup-col" onClick={(ev)=>{ev.stopPropagation(); mlbFeed?.matchup?.pitcher?.id && navigate(`/player/${sport}/${mlbFeed.matchup.pitcher.id}`);}}>
+                <div className="mlbc-matchup-label">PITCHING {pitchingTeamAbbr}</div>
+                <div className="mlbc-matchup-info">
+                  {pPhoto && <img src={pPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
+                  <div>
+                    <div className="mlbc-matchup-name">{pName.split(' ').slice(-1)[0]}</div>
+                    <div className="mlbc-matchup-stats">{[pStats.numberOfPitches&&`${pStats.numberOfPitches}P`,pStats.inningsPitched&&`${pStats.inningsPitched} IP`,pStats.earnedRuns!=null&&`${pStats.earnedRuns} ER`].filter(Boolean).join(' · ')}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {bName && (
+              <div className="mlbc-matchup-col" onClick={(ev)=>{ev.stopPropagation(); mlbFeed?.matchup?.batter?.id && navigate(`/player/${sport}/${mlbFeed.matchup.batter.id}`);}}>
+                <div className="mlbc-matchup-label">AT BAT {battingTeamAbbr}</div>
+                <div className="mlbc-matchup-info">
+                  {bPhoto && <img src={bPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
+                  <div>
+                    <div className="mlbc-matchup-name">{bName.split(' ').slice(-1)[0]}</div>
+                    <div className="mlbc-matchup-stats">{bStats.hits!=null?`${bStats.hits}-${bStats.atBats??0}`:''}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      <div className="mlbc-divider" />
+      <div className="mlbc-actions">
+        <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Gamecast'}});}}>Gamecast</span>
+        <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Play-by-Play'}});}}>Play-by-Play</span>
+      </div>
+    </div>
+  );
+}
+
+function MlbFinalCard({ game, sport, navigate }) {
+  const [decisions, setDecisions] = useState(null);
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
+  useEffect(() => {
+    const homeAbbr = home?.team?.abbreviation;
+    const gameDate = game.date || comp?.date;
+    if (!homeAbbr || !gameDate) return;
+    fetchMlbDecisions(gameDate, homeAbbr).then((dec) => { if (dec) setDecisions(dec); }).catch(()=>{});
+  }, [game.id]);
+  return (
+    <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
+      <div className="mlbc-header"><span className="mlbc-final-label">FINAL</span></div>
+      <div className="mlbc-divider" />
+      <MlbTeamRows away={away} home={home} sport={sport} showRHE />
+      {decisions && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="mlbc-decisions">
+            {[{label:'W',p:decisions.winner},{label:'L',p:decisions.loser},decisions.save&&{label:'S',p:decisions.save}].filter(Boolean).map(({label,p})=>(
+              <div key={label} className="mlbc-decision-col">
+                {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
+                <div>
+                  <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
+                  <div className="mlbc-matchup-stats">{p.wl} · {p.era} ERA</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="mlbc-divider" />
+      <div className="mlbc-actions">
+        <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Scoring Summary'}});}}>Summary</span>
+        <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Box Score'}});}}>Box Score</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════ */
+
+function GameScore({ game, teamId, sport, onOpen, mlbFeed, liveData }) {
   const navigate = useNavigate();
   if (!game) return <div className="tr2-no-game">No game scheduled</div>;
+
+  // MLB gets dedicated clean card components
+  const st = game.competitions?.[0]?.status?.type?.state;
+  if (sport === 'mlb') {
+    if (st === 'pre')  return <MlbPreCard  game={game} sport={sport} navigate={navigate} />;
+    if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} />;
+    if (st === 'in')   return <MlbLiveCard  game={game} sport={sport} navigate={navigate} mlbFeed={mlbFeed} liveData={liveData} />;
+  }
 
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -639,6 +861,16 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   }, [hasUpcomingGame]);
 
   const goToBoxScore = () => game && navigate(`/boxscore/${sport}/${game.id}`);
+
+  // MLB games use the new full-width card — no outer tr2-card wrapper needed
+  if (sport === 'mlb') {
+    if (loading) return <div className="mlbc-card mlbc-loading">Loading…</div>;
+    if (!game)   return null; // hide when no game
+    if (isLive)  return <MlbLiveCard  game={game} sport={sport} navigate={navigate} mlbFeed={mlbFeed} liveData={liveData} />;
+    const st = game.competitions?.[0]?.status?.type?.state;
+    if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} />;
+    return <MlbPreCard game={game} sport={sport} navigate={navigate} />;
+  }
 
   return (
     <div className="tr2-card" style={{ '--team-accent': accentColor }}>
