@@ -1437,7 +1437,7 @@ function PlayByPlay({ data, competitors, sport }) {
 
 /* ─── BOX SCORE TAB (unchanged) ─────────────────────── */
 const COLS = {
-  mlb_batting:  ['AB','R','H','RBI','BB','K','AVG','OPS'],
+  mlb_batting:  ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'],
   mlb_pitching: ['IP','H','R','ER','BB','K','ERA'],
   nba:          ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','+/-'],
   nfl_passing:  ['C/ATT','YDS','TD','INT','RTG'],
