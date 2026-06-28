@@ -6259,15 +6259,15 @@ thead .dfs-sticky-player {
   min-width: 24px;
 }
 .mlbc-pstat-val {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 400;
   color: var(--text);
   line-height: 1.2;
   white-space: nowrap;
 }
 .mlbc-pstat-lbl {
-  font-size: 9px;
-  font-weight: 600;
+  font-size: 7px;
+  font-weight: 100;
   color: var(--text2);
   letter-spacing: 0.3px;
   text-transform: uppercase;
