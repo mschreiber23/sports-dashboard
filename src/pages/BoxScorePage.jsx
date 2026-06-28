@@ -196,6 +196,110 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
   );
 }
 
+/* ─── MLB full game summary (Play-by-Play tab) ───────── */
+function MlbGameSummary({ mlbGamePk, venueId, teamColor, teamAltColor }) {
+  const feed = useMlbLiveFeed(mlbGamePk, true);
+  const { allAtBats } = feed;
+  const [selectedAtBat, setSelectedAtBat] = useState(null);
+
+  if (!mlbGamePk) return <div className="tp-loading">Connecting to MLB…</div>;
+  if (!allAtBats.length) return <div className="tp-loading">No plays yet.</div>;
+
+  // Group by inning + half, newest half-inning first
+  const groups = [];
+  let cur = null;
+  // allAtBats is newest-first, so we need to reverse for grouping then re-reverse
+  const chronological = [...allAtBats].reverse();
+  for (const ab of chronological) {
+    const half   = ab.about?.halfInning || 'top';
+    const inning = ab.about?.inning || 1;
+    const key    = `${half}-${inning}`;
+    if (!cur || cur.key !== key) {
+      cur = { key, half, inning, atBats: [] };
+      groups.push(cur);
+    }
+    cur.atBats.push(ab);
+  }
+  // Reverse so newest half-inning is on top; within each group newest at-bat on top
+  groups.reverse();
+  groups.forEach((g) => g.atBats.reverse());
+
+  return (
+    <div className="mlb-pbp-wrap">
+      {selectedAtBat && (
+        <AtBatModal
+          atBat={selectedAtBat}
+          venueId={venueId}
+          teamColor={teamColor}
+          teamAltColor={teamAltColor}
+          onClose={() => setSelectedAtBat(null)}
+        />
+      )}
+
+      {groups.map((group) => {
+        const isTop = group.half === 'top';
+        return (
+          <div key={group.key} className="mlb-pbp-inning">
+            {/* Half-inning header */}
+            <div className="mlb-pbp-inning-header">
+              <span className={`mlb-pbp-half ${isTop ? 'mlb-pbp-top' : 'mlb-pbp-bot'}`}>
+                {isTop ? '▲' : '▼'} {isTop ? 'TOP' : 'BOT'} {group.inning}
+              </span>
+            </div>
+
+            {/* At-bats in this half-inning */}
+            {group.atBats.map((ab, i) => {
+              const result = ab.result || {};
+              const pitches = (ab.playEvents || []).filter((e) => e.type === 'pitch');
+              const batterId = ab.matchup?.batter?.id;
+              const headshot = mlbHeadshot(batterId);
+              const hasPitches = pitches.length > 0;
+              // Runners on base after this at-bat
+              const runnersAfter = (ab.runners || [])
+                .filter((r) => r.movement?.end && r.movement.end !== 'Score' && r.movement.end !== null)
+                .map((r) => `${r.details?.runner?.fullName?.split(' ').slice(-1)[0]} on ${r.movement.end}`)
+                .filter(Boolean);
+
+              return (
+                <div key={i}>
+                  <div
+                    className={`mlb-pbp-ab${hasPitches ? ' mlb-pbp-ab-clickable' : ''}`}
+                    onClick={hasPitches ? () => setSelectedAtBat(ab) : undefined}
+                  >
+                    {headshot && (
+                      <img src={headshot} alt="" className="mlb-pbp-photo"
+                        onError={(e) => { e.target.style.display='none'; }} />
+                    )}
+                    <div className="mlb-pbp-info">
+                      <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`}>
+                        {result.event}
+                      </span>
+                      <span className="mlb-pbp-desc">
+                        {result.description}
+                        {ab.count?.outs != null && (
+                          <strong> {ab.count.outs} out{ab.count.outs!==1?'s':''}.</strong>
+                        )}
+                      </span>
+                    </div>
+                    {hasPitches && <span className="mlb-pbp-chevron">›</span>}
+                  </div>
+
+                  {/* Base runner situation after this play */}
+                  {runnersAfter.length > 0 && (
+                    <div className="mlb-pbp-runners">
+                      <span className="mlb-pbp-runners-text">{runnersAfter.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ─── Clickable At-Bat Entry ─────────────────────────── */
 function AtBatEntry({ atBat, isCurrent, onSelect }) {
   const pitches = (atBat.playEvents || []).filter((e) => e.type === 'pitch');
@@ -1659,7 +1763,14 @@ export default function BoxScorePage() {
             )}
 
             {activeTab === 'Play-by-Play' && (
-              <PlayByPlay data={data} competitors={comps} sport={sport} />
+              sport === 'mlb' && mlbGamePk
+                ? <MlbGameSummary
+                    mlbGamePk={mlbGamePk}
+                    venueId={home?.team?.id}
+                    teamColor={home?.team?.color}
+                    teamAltColor={home?.team?.alternateColor}
+                  />
+                : <PlayByPlay data={data} competitors={comps} sport={sport} />
             )}
           </div>
         </>

@@ -32,7 +32,7 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     raw: null, pitches: [], lastPitch: null, szTop: 3.38, szBot: 1.53,
     matchup: {}, count: { balls: 0, strikes: 0, outs: 0 },
     onFirst: false, onSecond: false, onThird: false, outs: 0,
-    recentAtBats: [], currentResult: null, currentAbout: {},
+    recentAtBats: [], allAtBats: [], currentResult: null, currentAbout: {},
     shortDetail: '', inning: null, inningHalf: null,
     innings: [], linescoreTotals: {},
     pitcherGameStats: {}, batterGameStats: {}, batterPosition: '',
@@ -95,12 +95,12 @@ export default function useMlbLiveFeed(gamePk, active = true) {
   const szTop = matchup.strikeZoneTop  ?? lastPitch?.pitchData?.strikeZoneTop  ?? 3.38;
   const szBot = matchup.strikeZoneBottom ?? lastPitch?.pitchData?.strikeZoneBottom ?? 1.53;
 
-  // Recent completed at-bats (last 5, newest first)
+  // All completed at-bats
   const allPlays = plays.allPlays || [];
-  const recentAtBats = allPlays
-    .filter((p) => p.about?.isComplete && (p.playEvents || []).some((e) => e.type === 'pitch'))
-    .slice(-5)
-    .reverse();
+  const completedAtBats = allPlays
+    .filter((p) => p.about?.isComplete && (p.playEvents || []).some((e) => e.type === 'pitch'));
+  const recentAtBats = completedAtBats.slice(-5).reverse();
+  const allAtBats    = [...completedAtBats].reverse(); // newest first, all game
 
   // Current at-bat result (if just completed)
   const currentResult = current.about?.isComplete ? current.result : null;
@@ -119,8 +119,8 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     // Current at-bat
     currentResult,
     currentAbout: current.about || {},
-    // Recent at-bats for pitch log
     recentAtBats,
+    allAtBats,
     batSide,
     venueId,
     pitcherGameStats, batterGameStats, batterPosition,
