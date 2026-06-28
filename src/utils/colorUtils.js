@@ -51,7 +51,7 @@ function parseHsl(hex) {
  * @param {string}      fallback    – returned when primaryHex is null/empty
  * @returns {string}                – a CSS color string safe for dark backgrounds
  */
-export function adaptColorForDarkBg(primaryHex, altHex = null, fallback = '#7c3aed') {
+export function adaptColorForDarkBg(primaryHex, altHex = null, fallback = '#0092ff') {
   const MIN_LIGHTNESS   = 40; // % — minimum lightness for visibility on ~10% lightness bg
   const MIN_ALT_SATURATION = 25; // % — alternate must be visibly colorful, not just gray
 

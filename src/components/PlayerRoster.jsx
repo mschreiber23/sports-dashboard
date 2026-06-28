@@ -118,7 +118,7 @@ export default function PlayerRoster({ editMode = false, setEditMode }) {
             <div className="picker-list">
               {results.map((p) => {
                 const already = favorites.players.some((fp) => fp.id === p.id);
-                const color   = SPORT_COLORS[p.sport] || '#7c3aed';
+                const color   = SPORT_COLORS[p.sport] || '#0092ff';
                 const label   = SPORTS[p.sport]?.label || p.sport?.toUpperCase();
                 return (
                   <div key={`${p.sport}-${p.id}`} className="picker-item">

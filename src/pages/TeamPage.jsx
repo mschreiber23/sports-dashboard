@@ -847,7 +847,7 @@ export default function TeamPage() {
   }, [sport, teamId]);
 
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
-  const accentColor = team?.color ? `#${team.color}` : '#7c3aed';
+  const accentColor = team?.color ? `#${team.color}` : '#0092ff';
 
   return (
     <div className="tp-page">

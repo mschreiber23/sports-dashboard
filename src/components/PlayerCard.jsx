@@ -148,7 +148,7 @@ export default function PlayerCard({ player, sport }) {
   const teamColor = adaptColorForDarkBg(primaryHex, altHex);
   // Photo gradient: use the secondary/alternate color directly — dark saturated colors
   // look great as a subtle gradient tint without needing the lightness boost
-  const cardColor = altHex || primaryHex || '#7c3aed';
+  const cardColor = altHex || primaryHex || '#0092ff';
   const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
 
   return (

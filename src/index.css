@@ -8,8 +8,8 @@
   --border: rgba(255,255,255,0.08);
   --text: #f1f1f3;
   --text2: #9898a8;
-  --accent: #7c3aed;
-  --accent2: #a855f7;
+  --accent: #0092ff;
+  --accent2: #3aabff;
   --live: #22c55e;
   --live-bg: rgba(34,197,94,0.12);
   --danger: #ef4444;
@@ -379,8 +379,8 @@ body {
   position: relative;
   flex: 1;
   background: linear-gradient(135deg,
-    color-mix(in srgb, var(--card-color, #7c3aed) 30%, #1a1a2e) 0%,
-    color-mix(in srgb, var(--card-color, #7c3aed) 15%, #0d0d1a) 100%
+    color-mix(in srgb, var(--card-color, #0092ff) 30%, #1a1a2e) 0%,
+    color-mix(in srgb, var(--card-color, #0092ff) 15%, #0d0d1a) 100%
   );
   overflow: hidden;
   min-height: 0;
