@@ -1226,12 +1226,39 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
           )}
           </div>{/* end gc-matchup-card */}
 
-          {/* Recent plays — result-row only, tap for At Bat Details */}
-          {(currentAtBatForLog || recentAtBats.length > 0) && (
+          {/* Recent plays */}
+          {(pitches.length > 0 || recentAtBats.length > 0) && (
             <div className="gc-plays-clean">
-              {currentAtBatForLog && (
-                <GcPlayRow atBat={currentAtBatForLog} isCurrent />
+
+              {/* Current at-bat: show live pitch sequence newest-first */}
+              {pitches.length > 0 && (
+                <div className="gc-current-ab">
+                  {[...pitches].reverse().map((p, i) => {
+                    const det = p.details || {};
+                    const pd  = p.pitchData || {};
+                    const cnt = p.count || {};
+                    const col = resultColor(det);
+                    const num = pitches.length - i;
+                    return (
+                      <div key={i} className="gc-current-pitch">
+                        <div className="gc-current-dot" style={{background: col}}>{num}</div>
+                        <div className="gc-current-info">
+                          <span className="gc-current-result">{det.description || ''}</span>
+                          <span className="gc-current-detail">
+                            {pd.startSpeed && <strong>{pd.startSpeed.toFixed(1)} mph</strong>}
+                            {det.type?.description && <span> {det.type.description}</span>}
+                          </span>
+                        </div>
+                        {i < pitches.length - 1 && (
+                          <span className="gc-current-count">{cnt.balls ?? 0} - {cnt.strikes ?? 0}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
+
+              {/* Completed at-bats — collapsed single-line, tap to open modal */}
               {recentAtBats.map((ab, i) => (
                 <GcPlayRow key={i} atBat={ab} onSelect={setSelectedAtBat} />
               ))}
