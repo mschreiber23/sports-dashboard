@@ -5867,3 +5867,80 @@ thead .dfs-sticky-player {
 .gc-due-up-info { display: flex; flex-direction: column; gap: 1px; }
 .gc-due-up-name { font-size: 14px; font-weight: 700; color: var(--text); }
 .gc-due-up-meta { font-size: 11px; color: var(--text2); }
+
+/* ── Clean Box Score Tab ─────────────────────────────── */
+.bs-clean-wrap { display: flex; flex-direction: column; gap: 12px; }
+
+/* Segmented team selector */
+.bs-team-seg {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: var(--bg3);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.bs-team-seg-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: none;
+  background: none;
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bs-team-seg-btn:hover { color: var(--text); background: var(--bg2); }
+.bs-team-seg-active {
+  background: color-mix(in srgb, var(--seg-color, var(--accent)) 15%, var(--bg2)) !important;
+  color: var(--text) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.bs-seg-logo { width: 22px; height: 22px; object-fit: contain; }
+
+/* Section labels (HITTING / PITCHING) */
+.bs-team-stats, .bs-team-stats { display: flex; flex-direction: column; gap: 0; }
+.bs-stat-section { display: flex; flex-direction: column; gap: 0; margin-bottom: 8px; }
+.bs-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+/* Tighter, cleaner stat table */
+.bsp-table { font-size: 12px; }
+.bsp-th { font-size: 10px; padding: 6px 8px; }
+.bsp-td { padding: 7px 8px; }
+.bsp-td-player { padding-left: 0; }
+.bsp-player-name { font-size: 13px; }
+.bsp-tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+.bsp-tr:hover { background: rgba(255,255,255,0.025); }
+
+/* Line score inside box score */
+.bsp-linescore-wrap {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.bsp-linescore { font-size: 12px; }
+.bsp-ls-th { padding: 7px 6px; font-size: 10px; }
+.bsp-ls-td { padding: 7px 6px; font-size: 12px; }
+
+/* Game notes — inline pills */
+.bsp-mlb-notes { padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.bsp-notes-section { display: flex; flex-direction: column; gap: 3px; }
+.bsp-notes-heading { font-size: 9px; font-weight: 800; letter-spacing: 0.6px; color: var(--text2); text-transform: uppercase; }
+.bsp-notes-row { display: flex; gap: 6px; font-size: 11px; color: var(--text2); flex-wrap: wrap; }
+.bsp-notes-label { color: var(--text2); font-weight: 600; }
+.bsp-notes-value { color: var(--text); }

@@ -1640,25 +1640,24 @@ function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, t
   const stats   = group?.statistics || [];
   const batting  = stats.find((s) => (s.type||s.name) === 'batting')  || stats[0];
   const pitching = stats.find((s) => (s.type||s.name) === 'pitching') || stats[1];
+  const accentHex = teamColor ? `#${teamColor}` : 'var(--accent)';
   return (
-    <div className="bsp-team-stats">
-      {batting && (<>
-        <div className="bsp-stats-heading">
-          <LogoImg team={team} style={{width:20,height:20,objectFit:'contain'}} />
-          <span>{team.displayName} Hitting</span>
+    <div className="bs-team-stats">
+      {batting && (
+        <div className="bs-stat-section">
+          <div className="bs-section-label" style={{color: accentHex}}>HITTING</div>
+          <StatsTable statGroup={batting} sport={sport}
+            allAtBats={allAtBats} onShowAbs={onShowAbs}
+            venueId={venueId} teamColor={teamColor} teamAltColor={teamAltColor} />
+          {sport === 'mlb' && <MLBGameNotes details={teamDetails} />}
         </div>
-        <StatsTable statGroup={batting} sport={sport}
-          allAtBats={allAtBats} onShowAbs={onShowAbs}
-          venueId={venueId} teamColor={teamColor} teamAltColor={teamAltColor} />
-        {sport === 'mlb' && <MLBGameNotes details={teamDetails} />}
-      </>)}
-      {pitching && (<>
-        <div className="bsp-stats-heading" style={{marginTop:16}}>
-          <LogoImg team={team} style={{width:20,height:20,objectFit:'contain'}} />
-          <span>{team.displayName} Pitching</span>
+      )}
+      {pitching && (
+        <div className="bs-stat-section">
+          <div className="bs-section-label" style={{color: accentHex}}>PITCHING</div>
+          <StatsTable statGroup={pitching} sport={sport} />
         </div>
-        <StatsTable statGroup={pitching} sport={sport} />
-      </>)}
+      )}
     </div>
   );
 }
@@ -1934,19 +1933,30 @@ export default function BoxScorePage() {
             )}
 
             {activeTab === 'Box Score' && (
-              <div>
+              <div className="bs-clean-wrap">
+                {/* Line score */}
                 <LineScore competitors={comps} sport={sport}
                   mlbInnings={mlbInnings} mlbTotals={mlbTotals} />
+
+                {/* Team selector — clean segmented pill */}
                 {groups.length > 1 && (
-                  <div className="bsp-team-toggle">
-                    <button className={`bsp-tab ${bsTeam === 0 ? 'bsp-tab-active' : ''}`} onClick={() => setBsTeam(0)}>
-                      {away?.team?.abbreviation || 'Away'}
-                    </button>
-                    <button className={`bsp-tab ${bsTeam === 1 ? 'bsp-tab-active' : ''}`} onClick={() => setBsTeam(1)}>
-                      {home?.team?.abbreviation || 'Home'}
-                    </button>
+                  <div className="bs-team-seg">
+                    {[0, 1].map((idx) => {
+                      const team = idx === 0 ? away : home;
+                      const active = bsTeam === idx;
+                      return (
+                        <button key={idx}
+                          className={`bs-team-seg-btn ${active ? 'bs-team-seg-active' : ''}`}
+                          onClick={() => setBsTeam(idx)}
+                          style={active ? { '--seg-color': team?.team?.color ? `#${team.team.color}` : 'var(--accent)' } : {}}>
+                          <LogoImg team={team?.team} className="bs-seg-logo" />
+                          <span>{team?.team?.abbreviation || (idx === 0 ? 'Away' : 'Home')}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
+
                 {playerAbsData && (
                   <PlayerAbsSheet
                     playerName={playerAbsData.name}
@@ -1957,6 +1967,7 @@ export default function BoxScorePage() {
                     onClose={() => setPlayerAbsData(null)}
                   />
                 )}
+
                 {groups[bsTeam] && (
                   <TeamStats
                     group={groups[bsTeam]} sport={sport} teamDetails={groupDetails[bsTeam]}
