@@ -614,22 +614,31 @@ async function mlbFetch(url, signal) {
 }
 
 async function getMlbGameForDate(dateStr, awayName, homeName) {
-  const data = await mlbFetch(
-    `${STATSAPI}/schedule?sportId=1&date=${dateStr}&hydrate=lineups,teams`
-  );
-  const games = data.dates?.[0]?.games || [];
-  // Match by team display names (exact match first, then partial)
   const norm = (s) => (s || '').toLowerCase();
-  const match = games.find((g) => {
-    const a = norm(g.teams?.away?.team?.name);
-    const h = norm(g.teams?.home?.team?.name);
-    return a === norm(awayName) && h === norm(homeName);
-  }) || games.find((g) => {
-    const a = norm(g.teams?.away?.team?.name);
-    const h = norm(g.teams?.home?.team?.name);
-    return norm(awayName).includes(a.split(' ').pop()) && norm(homeName).includes(h.split(' ').pop());
-  });
-  return match || null;
+  const findMatch = (games) =>
+    games.find((g) => {
+      const a = norm(g.teams?.away?.team?.name);
+      const h = norm(g.teams?.home?.team?.name);
+      return a === norm(awayName) && h === norm(homeName);
+    }) || games.find((g) => {
+      const a = norm(g.teams?.away?.team?.name);
+      const h = norm(g.teams?.home?.team?.name);
+      return norm(awayName).includes(a.split(' ').pop()) && norm(homeName).includes(h.split(' ').pop());
+    });
+
+  // Try the given date first
+  const tryDate = async (d) => {
+    const data = await mlbFetch(`${STATSAPI}/schedule?sportId=1&date=${d}&hydrate=lineups,teams`);
+    return data.dates?.[0]?.games || [];
+  };
+
+  // Late West Coast games have ESPN UTC date = next calendar day; always try day-before fallback
+  const prevDay = new Date(dateStr + 'T12:00:00Z');
+  prevDay.setDate(prevDay.getDate() - 1);
+  const prevStr = prevDay.toISOString().slice(0, 10);
+
+  const [gamesOnDate, gamesOnPrev] = await Promise.all([tryDate(dateStr), tryDate(prevStr)]);
+  return findMatch(gamesOnDate) || findMatch(gamesOnPrev) || null;
 }
 
 async function getProjectedLineup(teamId, signal) {
