@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
@@ -47,35 +47,38 @@ export default function ScoresPage() {
   const { favorites, sportOrder } = useFavorites();
 
   const [activeSport, setActiveSport] = useState('mlb');
-  const [games, setGames] = useState([]);
+  const [rawGames, setRawGames] = useState([]);
   const [mlbScoreMap, setMlbScoreMap] = useState({});
   const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
 
   const todayStr = toDateStr(new Date());
+  // myTeamIds always reflects current favorites — no stale closure
   const myTeamIds = favorites.teams.filter(t=>t.sport===activeSport).map(t=>t.team.id);
 
   const stateOrder = { in: 0, post: 1, pre: 2 };
-  const sortGames = (evts) => [...evts].sort((a,b) => {
-    const aMine = a.competitions?.[0]?.competitors?.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
-    const bMine = b.competitions?.[0]?.competitors?.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
+  // Derived sort: instantly re-sorts whenever rawGames OR favorites change
+  const games = useMemo(() => [...rawGames].sort((a,b) => {
+    const compsA = a.competitions?.[0]?.competitors || [];
+    const compsB = b.competitions?.[0]?.competitors || [];
+    const aMine = compsA.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    const bMine = compsB.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
     if (aMine !== bMine) return aMine - bMine;
     const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
     const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
     return (stateOrder[sa]??2)-(stateOrder[sb]??2);
-  });
+  }), [rawGames, favorites.teams, activeSport]);
 
   useEffect(() => {
     clearInterval(pollRef.current);
     setLoading(true);
-    setGames([]);
+    setRawGames([]);
 
     const load = () => getScoreboard(activeSport, todayStr)
       .then(async (evts) => {
-        const sorted = sortGames(evts);
-        setGames(sorted);
+        setRawGames(evts); // sort derived reactively via useMemo
         if (activeSport === 'mlb') {
-          const map = await fetchMlbScoreMap(todayStr, sorted);
+          const map = await fetchMlbScoreMap(todayStr, evts);
           setMlbScoreMap(map);
         }
       })

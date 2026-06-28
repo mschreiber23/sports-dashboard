@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
@@ -303,8 +303,8 @@ async function fetchMlbLiveScores(dateStr, espnGames) {
 export default function TodaysScores({ compact = false }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
   const [activeSport, setActiveSport] = useState(sportOrder[0] || 'mlb');
-  const [games, setGames] = useState([]);
-  const [mlbScores, setMlbScores] = useState({}); // ESPN game id → live MLB score
+  const [rawGames, setRawGames] = useState([]);
+  const [mlbScores, setMlbScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [editOrder, setEditOrder] = useState(false);
@@ -318,6 +318,17 @@ export default function TodaysScores({ compact = false }) {
 
   const myTeamIds = favorites.teams.filter((t) => t.sport === activeSport).map((t) => t.team.id);
 
+  // Derived sort — instantly reacts when favorites change without a new API call
+  const stateOrderConst = { in: 0, post: 1, pre: 2 };
+  const games = useMemo(() => [...rawGames].sort((a, b) => {
+    const aMine = a.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    const bMine = b.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    if (aMine !== bMine) return aMine - bMine;
+    const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
+    const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
+    return (stateOrderConst[sa] ?? 2) - (stateOrderConst[sb] ?? 2);
+  }), [rawGames, favorites.teams, activeSport]);
+
   // Re-fetch MLB live scores every 30s when viewing today's MLB
   const refreshMlbScores = useRef(null);
   refreshMlbScores.current = async (evts) => {
@@ -328,29 +339,20 @@ export default function TodaysScores({ compact = false }) {
 
   useEffect(() => {
     setLoading(true);
-    setGames([]);
+    setRawGames([]);
     setMlbScores({});
     clearInterval(pollRef.current);
 
     const dateStr = toDateStr(selectedDate);
-    const stateOrder = { in: 0, post: 1, pre: 2 };
 
     const load = () =>
       getScoreboard(activeSport, dateStr)
         .then((evts) => {
-          const sorted = [...evts].sort((a, b) => {
-            const aMine = a.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
-            const bMine = b.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
-            if (aMine !== bMine) return aMine - bMine;
-            const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
-            const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
-            return (stateOrder[sa] ?? 2) - (stateOrder[sb] ?? 2);
-          });
-          setGames(sorted);
-          refreshMlbScores.current(sorted);
-          return sorted;
+          setRawGames(evts); // sort handled reactively by useMemo above
+          refreshMlbScores.current(evts);
+          return evts;
         })
-        .catch(() => { setGames([]); return []; });
+        .catch(() => { setRawGames([]); return []; });
 
     load().finally(() => setLoading(false));
 
@@ -374,7 +376,7 @@ export default function TodaysScores({ compact = false }) {
           <select
             className="ts-sport-select"
             value={activeSport}
-            onChange={(e) => { setActiveSport(e.target.value); setGames([]); }}
+            onChange={(e) => { setActiveSport(e.target.value); setRawGames([]); }}
           >
             {sportOrder.map((s) => (
               <option key={s} value={s}>{SPORTS[s]?.label}</option>
