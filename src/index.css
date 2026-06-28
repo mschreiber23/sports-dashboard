@@ -1590,25 +1590,25 @@ body {
 .ticker-card-mine { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg3)); }
 
 .ticker-status { display: flex; align-items: center; gap: 5px; min-height: 14px; }
-.ticker-live { display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; color: var(--live); }
-.ticker-final { font-size: 10px; font-weight: 700; color: var(--text2); }
-.ticker-date { font-size: 10px; font-weight: 700; color: var(--text2); }
+.ticker-live { display: flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; color: var(--live); }
+.ticker-final { font-size: 9px; font-weight: 700; color: #ffffff; }
+.ticker-date { font-size: 9px; font-weight: 700; color: #ffffff; }
 .ticker-broadcast { font-size: 9px; color: var(--text2); margin-left: auto; }
 
 .ticker-teams { display: flex; flex-direction: column; gap: 4px; }
 .ticker-team { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
 .ticker-team-left { display: flex; align-items: center; gap: 4px; }
 .ticker-logo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
-.ticker-abbr { font-size: 12px; font-weight: 700; color: var(--text2); }
+.ticker-abbr { font-size: 11px; font-weight: 100; color: var(--text2); }
 .ticker-my-team .ticker-abbr { color: var(--accent2); }
-.ticker-winner .ticker-abbr { color: var(--text); font-weight: 800; }
+.ticker-winner .ticker-abbr { color: var(--text); font-weight: 100; }
 .ticker-record { font-size: 9px; color: var(--text2); }
-.ticker-score { font-size: 14px; font-weight: 900; color: var(--text2); font-variant-numeric: tabular-nums; min-width: 16px; text-align: right; }
+.ticker-score { font-size: 12px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; min-width: 16px; text-align: right; }
 .ticker-score-win { color: var(--live); }
 .ticker-winner .ticker-score { color: var(--text); }
 
 .ticker-bottom { min-height: 14px; display: flex; align-items: center; }
-.ticker-pregame-time { font-size: 11px; font-weight: 800; color: var(--text); white-space: nowrap; }
+.ticker-pregame-time { font-size: 9px; font-weight: 800; color: var(--text); white-space: nowrap; }
 .ticker-record-right { font-size: 9px; color: var(--text2); margin-left: auto; }
 .ticker-card-live-style { border-color: rgba(34,197,94,0.2); }
 .ticker-bottom-live { justify-content: flex-end; }
@@ -1616,7 +1616,7 @@ body {
 .mini-diamond { width: 16px; height: 16px; flex-shrink: 0; }
 .mini-base { fill: var(--bg3); stroke: rgba(255,255,255,0.2); stroke-width: 1.5; }
 .mini-base-on { fill: #f59e0b; stroke: #fbbf24; }
-.ticker-outs { font-size: 9px; color: var(--text2); font-weight: 600; white-space: nowrap; }
+.ticker-outs { font-size: 9px; color: var(--text2); font-weight: 100; white-space: nowrap; }
 .ticker-broadcast-bottom { font-size: 9px; color: var(--text2); }
 
 .ticker-skeleton {
