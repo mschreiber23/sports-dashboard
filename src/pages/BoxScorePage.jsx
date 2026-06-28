@@ -1437,8 +1437,8 @@ function PlayByPlay({ data, competitors, sport }) {
 
 /* ─── BOX SCORE TAB (unchanged) ─────────────────────── */
 const COLS = {
-  mlb_batting:  ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'],
-  mlb_pitching: ['IP','H','R','ER','BB','K','HR','ERA'],
+  mlb_batting:  ['AB','R','H','RBI','BB','K','AVG','OPS'],
+  mlb_pitching: ['IP','H','R','ER','BB','K','ERA'],
   nba:          ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','+/-'],
   nfl_passing:  ['C/ATT','YDS','TD','INT','RTG'],
   nfl_rushing:  ['CAR','YDS','AVG','TD'],
@@ -1523,7 +1523,7 @@ function PlayerAbsSheet({ playerName, atBats, venueId, teamColor, teamAltColor, 
   );
 }
 
-function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor, teamAltColor }) {
+function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor, teamAltColor, teamAbbr }) {
   const navigate = useNavigate();
   const labels   = statGroup.labels || [];
   const athletes = statGroup.athletes || [];
@@ -1558,7 +1558,11 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
       <table className="bsp-table">
         <thead>
           <tr>
-            <th className="bsp-th bsp-th-player">{type === 'pitching' ? 'PITCHERS' : 'HITTERS'}</th>
+            <th className="bsp-th bsp-th-player">
+              {sport === 'mlb'
+                ? (type === 'pitching' ? `Pitchers` : `Batters`) + (teamAbbr ? ` - ${teamAbbr}` : '')
+                : (type === 'pitching' ? 'PITCHERS' : 'HITTERS')}
+            </th>
             {cols.map((c) => <th key={c.label} className="bsp-th">{c.label}</th>)}
           </tr>
         </thead>
@@ -1650,22 +1654,21 @@ function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, t
   const stats   = group?.statistics || [];
   const batting  = stats.find((s) => (s.type||s.name) === 'batting')  || stats[0];
   const pitching = stats.find((s) => (s.type||s.name) === 'pitching') || stats[1];
-  const accentHex = teamColor ? `#${teamColor}` : 'var(--accent)';
   return (
     <div className="bs-team-stats">
       {batting && (
         <div className="bs-stat-section">
-          <div className="bs-section-label" style={{color: accentHex}}>HITTING</div>
           <StatsTable statGroup={batting} sport={sport}
             allAtBats={allAtBats} onShowAbs={onShowAbs}
-            venueId={venueId} teamColor={teamColor} teamAltColor={teamAltColor} />
+            venueId={venueId} teamColor={teamColor} teamAltColor={teamAltColor}
+            teamAbbr={team.abbreviation} />
           {sport === 'mlb' && <MLBGameNotes details={teamDetails} />}
         </div>
       )}
       {pitching && (
-        <div className="bs-stat-section">
-          <div className="bs-section-label" style={{color: accentHex}}>PITCHING</div>
-          <StatsTable statGroup={pitching} sport={sport} />
+        <div className="bs-stat-section" style={{marginTop: 16}}>
+          <StatsTable statGroup={pitching} sport={sport}
+            teamAbbr={team.abbreviation} />
         </div>
       )}
     </div>

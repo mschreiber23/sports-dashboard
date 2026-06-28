@@ -6008,3 +6008,67 @@ thead .dfs-sticky-player {
 /* Totals row */
 .bsp-totals { border-top: 1px solid var(--border); }
 .bsp-totals-label { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--text2); }
+
+/* ── MLB.com-style clean box score table ─────────────── */
+/* Override previous table styles with the cleaner look */
+.bsp-table {
+  font-size: 13px;
+  border-collapse: collapse;
+  width: 100%;
+}
+/* Column header row */
+.bsp-table thead tr {
+  border-bottom: 1px solid var(--border);
+}
+.bsp-th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+/* "Batters - WSH" header cell */
+.bsp-th-player {
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 140px;
+  padding-left: 8px;
+}
+
+/* Data rows */
+.bsp-tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.1s;
+}
+.bsp-tr:last-child { border-bottom: none; }
+.bsp-tr-clickable:hover { background: rgba(255,255,255,0.03); }
+
+.bsp-td {
+  padding: 11px 10px;
+  text-align: right;
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bsp-td-player {
+  text-align: left;
+  padding-left: 8px;
+}
+
+/* Sub indent stays */
+.bsp-tr-sub .bsp-td-player { padding-left: 22px; }
+
+/* Totals row */
+.bsp-totals { border-top: 1px solid var(--border); }
+.bsp-totals .bsp-td { color: var(--text); font-size: 13px; padding: 10px 10px; }
+.bsp-totals-label { color: var(--text2); font-weight: 700; font-size: 12px; }
+
+/* Wrap the table in no card — just floating clean */
+.bsp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0; }
+
+/* bs-stat-section: minimal spacing */
+.bs-stat-section { margin: 0; }
