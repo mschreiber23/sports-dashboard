@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
+import useMlbLiveGame from '../hooks/useMlbLiveGame';
+import { mlbHeadshot } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 
@@ -374,7 +376,7 @@ function SmallDiamond({ onFirst, onSecond, onThird }) {
 }
 
 /* ── Live bar ───────────────────────────────────────── */
-function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
+function LiveBar({ game, teamId, sport, liveData, mlbFeed, onBoxScore }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const status = comp?.status;
@@ -388,20 +390,38 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
 
   const goTo = (tab) => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab } });
 
-  // ── MLB (baseball) ──────────────────────────────────────────
+  // ── MLB (baseball) — all data from MLB Stats API ─────────────
   if (sport === 'mlb') {
-    const pitcher = liveData?.pitcher;
+    // Prefer MLB feed; fall back to ESPN liveData
+    const mlbTotals  = mlbFeed?.linescoreTotals || {};
+    const balls      = mlbFeed?.count?.balls   ?? sit.balls   ?? 0;
+    const strikes    = mlbFeed?.count?.strikes ?? sit.strikes ?? 0;
+    const outs       = mlbFeed?.outs           ?? sit.outs    ?? 0;
+    const onFirst    = mlbFeed?.raw ? !!mlbFeed.onFirst  : !!sit.onFirst;
+    const onSecond   = mlbFeed?.raw ? !!mlbFeed.onSecond : !!sit.onSecond;
+    const onThird    = mlbFeed?.raw ? !!mlbFeed.onThird  : !!sit.onThird;
+    const inningStr  = mlbFeed?.inningDisplay || shortDetail;
+    const isBot      = inningStr.startsWith('BOT') || shortDetail.toLowerCase().startsWith('bot');
+
+    const pName  = mlbFeed?.matchup?.pitcher?.fullName;
+    const bName  = mlbFeed?.matchup?.batter?.fullName;
+    const pPhoto = pName ? mlbHeadshot(mlbFeed.matchup.pitcher.id) : null;
+    const bPhoto = bName ? mlbHeadshot(mlbFeed.matchup.batter.id)  : null;
+    const pitcher      = pName ? null : liveData?.pitcher;
+    const batter       = bName ? null : liveData?.batter;
     const pitcherStats = liveData?.pitcherStats;
-    const batter = liveData?.batter;
-    const batterStats = liveData?.batterStats;
-    const isBot = shortDetail.toLowerCase().startsWith('bot');
+    const batterStats  = liveData?.batterStats;
+
+    const runsFor = (c) => mlbTotals?.[c.homeAway]?.runs   ?? getScore(c) ?? '0';
+    const hitsFor = (c) => mlbTotals?.[c.homeAway]?.hits   ?? c.hits      ?? '0';
+    const errFor  = (c) => mlbTotals?.[c.homeAway]?.errors ?? c.errors    ?? '0';
+
     return (
       <div className="lv-bar">
         <div className="lv-status-row">
-          <span className={`lv-inning ${isBot ? 'lv-bot' : 'lv-top'}`}>{isBot ? '▼' : '▲'} {shortDetail}</span>
+          <span className={`lv-inning ${isBot ? 'lv-bot' : 'lv-top'}`}>{isBot ? '▼' : '▲'} {inningStr}</span>
           {broadcast && <span className="lv-broadcast">{broadcast}</span>}
         </div>
-        {/* Row: Teams+RHE on left, Diamond+count on right */}
         <div className="lv-top-section">
           <div className="lv-teams-section">
             <div className="lv-rhe-header">
@@ -417,19 +437,19 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
                     {c.records?.[0]?.summary && <div className="lv-record">{c.records[0].summary} · {c.homeAway === 'home' ? 'Home' : 'Away'}</div>}
                   </div>
                 </Link>
-                <span className="lv-rhe-val">{getScore(c) ?? '0'}</span>
-                <span className="lv-rhe-val lv-rhe-secondary">{c.hits ?? '0'}</span>
-                <span className="lv-rhe-val lv-rhe-secondary">{c.errors ?? '0'}</span>
+                <span className="lv-rhe-val">{runsFor(c)}</span>
+                <span className="lv-rhe-val lv-rhe-secondary">{hitsFor(c)}</span>
+                <span className="lv-rhe-val lv-rhe-secondary">{errFor(c)}</span>
               </div>
             ))}
             {broadcast && <div className="lv-broadcast-bottom">{broadcast}</div>}
           </div>
           <div className="lv-diamond-count">
-            <SmallDiamond onFirst={!!sit.onFirst} onSecond={!!sit.onSecond} onThird={!!sit.onThird} />
+            <SmallDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
             <div className="lv-count-col">
-              <div className="lv-count-row"><span className="lv-cl">B</span>{Array.from({length:4}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.balls??0)?'lv-dot-g':''}`}/>)}</div>
-              <div className="lv-count-row"><span className="lv-cl">S</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.strikes??0)?'lv-dot-y':''}`}/>)}</div>
-              <div className="lv-count-row"><span className="lv-cl">O</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<(sit.outs??0)?'lv-dot-r':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">B</span>{Array.from({length:4}).map((_,i)=><span key={i} className={`lv-dot ${i<balls?'lv-dot-g':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">S</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<strikes?'lv-dot-y':''}`}/>)}</div>
+              <div className="lv-count-row"><span className="lv-cl">O</span>{Array.from({length:3}).map((_,i)=><span key={i} className={`lv-dot ${i<outs?'lv-dot-r':''}`}/>)}</div>
             </div>
           </div>
         </div>
@@ -437,25 +457,28 @@ function LiveBar({ game, teamId, sport, liveData, onBoxScore }) {
         <button className="lv-pbp-link" onClick={() => goTo('Play-by-Play')}>Play-by-Play →</button>
         <div className="lv-body">
           <div className="lv-players">
-            {pitcher && (
-              <div className="lv-player" onClick={() => pitcher.id && navigate(`/player/${sport}/${pitcher.id}`)} style={{ cursor: pitcher.id ? 'pointer' : 'default' }}>
+            {/* MLB: prefer MLB CDN headshot + name */}
+            {(pName || pitcher) && (
+              <div className="lv-player">
                 <div className="lv-player-role">PITCHING</div>
                 <div className="lv-player-row">
-                  {pitcher.headshot?.href && <img src={pitcher.headshot.href} alt="" className="lv-avatar" />}
+                  {pPhoto && <img src={pPhoto} alt="" className="lv-avatar" onError={(e)=>{e.target.style.display='none';}} />}
+                  {!pPhoto && pitcher?.headshot?.href && <img src={pitcher.headshot.href} alt="" className="lv-avatar" />}
                   <div>
-                    <div className="lv-player-name" style={{ color: 'var(--accent2)' }}>{pitcher.shortName || pitcher.displayName}{pitcher.jersey && <span className="lv-jersey" style={{ color: 'var(--text2)' }}> #{pitcher.jersey}</span>}</div>
-                    {pitcherStats && <div className="lv-player-stats">{[pitcherStats.IP&&`${pitcherStats.IP} IP`,pitcherStats.ER!==null&&`${pitcherStats.ER} ER`,pitcherStats.H!==null&&`${pitcherStats.H} H`,pitcherStats.K!==null&&`${pitcherStats.K} K`,pitcherStats.BB!==null&&`${pitcherStats.BB} BB`].filter(Boolean).join(', ')}</div>}
+                    <div className="lv-player-name" style={{color:'var(--accent2)'}}>{pName || pitcher?.shortName || pitcher?.displayName}</div>
+                    {pitcherStats && <div className="lv-player-stats">{[pitcherStats.IP&&`${pitcherStats.IP} IP`,pitcherStats.ER!==null&&`${pitcherStats.ER} ER`,pitcherStats.H!==null&&`${pitcherStats.H} H`,pitcherStats.K!==null&&`${pitcherStats.K} K`].filter(Boolean).join(', ')}</div>}
                   </div>
                 </div>
               </div>
             )}
-            {batter && (
-              <div className="lv-player" onClick={() => batter.id && navigate(`/player/${sport}/${batter.id}`)} style={{ cursor: batter.id ? 'pointer' : 'default' }}>
+            {(bName || batter) && (
+              <div className="lv-player">
                 <div className="lv-player-role">BATTING</div>
                 <div className="lv-player-row">
-                  {batter.headshot?.href && <img src={batter.headshot.href} alt="" className="lv-avatar" />}
+                  {bPhoto && <img src={bPhoto} alt="" className="lv-avatar" onError={(e)=>{e.target.style.display='none';}} />}
+                  {!bPhoto && batter?.headshot?.href && <img src={batter.headshot.href} alt="" className="lv-avatar" />}
                   <div>
-                    <div className="lv-player-name" style={{ color: 'var(--accent2)' }}>{batter.shortName || batter.displayName}{batter.jersey && <span className="lv-jersey" style={{ color: 'var(--text2)' }}> #{batter.jersey}</span>}</div>
+                    <div className="lv-player-name" style={{color:'var(--accent2)'}}>{bName || batter?.shortName || batter?.displayName}</div>
                     {batterStats && <div className="lv-player-stats">{batterStats['H-AB'] || '0-0'}{batterStats.HR > 0 ? `, ${batterStats.HR} HR` : ''}{batterStats.RBI > 0 ? `, ${batterStats.RBI} RBI` : ''}</div>}
                   </div>
                 </div>
@@ -604,8 +627,10 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
 
   const isLive = game?.competitions?.[0]?.status?.type?.state === 'in';
   const liveData = useLiveSituation(sport, isLive ? game : null);
+  // For live MLB games: override with MLB Stats API data (more real-time)
+  const mlbFeed = useMlbLiveGame(sport, game);
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
-  const accentColor = `#${team.color || '7c3aed'}`;
+  const accentColor = `#${team.color || '0092ff'}`;
 
   useEffect(() => {
     if (hasUpcomingGame !== undefined) {
@@ -633,7 +658,7 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
         {loading ? (
           <div className="tr2-no-game">Loading…</div>
         ) : isLive ? (
-          <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} onBoxScore={goToBoxScore} />
+          <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} mlbFeed={mlbFeed} onBoxScore={goToBoxScore} />
         ) : game ? (
           <GameScore game={game} teamId={team.id} sport={sport} onOpen={goToBoxScore} />
         ) : (

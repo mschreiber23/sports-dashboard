@@ -104,7 +104,12 @@ function TickerCard({ game, sport, myTeamIds, mlbScore }) {
   if (isLive) return (
     <button className={`ticker-card ticker-card-live-style ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
-        <span className="ticker-live"><span className="live-dot" />{shortDetail}</span>
+        <span className="ticker-live"><span className="live-dot" />{
+          // Prefer MLB inning string for MLB games
+          (sport === 'mlb' && mlbScore?.inning && mlbScore?.inningHalf)
+            ? `${mlbScore.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${mlbScore.inning}`
+            : shortDetail
+        }</span>
         {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
       <div className="ticker-teams">
