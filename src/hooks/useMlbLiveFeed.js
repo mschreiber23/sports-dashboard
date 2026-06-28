@@ -32,7 +32,7 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     raw: null, pitches: [], lastPitch: null, szTop: 3.38, szBot: 1.53,
     matchup: {}, count: { balls: 0, strikes: 0, outs: 0 },
     onFirst: false, onSecond: false, onThird: false, outs: 0,
-    recentAtBats: [], allAtBats: [], currentResult: null, currentAbout: {},
+    recentAtBats: [], allAtBats: [], scoringAtBats: [], currentResult: null, currentAbout: {},
     shortDetail: '', inning: null, inningHalf: null,
     innings: [], linescoreTotals: {},
     pitcherGameStats: {}, batterGameStats: {}, batterPosition: '',
@@ -60,6 +60,13 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     .filter((p) => p.about?.isComplete && (p.playEvents || []).some((e) => e.type === 'pitch'));
   const recentAtBats = completedAtBats.slice(-5).reverse();
   const allAtBats    = [...completedAtBats].reverse();
+
+  // Scoring plays — plays where runs scored, in reverse order (most recent first)
+  const scoringPlayIndices = plays.scoringPlays || [];
+  const scoringAtBats = scoringPlayIndices
+    .map((i) => allPlays[i])
+    .filter(Boolean)
+    .reverse();
 
   // ── Base runners ──
   const onFirst  = !!offense.first;
@@ -145,7 +152,7 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     onFirst, onSecond, onThird, outs,
     currentResult,
     currentAbout: current.about || {},
-    recentAtBats, allAtBats,
+    recentAtBats, allAtBats, scoringAtBats,
     batSide, venueId,
     pitcherGameStats, batterGameStats, batterPosition,
     onDeck, inHole,

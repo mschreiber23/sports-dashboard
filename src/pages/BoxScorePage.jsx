@@ -224,6 +224,81 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
 }
 
 /* ─── MLB full game summary (Play-by-Play tab) ───────── */
+/* ─── Scoring Summary (for completed games) ──────────── */
+function MlbScoringSummary({ mlbGamePk, venueId, teamColor, teamAltColor }) {
+  const feed = useMlbLiveFeed(mlbGamePk, true);
+  const { scoringAtBats } = feed;
+  const [selectedAtBat, setSelectedAtBat] = useState(null);
+
+  if (!mlbGamePk) return <div className="tp-loading">Loading…</div>;
+  if (!scoringAtBats.length) return <div className="tp-loading">No scoring plays recorded.</div>;
+
+  // Group by half-inning, newest first
+  const groups = [];
+  let cur = null;
+  const chronological = [...scoringAtBats].reverse();
+  for (const ab of chronological) {
+    const half   = ab.about?.halfInning || 'top';
+    const inning = ab.about?.inning || 1;
+    const key    = `${half}-${inning}`;
+    if (!cur || cur.key !== key) {
+      cur = { key, half, inning, atBats: [] };
+      groups.push(cur);
+    }
+    cur.atBats.push(ab);
+  }
+  groups.reverse();
+  groups.forEach((g) => g.atBats.reverse());
+
+  return (
+    <div className="mlb-pbp-wrap">
+      {selectedAtBat && (
+        <AtBatModal atBat={selectedAtBat} venueId={venueId}
+          teamColor={teamColor} teamAltColor={teamAltColor}
+          onClose={() => setSelectedAtBat(null)} />
+      )}
+
+      {groups.map((group) => {
+        const isTop = group.half === 'top';
+        return (
+          <div key={group.key} className="mlb-pbp-inning">
+            <div className="mlb-pbp-inning-header">
+              <span className={`mlb-pbp-half ${isTop ? 'mlb-pbp-top' : 'mlb-pbp-bot'}`}>
+                {isTop ? '▲' : '▼'} {isTop ? 'TOP' : 'BOT'} {group.inning}
+              </span>
+            </div>
+            {group.atBats.map((ab, i) => {
+              const result  = ab.result || {};
+              const pitches = (ab.playEvents || []).filter((e) => e.type === 'pitch');
+              const headshot = mlbHeadshot(ab.matchup?.batter?.id);
+              return (
+                <div key={i}
+                  className={`mlb-pbp-ab${pitches.length ? ' mlb-pbp-ab-clickable' : ''}`}
+                  onClick={pitches.length ? () => setSelectedAtBat(ab) : undefined}>
+                  {headshot && (
+                    <img src={headshot} alt="" className="mlb-pbp-photo"
+                      onError={(e) => { e.target.style.display='none'; }} />
+                  )}
+                  <div className="mlb-pbp-info">
+                    <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`}>
+                      {result.event}
+                    </span>
+                    <span className="mlb-pbp-desc">
+                      {result.description}
+                    </span>
+                  </div>
+                  {pitches.length > 0 && <span className="mlb-pbp-chevron">›</span>}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── MLB full game summary (Play-by-Play tab) ───────── */
 function MlbGameSummary({ mlbGamePk, venueId, teamColor, teamAltColor }) {
   const feed = useMlbLiveFeed(mlbGamePk, true);
   const { allAtBats } = feed;
@@ -1898,7 +1973,7 @@ export default function BoxScorePage() {
   useEffect(() => {
     if (!loading && !location.state?.tab) {
       if (isPre) setActiveTab('Preview');
-      else if (!isLive) setActiveTab('Box Score');
+      else if (isFinal) setActiveTab('Box Score');
       else setActiveTab('Gamecast');
     }
   }, [loading, isLive, isPre]);
@@ -1907,7 +1982,7 @@ export default function BoxScorePage() {
     ? ['Preview']
     : isLive
     ? ['Gamecast', 'Box Score', 'Play-by-Play']
-    : ['Box Score', 'Play-by-Play', 'Gamecast'];
+    : ['Box Score', 'Play-by-Play', 'Scoring Summary'];
 
   return (
     <div className="bsp-page">
@@ -1945,6 +2020,15 @@ export default function BoxScorePage() {
             {activeTab === 'Gamecast' && (
               sport === 'mlb'
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
+                : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
+            )}
+
+            {activeTab === 'Scoring Summary' && (
+              sport === 'mlb' && mlbGamePk
+                ? <MlbScoringSummary mlbGamePk={mlbGamePk}
+                    venueId={home?.team?.id}
+                    teamColor={home?.team?.color}
+                    teamAltColor={home?.team?.alternateColor} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 
