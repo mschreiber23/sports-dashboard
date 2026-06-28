@@ -607,30 +607,39 @@ async function mlbFetch(url, signal) {
 
 async function getMlbGameForDate(dateStr, awayName, homeName) {
   const norm = (s) => (s || '').toLowerCase();
-  const findMatch = (games) =>
-    games.find((g) => {
-      const a = norm(g.teams?.away?.team?.name);
-      const h = norm(g.teams?.home?.team?.name);
-      return a === norm(awayName) && h === norm(homeName);
-    }) || games.find((g) => {
-      const a = norm(g.teams?.away?.team?.name);
-      const h = norm(g.teams?.home?.team?.name);
-      return norm(awayName).includes(a.split(' ').pop()) && norm(homeName).includes(h.split(' ').pop());
-    });
 
-  // Try the given date first
+  const isMatch = (g) => {
+    const a = norm(g.teams?.away?.team?.name);
+    const h = norm(g.teams?.home?.team?.name);
+    return (a === norm(awayName) && h === norm(homeName)) ||
+      (norm(awayName).includes(a.split(' ').pop()) && norm(homeName).includes(h.split(' ').pop()));
+  };
+
   const tryDate = async (d) => {
     const data = await mlbFetch(`${STATSAPI}/schedule?sportId=1&date=${d}&hydrate=lineups,teams`);
     return data.dates?.[0]?.games || [];
   };
 
-  // Late West Coast games have ESPN UTC date = next calendar day; always try day-before fallback
+  // Fetch both the ESPN UTC date AND the day before — late West Coast games cross midnight UTC
   const prevDay = new Date(dateStr + 'T12:00:00Z');
   prevDay.setDate(prevDay.getDate() - 1);
   const prevStr = prevDay.toISOString().slice(0, 10);
 
   const [gamesOnDate, gamesOnPrev] = await Promise.all([tryDate(dateStr), tryDate(prevStr)]);
-  return findMatch(gamesOnDate) || findMatch(gamesOnPrev) || null;
+  const allMatching = [...gamesOnDate, ...gamesOnPrev].filter(isMatch);
+
+  if (!allMatching.length) return null;
+
+  // Prefer Live > Final > Scheduled so we pick the currently active game
+  // when a series has games on both candidate dates
+  const stateScore = (g) => {
+    const s = g.status?.abstractGameState || '';
+    if (s === 'Live') return 2;
+    if (s === 'Final') return 1;
+    return 0;
+  };
+  allMatching.sort((a, b) => stateScore(b) - stateScore(a));
+  return allMatching[0];
 }
 
 async function getProjectedLineup(teamId, signal) {
