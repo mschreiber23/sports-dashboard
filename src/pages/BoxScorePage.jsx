@@ -25,6 +25,33 @@ function resultColor(details) {
   return '#6b7280';
 }
 
+/* ─── SVG pitch zone coordinate system ──────────────────
+   Must be defined before AtBatModal which references them.
+   pX=0 plate center, pZ=0 ground level.
+   svgX(pX) = 180 + pX * 60   svgY(pZ) = 440 - pZ * 60
+──────────────────────────────────────────────────────── */
+const SX = 60;
+const CX = 180;
+const BY = 440;
+function svgX(pX) { return CX + pX * SX; }
+function svgY(pZ) { return BY - pZ * SX; }
+const platePts = (() => {
+  const cy = svgY(0.18), hw = 0.7083 * SX;
+  return [[CX-hw,cy-10],[CX+hw,cy-10],[CX+hw,cy+2],[CX,cy+12],[CX-hw,cy+2]]
+    .map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+})();
+function teamGlowColor(hex, opacity) {
+  if (!hex) return `rgba(26,74,34,${opacity})`;
+  const c = hex.startsWith('#') ? hex : `#${hex}`;
+  const [r, g, b] = c.slice(1).match(/.{2}/g).map((h) => parseInt(h, 16));
+  const maxC = Math.max(r, g, b);
+  const scale = maxC < 60 ? 2.5 : maxC < 120 ? 1.6 : 1;
+  const rr = Math.min(255, Math.round(r * scale));
+  const gg = Math.min(255, Math.round(g * scale));
+  const bb = Math.min(255, Math.round(b * scale));
+  return `rgba(${rr},${gg},${bb},${opacity})`;
+}
+
 /* ─── At-Bat Pitch Log ───────────────────────────────────
    Shows pitch-by-pitch log for recent at-bats, like MLB.com
 ──────────────────────────────────────────────────────── */
@@ -368,45 +395,10 @@ function AtBatEntry({ atBat, isCurrent, onSelect }) {
 }
 
 /* ─── Full-width immersive pitch view ────────────────────
-   Coordinate system (matches MLB API):
-     pX=0 = plate center, pX positive = catcher's right
-     pZ=0 = ground, pZ positive = higher
-
-   SVG viewBox "0 0 360 440":
-     Displayed pX: -3 to +3 ft    (60 px/ft, center=180)
-     Displayed pZ:  0 to  7.3 ft  (60 px/ft, 0 = y 440)
-
-   svgX(pX) = 180 + pX * 60
-   svgY(pZ) = 440 - pZ * 60
+   SVG coordinate helpers (SX, CX, BY, svgX, svgY, platePts,
+   teamGlowColor) are declared above AtBatModal so Rollup's
+   module evaluation order is guaranteed safe.
 ──────────────────────────────────────────────────────── */
-const SX = 60;  // px per foot
-const CX = 180; // SVG x at pX=0
-const BY = 440; // SVG y at pZ=0
-
-function svgX(pX) { return CX + pX * SX; }
-function svgY(pZ) { return BY - pZ * SX; }
-
-// Home plate pentagon (centre at svgY(0.18))
-const platePts = (() => {
-  const cy = svgY(0.18), hw = 0.7083 * SX;
-  return [[CX-hw,cy-10],[CX+hw,cy-10],[CX+hw,cy+2],[CX,cy+12],[CX-hw,cy+2]]
-    .map(([x,y])=>`${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-})();
-
-// Parse a hex team color and return a safe CSS color string for SVG use
-function teamGlowColor(hex, opacity) {
-  if (!hex) return `rgba(26,74,34,${opacity})`; // fallback green
-  const c = hex.startsWith('#') ? hex : `#${hex}`;
-  // Use adaptColorForDarkBg to ensure the color is visible
-  const [r, g, b] = c.slice(1).match(/.{2}/g).map((h) => parseInt(h, 16));
-  // Boost towards a readable brightness for glow effect
-  const maxC = Math.max(r, g, b);
-  const scale = maxC < 60 ? 2.5 : maxC < 120 ? 1.6 : 1;
-  const rr = Math.min(255, Math.round(r * scale));
-  const gg = Math.min(255, Math.round(g * scale));
-  const bb = Math.min(255, Math.round(b * scale));
-  return `rgba(${rr},${gg},${bb},${opacity})`;
-}
 
 function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation, venueId, teamColor, teamAltColor }) {
 
