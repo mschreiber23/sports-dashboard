@@ -2721,7 +2721,7 @@ body {
 .bsp-totals-label { font-size: 11px; font-weight: 800; color: var(--text2); text-transform: uppercase; }
 .bsp-player-cell { display: flex; align-items: center; gap: 7px; }
 .bsp-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--bg3); flex-shrink: 0; }
-.bsp-player-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.bsp-player-name { font-size: 11px; font-weight: 200; color: var(--text); }
 .bsp-player-pos { font-size: 11px; color: var(--text2); }
 
 /* ── Box Score Modal v2 ── */
@@ -4062,7 +4062,7 @@ body {
 }
 .dfs-panel-team { display: flex; align-items: center; gap: 10px; }
 .dfs-panel-logo { width: 28px; height: 28px; object-fit: contain; }
-.dfs-panel-name { font-size: 15px; font-weight: 800; }
+.dfs-panel-name { font-size: 15px; font-weight: 200; }
 .dfs-panel-sub { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
 
 /* Filter buttons */
@@ -4119,7 +4119,7 @@ thead .dfs-sticky-player {
 .dfs-td-num { text-align: center; padding: 8px 0; color: var(--text2); font-size: 11px; width: 44px; min-width: 44px; }
 .dfs-td-player { text-align: left; padding-left: 14px; }
 .dfs-td-stat { }
-.dfs-player-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.dfs-player-name { font-size: 12px; font-weight: 100; color: var(--text); }
 .dfs-player-meta { font-size: 10px; color: var(--text2); }
 .dfs-player-hand { font-size: 10px; color: var(--text2); }
 .dfs-player-row:hover { background: rgba(255,255,255,0.03); }
@@ -5915,7 +5915,7 @@ thead .dfs-sticky-player {
 .bsp-th { font-size: 10px; padding: 6px 8px; }
 .bsp-td { padding: 7px 8px; }
 .bsp-td-player { padding-left: 8px; }
-.bsp-player-name { font-size: 13px; }
+.bsp-player-name { font-size: 11px; }
 .bsp-tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .bsp-tr:hover { background: rgba(255,255,255,0.025); }
 
@@ -5953,7 +5953,7 @@ thead .dfs-sticky-player {
 /* Player name */
 .bsp-player-name {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 200;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
