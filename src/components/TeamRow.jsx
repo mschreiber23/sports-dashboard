@@ -55,7 +55,8 @@ function GameScore({ game, teamId, sport, onOpen }) {
     const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
 
     return (
-      <div className="pregame-bar">
+      <div className="pregame-bar" style={{cursor:'pointer'}}
+        onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
         <div className="pregame-body">
           {/* Left column: time + teams */}
           <div className="pregame-left">
@@ -101,13 +102,9 @@ function GameScore({ game, teamId, sport, onOpen }) {
                   </div>
                 ))}
               </div>
-              <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Preview</button>
             </div>
           )}
-          {/* Preview btn when no pitchers (non-MLB) */}
-          {probables.length === 0 && (
-            <button className="pregame-gamecast-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>Preview</button>
-          )}
+          {/* No Preview button — whole card is clickable */}
         </div>
       </div>
     );
