@@ -6241,9 +6241,38 @@ thead .dfs-sticky-player {
   background: var(--bg3);
   flex-shrink: 0;
 }
-.mlbc-pitcher-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.mlbc-pitcher-details { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.mlbc-pitcher-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mlbc-hand { font-size: 11px; color: var(--text2); font-weight: 500; }
 .mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
+
+/* Pre-game pitcher stat grid (W-L · ERA · IP · SO) */
+.mlbc-pitcher-statrow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mlbc-pstat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 24px;
+}
+.mlbc-pstat-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.mlbc-pstat-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
 
 /* Pitcher/batter matchup (live) and W/L decisions (final) */
 .mlbc-matchup-row, .mlbc-decisions {

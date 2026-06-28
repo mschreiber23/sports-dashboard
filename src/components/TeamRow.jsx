@@ -87,7 +87,16 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
     const ath = prob.athlete || {};
     const headshot = typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href;
     const sm = {}; (prob.statistics?.splits?.categories || []).forEach((s) => { sm[s.abbreviation] = s.displayValue; });
-    return { id: ath.id, team: c.team, name: ath.shortName || ath.displayName, headshot, hand: ath.throws?.abbreviation || '', record: sm.W && sm.L ? `${sm.W}-${sm.L}` : '', era: sm.ERA || '' };
+    return {
+      id: ath.id, team: c.team,
+      name: ath.shortName || ath.displayName,
+      headshot,
+      hand: ath.throws?.abbreviation || '',
+      record: sm.W && sm.L ? `${sm.W}-${sm.L}` : '',
+      era: sm.ERA || '',
+      ip: sm.IP || '',
+      so: sm.SO || sm.K || '',
+    };
   }).filter(Boolean);
   return (
     <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
@@ -110,9 +119,16 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
                 <div className="mlbc-pitcher-team">{p.team?.abbreviation}</div>
                 <div className="mlbc-pitcher-info">
                   {p.headshot && <img src={p.headshot} alt="" className="mlbc-pitcher-photo" onError={(ev)=>ev.target.style.display='none'} />}
-                  <div>
+                  <div className="mlbc-pitcher-details">
                     <div className="mlbc-pitcher-name">{p.name}{p.hand && <span className="mlbc-hand"> {p.hand}HP</span>}</div>
-                    <div className="mlbc-pitcher-stats">{[p.record, p.era && `${p.era} ERA`].filter(Boolean).join(' · ')}</div>
+                    {(p.record || p.era || p.ip || p.so) && (
+                      <div className="mlbc-pitcher-statrow">
+                        {p.record && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.record}</span><span className="mlbc-pstat-lbl">W-L</span></div>}
+                        {p.era    && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.era}</span><span className="mlbc-pstat-lbl">ERA</span></div>}
+                        {p.ip     && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.ip}</span><span className="mlbc-pstat-lbl">IP</span></div>}
+                        {p.so     && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.so}</span><span className="mlbc-pstat-lbl">SO</span></div>}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
