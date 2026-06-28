@@ -5464,3 +5464,168 @@ thead .dfs-sticky-player {
   padding: 4px 0 8px;
 }
 .gc-on-deck-sep { margin: 0 4px; }
+
+/* ── At Bat Details Modal ─────────────────────────────── */
+.ab-result-header-clickable {
+  cursor: pointer;
+  transition: background 0.12s;
+  border-radius: 8px;
+  padding: 4px;
+  margin: -4px;
+}
+.ab-result-header-clickable:hover { background: var(--bg3); }
+.ab-result-chevron {
+  font-size: 18px;
+  color: var(--text2);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ab-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 500;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.ab-modal {
+  background: #0d0d14;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.ab-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 16px 10px;
+  position: relative;
+}
+.ab-modal-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+.ab-modal-close {
+  position: absolute;
+  right: 16px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: var(--text);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.ab-modal-close:hover { background: rgba(255,255,255,0.2); }
+
+/* Pitcher | diamond+count | Batter */
+.ab-modal-matchup {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 24px 14px;
+  gap: 8px;
+}
+.ab-modal-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+}
+.ab-modal-photo {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  background: var(--bg3);
+  border: 2px solid var(--border);
+}
+.ab-modal-player-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+}
+.ab-modal-player-sub {
+  font-size: 11px;
+  color: var(--text2);
+  text-align: center;
+}
+.ab-modal-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.ab-modal-count {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pitch zone SVG */
+.ab-modal-svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 360/310;
+  display: block;
+}
+
+/* Pitch list */
+.ab-modal-pitches {
+  padding: 8px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ab-modal-pitch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ab-modal-pitch-row:last-child { border-bottom: none; }
+.ab-modal-pitch-dot {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900; color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.ab-modal-pitch-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ab-modal-pitch-result {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.ab-modal-pitch-detail {
+  font-size: 13px;
+  color: var(--text2);
+}
+.ab-modal-count-badge {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text2);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}

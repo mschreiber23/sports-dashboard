@@ -28,7 +28,176 @@ function resultColor(details) {
 /* ─── At-Bat Pitch Log ───────────────────────────────────
    Shows pitch-by-pitch log for recent at-bats, like MLB.com
 ──────────────────────────────────────────────────────── */
-function AtBatEntry({ atBat, isCurrent }) {
+/* ─── At Bat Details Modal ───────────────────────────── */
+function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
+  const pitches  = (atBat.playEvents || []).filter((e) => e.type === 'pitch');
+  const matchup  = atBat.matchup  || {};
+  const result   = atBat.result   || {};
+  const finalCnt = atBat.count    || {};
+
+  // Use per-batter strike zone from first available pitch
+  const szTop = pitches.find((p) => p.pitchData?.strikeZoneTop)?.pitchData?.strikeZoneTop  ?? 3.38;
+  const szBot = pitches.find((p) => p.pitchData?.strikeZoneBottom)?.pitchData?.strikeZoneBottom ?? 1.53;
+
+  const pitcherPhoto = mlbHeadshot(matchup.pitcher?.id);
+  const batterPhoto  = mlbHeadshot(matchup.batter?.id);
+  const pName = matchup.pitcher?.fullName?.split(' ').slice(-1)[0] || '';
+  const bName = matchup.batter?.fullName?.split(' ').slice(-1)[0]  || '';
+
+  // Zone bounds
+  const zL = svgX(-0.83), zR = svgX(0.83);
+  const zT = svgY(szTop),  zB = svgY(szBot);
+  const zW = zR - zL,      zH = zB - zT;
+  const c1 = zL + zW/3,  c2 = zL + zW*2/3;
+  const r1 = zT + zH/3,  r2 = zT + zH*2/3;
+
+  const glowC = teamGlowColor(teamColor, 0.5);
+  const glowA = teamGlowColor(teamAltColor || teamColor, 0.3);
+
+  return (
+    <div className="ab-modal-overlay" onClick={onClose}>
+      <div className="ab-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="ab-modal-header">
+          <span className="ab-modal-title">At Bat Details</span>
+          <button className="ab-modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Pitcher | count+diamond | Batter */}
+        <div className="ab-modal-matchup">
+          <div className="ab-modal-player">
+            {pitcherPhoto && (
+              <img src={pitcherPhoto} alt="" className="ab-modal-photo"
+                onError={(e) => { e.target.style.display='none'; }} />
+            )}
+            <div className="ab-modal-player-name">{pName}</div>
+            <div className="ab-modal-player-sub">
+              {matchup.pitchHand?.code && `${matchup.pitchHand.code}HP`}
+            </div>
+          </div>
+
+          <div className="ab-modal-center">
+            <BaseDiamond size={38} />
+            <div className="ab-modal-count">{finalCnt.balls ?? 0} - {finalCnt.strikes ?? 0}</div>
+            <CountDots filled={finalCnt.outs ?? 0} total={3} color="red" />
+          </div>
+
+          <div className="ab-modal-player">
+            {batterPhoto && (
+              <img src={batterPhoto} alt="" className="ab-modal-photo"
+                onError={(e) => { e.target.style.display='none'; }} />
+            )}
+            <div className="ab-modal-player-name">{bName}</div>
+            <div className="ab-modal-player-sub">
+              {matchup.batSide?.code === 'L' ? 'L' : 'R'}
+            </div>
+          </div>
+        </div>
+
+        {/* Pitch zone SVG — full at-bat pitches */}
+        <svg viewBox="0 120 360 310" className="ab-modal-svg">
+          <defs>
+            <linearGradient id="abBg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#050c0a"/>
+              <stop offset="65%" stopColor="#0a1f0e"/>
+              <stop offset="100%" stopColor="#1c1506"/>
+            </linearGradient>
+            <radialGradient id="abGrass" cx="50%" cy="35%" r="55%">
+              <stop offset="0%"   stopColor={glowC}/>
+              <stop offset="100%" stopColor="#050c0a" stopOpacity="0"/>
+            </radialGradient>
+            <radialGradient id="abDirt" cx="50%" cy="100%" r="60%">
+              <stop offset="0%"   stopColor={glowA}/>
+              <stop offset="100%" stopColor="#1c1506" stopOpacity="0"/>
+            </radialGradient>
+            <radialGradient id="abVignette" cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stopColor="transparent"/>
+              <stop offset="100%" stopColor="rgba(4,9,12,0.7)"/>
+            </radialGradient>
+            <linearGradient id="abTunnel" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+              <stop offset="0%"   stopColor="#2563eb" stopOpacity="0"/>
+              <stop offset="70%"  stopColor="#3b82f6" stopOpacity="0.14"/>
+              <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.05"/>
+            </linearGradient>
+          </defs>
+
+          <rect x="0" y="0" width="360" height="440" fill="url(#abBg)"/>
+          {venueId && (
+            <image href={`https://a.espncdn.com/i/venues/mlb/day/${venueId}.jpg`}
+              x="0" y="0" width="360" height="440"
+              preserveAspectRatio="xMidYMid slice" opacity="0.2"
+              onError={(e) => { e.target.style.display='none'; }} />
+          )}
+          <ellipse cx="180" cy="170" rx="220" ry="140" fill="url(#abGrass)"/>
+          <ellipse cx="180" cy="440" rx="210" ry="90"  fill="url(#abDirt)"/>
+          <rect x="0" y="0" width="360" height="440" fill="url(#abVignette)"/>
+          <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},440 L${svgX(-1.6)},440 Z`}
+            fill="url(#abTunnel)"/>
+
+          {/* Strike zone */}
+          <rect x={zL} y={zT} width={zW} height={zH}
+            fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.75)" strokeWidth="1.8"/>
+          {[c1,c2].map((x,i) => (
+            <line key={`c${i}`} x1={x} y1={zT} x2={x} y2={zB}
+              stroke="rgba(255,255,255,0.35)" strokeWidth="0.9"/>
+          ))}
+          {[r1,r2].map((y,i) => (
+            <line key={`r${i}`} x1={zL} y1={y} x2={zR} y2={y}
+              stroke="rgba(255,255,255,0.35)" strokeWidth="0.9"/>
+          ))}
+
+          {/* Home plate */}
+          <polygon points={platePts} fill="rgba(255,255,255,0.88)"/>
+
+          {/* All pitches in this at-bat */}
+          {pitches.map((p, i) => {
+            const c = p.pitchData?.coordinates;
+            if (c?.pX == null || c?.pZ == null) return null;
+            const cx = svgX(c.pX), cy = svgY(c.pZ);
+            const col = resultColor(p.details);
+            return (
+              <g key={i}>
+                <circle cx={cx} cy={cy} r={13} fill={col}
+                  stroke="rgba(0,0,0,0.5)" strokeWidth="1.5"/>
+                <text x={cx} y={cy+5} textAnchor="middle"
+                  fontSize="11" fontWeight="900" fill="#fff"
+                  style={{fontFamily:'system-ui,sans-serif'}}>
+                  {i + 1}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Pitch-by-pitch list */}
+        <div className="ab-modal-pitches">
+          {pitches.map((p, i) => {
+            const det = p.details || {};
+            const pd  = p.pitchData || {};
+            const cnt = p.count || {};
+            const col = resultColor(det);
+            return (
+              <div key={i} className="ab-modal-pitch-row">
+                <div className="ab-modal-pitch-dot" style={{background: col}}>{i+1}</div>
+                <div className="ab-modal-pitch-info">
+                  <span className="ab-modal-pitch-result">{det.description || ''}</span>
+                  <span className="ab-modal-pitch-detail">
+                    {pd.startSpeed && <strong>{pd.startSpeed.toFixed(1)} mph</strong>}
+                    {det.type?.description && <span> {det.type.description}</span>}
+                  </span>
+                </div>
+                <span className="ab-modal-count-badge">{cnt.balls ?? 0} - {cnt.strikes ?? 0}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Clickable At-Bat Entry ─────────────────────────── */
+function AtBatEntry({ atBat, isCurrent, onSelect }) {
   const pitches = (atBat.playEvents || []).filter((e) => e.type === 'pitch');
   if (!pitches.length) return null;
 
@@ -37,11 +206,16 @@ function AtBatEntry({ atBat, isCurrent }) {
   const batterId = batter.id;
   const headshot = mlbHeadshot(batterId);
 
+  const canSelect = !isCurrent && pitches.length > 0 && !!onSelect;
+
   return (
     <div className="ab-entry">
-      {/* At-bat result header */}
+      {/* At-bat result header — clickable to open At Bat Details modal */}
       {result.description && (
-        <div className="ab-result-header">
+        <div
+          className={`ab-result-header${canSelect ? ' ab-result-header-clickable' : ''}`}
+          onClick={canSelect ? () => onSelect(atBat) : undefined}
+        >
           {headshot && (
             <img src={headshot} alt="" className="ab-headshot"
               onError={(e) => { e.target.style.display = 'none'; }} />
@@ -55,6 +229,7 @@ function AtBatEntry({ atBat, isCurrent }) {
               {atBat.count?.outs != null && <strong> {atBat.count.outs} out{atBat.count.outs!==1?'s':''}.</strong>}
             </span>
           </div>
+          {canSelect && <span className="ab-result-chevron">›</span>}
         </div>
       )}
 
@@ -786,7 +961,8 @@ function CountDots({ filled, total, color }) {
   );
 }
 
-function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk }) {
+function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk, homeTeam }) {
+  const [selectedAtBat, setSelectedAtBat] = useState(null);
   const isLive = status?.type?.state === 'in';
   const feed = useMlbLiveFeed(mlbGamePk, isLive);
   const {
@@ -916,9 +1092,20 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk 
               <div className="ab-log-label">RECENT PLAYS</div>
               {currentAtBatForLog && <AtBatEntry atBat={currentAtBatForLog} isCurrent />}
               {recentAtBats.map((ab, i) => (
-                <AtBatEntry key={i} atBat={ab} />
+                <AtBatEntry key={i} atBat={ab} onSelect={setSelectedAtBat} />
               ))}
             </div>
+          )}
+
+          {/* At Bat Details modal */}
+          {selectedAtBat && (
+            <AtBatModal
+              atBat={selectedAtBat}
+              venueId={homeTeam?.team?.id}
+              teamColor={homeTeam?.team?.color}
+              teamAltColor={homeTeam?.team?.alternateColor}
+              onClose={() => setSelectedAtBat(null)}
+            />
           )}
         </>
       )}
@@ -1448,7 +1635,7 @@ export default function BoxScorePage() {
 
             {activeTab === 'Gamecast' && (
               sport === 'mlb'
-                ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} />
+                ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 
