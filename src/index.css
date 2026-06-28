@@ -1600,7 +1600,7 @@ body {
 .ticker-team-left { display: flex; align-items: center; gap: 4px; }
 .ticker-logo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
 .ticker-abbr { font-size: 11px; font-weight: 100; color: #ffffff; }
-.ticker-my-team .ticker-abbr { color: var(--accent2); }
+.ticker-my-team .ticker-abbr { color: #ffffff; font-weight: 1000; }
 .ticker-winner .ticker-abbr { color: #ffffff; font-weight: 1000; }
 .ticker-record { font-size: 9px; color: var(--text2); }
 .ticker-score { font-size: 12px; font-weight: 100; color: #f1f1f3; font-variant-numeric: tabular-nums; min-width: 16px; text-align: right; }
