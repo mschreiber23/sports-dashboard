@@ -1471,7 +1471,7 @@ body {
 .lv-broadcast-bottom { font-size: 10px; color: var(--text2); margin-top: 2px; }
 .lv-center { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .lv-diamond-count { display: flex; align-items: center; gap: 10px; }
-.lv-diamond { width: 40px; height: 40px; flex-shrink: 0; }
+.lv-diamond { width: 25px; height: 25px; flex-shrink: 0; }
 .lv-base { fill: var(--bg3); stroke: rgba(255,255,255,0.2); stroke-width: 1.5; }
 .lv-base-on { fill: #f59e0b; stroke: #fbbf24; }
 .lv-count-col { display: flex; flex-direction: column; gap: 4px; }
@@ -6155,13 +6155,13 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
   min-width: 60px;
 }
-.mlbc-count-dots { display: flex; flex-direction: column; gap: 2px; }
+.mlbc-count-dots { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .mlbc-dot-row { display: flex; gap: 3px; }
-.mlbc-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.mlbc-dot { width: 6px; height: 6px; border-radius: 50%; background: #ffffff26; }
 .mlbc-dot-g { background: #22c55e; }
 .mlbc-dot-y { background: #fbbf24; }
 .mlbc-dot-r { background: #f87171; }
-.mlbc-count-num { font-size: 12px; font-weight: 800; color: var(--text); }
+.mlbc-count-num { font-size: 10px; font-weight: 800; color: var(--text); }
 
 /* Pitchers section (pre-game) */
 .mlbc-pitchers-row {
