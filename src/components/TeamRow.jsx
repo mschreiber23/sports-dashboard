@@ -285,7 +285,8 @@ function FinalMLBGame({ game, teamId, sport }) {
   const homeInfo = makeInfo(home);
 
   return (
-    <div className="f2-box">
+    <div className="f2-box" style={{cursor:'pointer'}}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
       {/* Left: FINAL pill + two-row team grid */}
       <div className="f2-left-panel">
         <span className="badge badge-final f2-final-pill">FINAL</span>
@@ -330,10 +331,7 @@ function FinalMLBGame({ game, teamId, sport }) {
             {decisions.save && <Decision label="S" pitcher={decisions.save} />}
           </div>
         )}
-        <div className="f2-buttons">
-          <button className="f2-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>Gamecast</button>
-          <button className="f2-btn" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>Box Score</button>
-        </div>
+        {/* No buttons — whole card is clickable */}
       </div>
     </div>
   );
