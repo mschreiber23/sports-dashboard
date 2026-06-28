@@ -108,7 +108,7 @@ const NAV_ITEMS = [
   { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
   { path: '/',          label: '',          logo: true },
   { path: '/players',   label: 'Players',   Icon: PlayersIcon },
-  { path: null,         label: 'More',      more: true },
+  { path: 'more',       label: 'More',      more: true },
 ];
 
 /* ── More dropdown ───────────────────────────────────── */
@@ -182,7 +182,7 @@ export function TopNav() {
           <span>Shribely</span>
         </Link>
         <div className="top-nav-links">
-          {NAV_ITEMS.filter((i) => !i.logo).map((item) => {
+          {NAV_ITEMS.filter((i) => !i.logo && !i.more && i.Icon).map((item) => {
             const { Icon } = item;
             const active = pathname === item.path;
             return (
