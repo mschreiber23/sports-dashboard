@@ -82,11 +82,14 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
   const broadcast = comp?.broadcasts?.[0]?.names?.join('/') || '';
   const shortDetail = comp?.status?.type?.shortDetail || '';
   const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
+
+  // prob.statistics is a flat array on the scoreboard endpoint
   const probables = [away, home].filter(Boolean).map((c) => {
     const prob = c.probables?.[0]; if (!prob) return null;
     const ath = prob.athlete || {};
     const headshot = typeof ath.headshot === 'string' ? ath.headshot : ath.headshot?.href;
-    const sm = {}; (prob.statistics?.splits?.categories || []).forEach((s) => { sm[s.abbreviation] = s.displayValue; });
+    const sm = {};
+    (Array.isArray(prob.statistics) ? prob.statistics : []).forEach(s => { sm[s.abbreviation] = s.displayValue; });
     return {
       id: ath.id, team: c.team,
       name: ath.shortName || ath.displayName,
@@ -94,10 +97,35 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
       hand: ath.throws?.abbreviation || '',
       record: sm.W && sm.L ? `${sm.W}-${sm.L}` : '',
       era: sm.ERA || '',
-      ip: sm.IP || '',
-      so: sm.SO || sm.K || '',
     };
   }).filter(Boolean);
+
+  // Fetch IP + K from ESPN core stats API (not included in scoreboard)
+  const [extraStats, setExtraStats] = useState({});
+  useEffect(() => {
+    const ids = probables.map(p => p.id).filter(Boolean);
+    if (!ids.length) return;
+    const year = new Date().getFullYear();
+    let cancelled = false;
+    Promise.all(ids.map(id =>
+      fetch(`https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/seasons/${year}/types/2/athletes/${id}/statistics/0`)
+        .then(r => r.json())
+        .then(d => {
+          const cats = d?.splits?.categories || [];
+          const pitCat = cats.find(c => c.name?.toLowerCase() === 'pitching');
+          const sm = {};
+          (pitCat?.stats || []).forEach(s => { sm[s.abbreviation] = s.displayValue; });
+          return { id, ip: sm.IP || '', k: sm.K || '' };
+        })
+        .catch(() => ({ id, ip: '', k: '' }))
+    )).then(results => {
+      if (cancelled) return;
+      const map = {};
+      results.forEach(r => { map[r.id] = { ip: r.ip, k: r.k }; });
+      setExtraStats(map);
+    });
+    return () => { cancelled = true; };
+  }, [game.id]);
   return (
     <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
       borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
@@ -113,26 +141,37 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
         <>
           <div className="mlbc-divider" />
           <div className="mlbc-pitchers-row">
-            {probables.map((p, i) => (
-              <div key={i} className="mlbc-pitcher-col"
-                onClick={(ev) => { ev.stopPropagation(); p.id && navigate(`/player/${sport}/${p.id}`); }}>
-                <div className="mlbc-pitcher-team">{p.team?.abbreviation}</div>
-                <div className="mlbc-pitcher-info">
-                  {p.headshot && <img src={p.headshot} alt="" className="mlbc-pitcher-photo" onError={(ev)=>ev.target.style.display='none'} />}
-                  <div className="mlbc-pitcher-details">
-                    <div className="mlbc-pitcher-name">{p.name}{p.hand && <span className="mlbc-hand"> {p.hand}HP</span>}</div>
-                    {(p.record || p.era || p.ip || p.so) && (
-                      <div className="mlbc-pitcher-statrow">
-                        {p.record && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.record}</span><span className="mlbc-pstat-lbl">W-L</span></div>}
-                        {p.era    && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.era}</span><span className="mlbc-pstat-lbl">ERA</span></div>}
-                        {p.ip     && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.ip}</span><span className="mlbc-pstat-lbl">IP</span></div>}
-                        {p.so     && <div className="mlbc-pstat"><span className="mlbc-pstat-val">{p.so}</span><span className="mlbc-pstat-lbl">SO</span></div>}
-                      </div>
-                    )}
+            {probables.map((p, i) => {
+              const ex = extraStats[p.id] || {};
+              const statsToShow = [
+                p.record && { val: p.record, lbl: 'W-L' },
+                p.era    && { val: p.era,    lbl: 'ERA' },
+                ex.ip    && { val: ex.ip,    lbl: 'IP'  },
+                ex.k     && { val: ex.k,     lbl: 'SO'  },
+              ].filter(Boolean);
+              return (
+                <div key={i} className="mlbc-pitcher-col"
+                  onClick={(ev) => { ev.stopPropagation(); p.id && navigate(`/player/${sport}/${p.id}`); }}>
+                  <div className="mlbc-pitcher-team">{p.team?.abbreviation}</div>
+                  <div className="mlbc-pitcher-info">
+                    {p.headshot && <img src={p.headshot} alt="" className="mlbc-pitcher-photo" onError={(ev)=>ev.target.style.display='none'} />}
+                    <div className="mlbc-pitcher-details">
+                      <div className="mlbc-pitcher-name">{p.name}{p.hand && <span className="mlbc-hand"> {p.hand}HP</span>}</div>
+                      {statsToShow.length > 0 && (
+                        <div className="mlbc-pitcher-statrow">
+                          {statsToShow.map(s => (
+                            <div key={s.lbl} className="mlbc-pstat">
+                              <span className="mlbc-pstat-val">{s.val}</span>
+                              <span className="mlbc-pstat-lbl">{s.lbl}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
