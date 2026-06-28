@@ -227,7 +227,8 @@ function MlbFinalCard({ game, sport, navigate }) {
           <div className="mlbc-divider" />
           <div className="mlbc-decisions">
             {[{label:'W',p:decisions.winner},{label:'L',p:decisions.loser},decisions.save&&{label:'S',p:decisions.save}].filter(Boolean).map(({label,p})=>(
-              <div key={label} className="mlbc-decision-col">
+              <div key={label} className="mlbc-decision-col" style={{cursor: p.mlbId ? 'pointer' : 'default'}}
+                onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/mlb/${p.mlbId}`); }}>
                 {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
                 <div>
                   <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
@@ -906,3 +907,6 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
     </div>
   );
 }
+
+// Named exports for use in ScoresPage
+export { MlbPreCard, MlbLiveCard, MlbFinalCard, fetchMlbDecisions };

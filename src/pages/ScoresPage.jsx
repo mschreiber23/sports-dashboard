@@ -1,161 +1,177 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTeamLogo, getTeamLogoFallback, getScoreboard, SPORTS } from '../api/espn';
+import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
+import { MlbPreCard, MlbLiveCard, MlbFinalCard } from '../components/TeamRow';
 
-function getScore(c) {
-  const s = c?.score;
-  if (s == null) return null;
-  return typeof s === 'object' ? s.displayValue : String(s);
+/* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
+async function fetchMlbScoreMap(dateStr, espnGames) {
+  try {
+    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+    const r = await fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&hydrate=linescore`);
+    const data = await r.json();
+    const mlbGames = data.dates?.[0]?.games || [];
+    const norm = (s) => (s||'').toLowerCase().replace(/[^a-z]/g,'');
+    const map = {};
+    for (const eg of espnGames) {
+      const comps = eg.competitions?.[0]?.competitors || [];
+      const ea = comps.find(c=>c.homeAway==='away')?.team?.displayName;
+      const eh = comps.find(c=>c.homeAway==='home')?.team?.displayName;
+      const mg = mlbGames.find(g => norm(g.teams?.away?.team?.name)===norm(ea) && norm(g.teams?.home?.team?.name)===norm(eh));
+      if (!mg?.linescore) continue;
+      const ls = mg.linescore;
+      const state = mg.status?.abstractGameState;
+      map[eg.id] = {
+        linescoreTotals: { away: ls.teams?.away, home: ls.teams?.home },
+        inningDisplay: ls.currentInning
+          ? `${ls.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${ls.currentInning}` : '',
+        raw: state === 'Live' ? {} : null, // truthy raw = live for inning display
+        count: { balls: 0, strikes: 0, outs: ls.outs ?? 0 },
+        onFirst: false, onSecond: false, onThird: false, outs: ls.outs ?? 0,
+        matchup: {}, pitcherGameStats: {}, batterGameStats: {}, batSide: 'R',
+        inningHalf: ls.inningHalf,
+      };
+    }
+    return map;
+  } catch { return {}; }
 }
 
-function teamLogo(team) { return team?.logo || team?.logos?.[0]?.href || null; }
-function LogoImg({ team, className }) {
-  const dark = getTeamLogo(team);
-  const orig = getTeamLogoFallback(team);
-  if (!dark && !orig) return null;
-  return <img src={dark||orig} onError={(e)=>{if(orig&&e.target.src!==orig){e.target.onerror=null;e.target.src=orig;}}} alt="" className={className} />;
+function toDateStr(d) {
+  return d.getFullYear().toString()
+    + String(d.getMonth()+1).padStart(2,'0')
+    + String(d.getDate()).padStart(2,'0');
 }
 
-function ScoreCard({ game, sport, myTeamIds }) {
+export default function ScoresPage() {
   const navigate = useNavigate();
+  const { favorites, sportOrder } = useFavorites();
+
+  const [activeSport, setActiveSport] = useState('mlb');
+  const [games, setGames] = useState([]);
+  const [mlbScoreMap, setMlbScoreMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const pollRef = useRef(null);
+
+  const todayStr = toDateStr(new Date());
+  const myTeamIds = favorites.teams.filter(t=>t.sport===activeSport).map(t=>t.team.id);
+
+  const stateOrder = { in: 0, post: 1, pre: 2 };
+  const sortGames = (evts) => [...evts].sort((a,b) => {
+    const aMine = a.competitions?.[0]?.competitors?.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    const bMine = b.competitions?.[0]?.competitors?.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    if (aMine !== bMine) return aMine - bMine;
+    const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
+    const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
+    return (stateOrder[sa]??2)-(stateOrder[sb]??2);
+  });
+
+  useEffect(() => {
+    clearInterval(pollRef.current);
+    setLoading(true);
+    setGames([]);
+
+    const load = () => getScoreboard(activeSport, todayStr)
+      .then(async (evts) => {
+        const sorted = sortGames(evts);
+        setGames(sorted);
+        if (activeSport === 'mlb') {
+          const map = await fetchMlbScoreMap(todayStr, sorted);
+          setMlbScoreMap(map);
+        }
+      })
+      .catch(()=>{});
+
+    load().finally(()=>setLoading(false));
+    pollRef.current = setInterval(load, 30000);
+    return () => clearInterval(pollRef.current);
+  }, [activeSport]);
+
+  const availableSports = ['mlb','nba','nfl','nhl'].filter(s=>
+    sportOrder.includes(s) || true
+  );
+
+  return (
+    <div className="page-content">
+      <h1 className="page-title">Scores</h1>
+
+      {/* Sport selector */}
+      <div className="scores-sport-tabs">
+        {availableSports.map((sport) => (
+          <button key={sport}
+            className={`ts-tab ${activeSport===sport ? 'ts-tab-active' : ''}`}
+            onClick={() => setActiveSport(sport)}>
+            {SPORTS[sport]?.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <div className="teams-grid" style={{marginTop:12}}>
+          {[1,2,3,4,5,6].map(i=><div key={i} className="mlbc-card" style={{height:120}}/>)}
+        </div>
+      )}
+
+      {!loading && games.length === 0 && (
+        <div className="empty-state"><div className="empty-icon">🏟</div><p>No games today.</p></div>
+      )}
+
+      {!loading && games.length > 0 && (
+        <div className="teams-grid" style={{marginTop:12}}>
+          {games.map((game) => {
+            const st = game.competitions?.[0]?.status?.type?.state;
+            if (activeSport === 'mlb') {
+              const mlbFeed = mlbScoreMap[game.id] || null;
+              if (st === 'pre')  return <MlbPreCard  key={game.id} game={game} sport="mlb" navigate={navigate} />;
+              if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} />;
+              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} mlbFeed={mlbFeed} liveData={null} />;
+            }
+            // Non-MLB: simple clean card
+            return <ScoreCardSimple key={game.id} game={game} sport={activeSport} navigate={navigate} myTeamIds={myTeamIds} />;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Simple card for non-MLB sports ── */
+function ScoreCardSimple({ game, sport, navigate, myTeamIds }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
-  const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
-  const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
+  const away = competitors.find(c=>c.homeAway==='away')||competitors[0];
+  const home = competitors.find(c=>c.homeAway==='home')||competitors[1];
   const status = comp?.status;
   const state = status?.type?.state;
   const isLive = state === 'in';
   const isFinal = state === 'post';
-  const isPre = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
-  const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
+  const getScore = (c) => { const s=c?.score; return s==null?null:typeof s==='object'?s.displayValue:String(s); };
+  const isMine = myTeamIds.some(id=>competitors.some(c=>c.team?.id===id));
 
   return (
-    <button
-      className={`scores-card ${isMine ? 'scores-card-mine' : ''} ${isLive ? 'scores-card-live' : ''}`}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
-    >
-      <div className="scores-card-status">
-        {isLive && <span className="badge badge-live" style={{fontSize:10}}><span className="live-dot"/>{shortDetail}</span>}
-        {isFinal && <span className="badge badge-final" style={{fontSize:10}}>Final</span>}
-        {isPre && <span className="scores-time">{shortDetail}</span>}
-      </div>
-      {[away, home].filter(Boolean).map((c) => (
-        <div key={c.team?.id} className={`scores-team-row ${c.winner ? 'scores-winner' : ''}`}>
-          <div className="scores-team-left">
-            <LogoImg team={c.team} className="scores-team-logo" />
-            <div>
-              <span className={`scores-team-name ${myTeamIds.includes(c.team?.id) ? 'scores-my-team' : ''}`}>
-                {c.team?.abbreviation}
-              </span>
-              {c.records?.[0]?.summary && <span className="scores-record"> {c.records[0].summary}</span>}
+    <div className={`mlbc-card${isMine ? ' mlbc-card-mine' : ''}`}
+      style={{cursor:'pointer'}} onClick={()=>navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="mlbc-teams" style={{paddingTop:10}}>
+        <div className="mlbc-rhe-header">
+          {isLive
+            ? <span className="mlbc-inning-live">{shortDetail}</span>
+            : isFinal
+            ? <span className="mlbc-final-label">FINAL</span>
+            : <span className="mlbc-time">{shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}</span>
+          }
+          {(isLive||isFinal) && <span style={{width:40,textAlign:'right',fontSize:11,color:'var(--text2)'}}>PTS</span>}
+        </div>
+        {[away,home].filter(Boolean).map(c=>(
+          <div key={c.team?.id} className="mlbc-team-row">
+            <img src={c.team?.logos?.[0]?.href||c.team?.logo||''} alt="" className="mlbc-logo" onError={e=>e.target.style.display='none'} />
+            <div className="mlbc-team-info">
+              <span className="mlbc-name">{c.team?.shortDisplayName||c.team?.displayName}</span>
+              <span className="mlbc-rec">{c.records?.[0]?.summary||''}</span>
             </div>
+            {(isLive||isFinal) && <span className={`mlbc-stat${c.winner?' mlbc-winner':''}`} style={{width:40}}>{getScore(c)??'—'}</span>}
           </div>
-          {(isLive || isFinal) && <span className="scores-score">{getScore(c) ?? '0'}</span>}
-        </div>
-      ))}
-    </button>
-  );
-}
-
-export default function ScoresPage() {
-  const { favorites, sportOrder } = useFavorites();
-  const [scoresBySport, setScoresBySport] = useState({});
-  const [activeSport, setActiveSport] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Only match teams in the currently viewed sport to avoid cross-sport ID collisions
-  const myTeamIds = favorites.teams
-    .filter((t) => t.sport === activeSport)
-    .map((t) => t.team.id);
-
-  useEffect(() => {
-    const d = new Date();
-    const todayStr = d.getFullYear().toString()
-      + String(d.getMonth() + 1).padStart(2, '0')
-      + String(d.getDate()).padStart(2, '0');
-
-    Promise.allSettled(
-      Object.keys(SPORTS).map((s) =>
-        getScoreboard(s, todayStr).then((games) => ({ sport: s, games }))
-      )
-    ).then((results) => {
-      const data = {};
-      results.forEach((r) => {
-        if (r.status === 'fulfilled' && r.value.games.length > 0) {
-          data[r.value.sport] = r.value.games;
-        }
-      });
-      setScoresBySport(data);
-      const ordered = sportOrder.filter((s) => data[s]);
-      const liveFirst = ordered.find((s) =>
-        data[s]?.some((g) => g.competitions?.[0]?.status?.type?.state === 'in')
-      );
-      setActiveSport(liveFirst || ordered[0] || null);
-      setLoading(false);
-    });
-  }, []);
-
-  const availableSports = sportOrder.filter((s) => scoresBySport[s]);
-
-  // Sort: my teams first, then live, then final, then pre
-  const games = [...(scoresBySport[activeSport] || [])].sort((a, b) => {
-    const stateOrder = { in: 0, post: 1, pre: 2 };
-    const aMine = a.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
-    const bMine = b.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
-    if (aMine !== bMine) return aMine - bMine;
-    const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
-    const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
-    return (stateOrder[sa] ?? 2) - (stateOrder[sb] ?? 2);
-  });
-
-  return (
-    <div className="page-content">
-      <h1 className="page-title">Today's Scores</h1>
-
-      {loading && (
-        <div className="scores-grid">
-          {[1,2,3,4].map((i) => <div key={i} className="skeleton-card" style={{height:100}} />)}
-        </div>
-      )}
-
-      {!loading && availableSports.length === 0 && (
-        <div className="empty-state"><div className="empty-icon">🏟</div><p>No games today.</p></div>
-      )}
-
-      {!loading && availableSports.length > 0 && (
-        <>
-          <div className="scores-sport-tabs">
-            {availableSports.map((sport) => {
-              const liveCount = scoresBySport[sport]?.filter(
-                (g) => g.competitions?.[0]?.status?.type?.state === 'in'
-              ).length || 0;
-              return (
-                <button
-                  key={sport}
-                  className={`ts-tab ${activeSport === sport ? 'ts-tab-active' : ''}`}
-                  onClick={() => setActiveSport(sport)}
-                >
-                  {SPORTS[sport].label}
-                  {liveCount > 0 && <span className="ts-live-dot" />}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="scores-grid">
-            {games.map((game) => (
-              <ScoreCard
-                key={game.id}
-                game={game}
-                sport={activeSport}
-                myTeamIds={myTeamIds}
-              />
-            ))}
-          </div>
-        </>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
