@@ -153,8 +153,7 @@ function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData }) {
         <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE
           liveLabel={
             <span className="mlbc-live-inline">
-              <span className="live-dot mlbc-live-dot-inline"/>
-              <span className="mlbc-inning">{inningStr}</span>
+              <span className="mlbc-inning-live">{inningStr}</span>
               {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
             </span>
           } />

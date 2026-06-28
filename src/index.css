@@ -6247,13 +6247,15 @@ thead .dfs-sticky-player {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
-.mlbc-live-dot-inline {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--live);
+.mlbc-inning-live {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--live);
+  white-space: nowrap;
   flex-shrink: 0;
-  display: inline-block;
 }
