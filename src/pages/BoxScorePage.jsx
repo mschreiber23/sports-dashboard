@@ -1055,6 +1055,40 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading }
 }
 
 /* ─── GAMECAST TAB ──────────────────────────────────── */
+/* ─── Clean single-line play row for Gamecast ────────── */
+function GcPlayRow({ atBat, isCurrent, onSelect }) {
+  const pitches = (atBat.playEvents || []).filter((e) => e.type === 'pitch');
+  const result  = atBat.result || {};
+  const batterId = atBat.matchup?.batter?.id;
+  const headshot = mlbHeadshot(batterId);
+  const canTap   = !isCurrent && pitches.length > 0 && !!onSelect;
+
+  return (
+    <div
+      className={`gc-play-clean${canTap ? ' gc-play-clean-tap' : ''}`}
+      onClick={canTap ? () => onSelect(atBat) : undefined}
+    >
+      {headshot ? (
+        <img src={headshot} alt="" className="gc-play-photo"
+          onError={(e) => { e.target.style.display='none'; }} />
+      ) : (
+        <div className="gc-play-photo-placeholder" />
+      )}
+      <div className="gc-play-info">
+        {result.event && (
+          <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`}>
+            {result.event}
+          </span>
+        )}
+        <span className="gc-play-desc">{result.description}
+          {atBat.count?.outs != null && <strong> {atBat.count.outs} out{atBat.count.outs!==1?'s':''}.</strong>}
+        </span>
+      </div>
+      {canTap && <span className="gc-play-chevron">›</span>}
+    </div>
+  );
+}
+
 function CountDots({ filled, total, color }) {
   return (
     <div className="bs-count-dots">
@@ -1129,7 +1163,8 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
             teamAltColor={home?.team?.alternateColor}
           />
 
-          {/* MLB-style pitcher | diamond+count | batter row — vertical stacking */}
+          {/* Pitcher | diamond+count | batter — card */}
+          <div className="gc-matchup-card">
           <div className="gc-matchup-row">
             {/* Pitcher — stacked: photo → name/hand → stats */}
             <div className="gc-matchup-player">
@@ -1189,14 +1224,16 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
               {inHole && <span>In the hole: {lastName(inHole.fullName)}</span>}
             </div>
           )}
+          </div>{/* end gc-matchup-card */}
 
-          {/* At-Bat Pitch Log (MLB) */}
+          {/* Recent plays — result-row only, tap for At Bat Details */}
           {(currentAtBatForLog || recentAtBats.length > 0) && (
-            <div className="ab-log-section">
-              <div className="ab-log-label">RECENT PLAYS</div>
-              {currentAtBatForLog && <AtBatEntry atBat={currentAtBatForLog} isCurrent />}
+            <div className="gc-plays-clean">
+              {currentAtBatForLog && (
+                <GcPlayRow atBat={currentAtBatForLog} isCurrent />
+              )}
               {recentAtBats.map((ab, i) => (
-                <AtBatEntry key={i} atBat={ab} onSelect={setSelectedAtBat} />
+                <GcPlayRow key={i} atBat={ab} onSelect={setSelectedAtBat} />
               ))}
             </div>
           )}

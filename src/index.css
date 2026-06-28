@@ -5724,3 +5724,67 @@ thead .dfs-sticky-player {
 }
 .abs-row-clickable { cursor: pointer; transition: background 0.1s; border-radius: 8px; }
 .abs-row-clickable:hover { background: var(--bg3); }
+
+/* ── Clean Gamecast UI ────────────────────────────────── */
+/* Card wrapping pitcher | diamond | batter + on-deck */
+.gc-matchup-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px 8px;
+  margin: 6px 0 8px;
+}
+.gc-matchup-card .gc-on-deck { padding-top: 6px; }
+
+/* Clean single-line play rows */
+.gc-plays-clean { display: flex; flex-direction: column; gap: 0; }
+.gc-play-clean {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.gc-play-clean:last-child { border-bottom: none; }
+.gc-play-clean-tap { cursor: pointer; transition: background 0.1s; border-radius: 8px; padding: 10px 6px; }
+.gc-play-clean-tap:hover { background: var(--bg3); }
+.gc-play-photo {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  object-fit: cover; object-position: center 15%;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.gc-play-photo-placeholder {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.gc-play-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.gc-play-desc {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.gc-play-chevron {
+  color: var(--text2);
+  font-size: 18px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* Compact pitch legend — single row */
+.mlb-pv-legend {
+  flex-wrap: nowrap;
+  gap: 6px 14px;
+  padding: 6px 12px 8px;
+}
+.mlb-pv-legend-item { font-size: 10px; }
+.mlb-pv-legend-dot  { width: 8px; height: 8px; }
