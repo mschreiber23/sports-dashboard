@@ -3515,6 +3515,64 @@ body {
 .page-title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
 
 /* Scores page */
+.scores-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Date nav for Scores page */
+.sp-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sp-date-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+.sp-date-btn:hover { color: var(--text); }
+.sp-date-label {
+  position: relative;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  user-select: none;
+}
+.sp-date-label:hover { background: var(--bg3); }
+.sp-date-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+}
+.sp-date-today {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 5px;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+.sp-date-today:hover { color: var(--text); }
+
 .scores-sport-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .scores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .scores-card {

@@ -26,7 +26,7 @@ async function fetchMlbScoreMap(dateStr, espnGames) {
         linescoreTotals: { away: ls.teams?.away, home: ls.teams?.home },
         inningDisplay: ls.currentInning
           ? `${ls.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${ls.currentInning}` : '',
-        raw: state === 'Live' ? {} : null, // truthy raw = live for inning display
+        raw: state === 'Live' ? {} : null,
         count: { balls: 0, strikes: 0, outs: ls.outs ?? 0 },
         onFirst: false, onSecond: false, onThird: false, outs: ls.outs ?? 0,
         matchup: {}, pitcherGameStats: {}, batterGameStats: {}, batSide: 'R',
@@ -43,27 +43,45 @@ function toDateStr(d) {
     + String(d.getDate()).padStart(2,'0');
 }
 
+function formatDateLabel(date) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(date); d.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === -1) return 'Yesterday';
+  if (diff === 1) return 'Tomorrow';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+
 export default function ScoresPage() {
   const navigate = useNavigate();
   const { favorites, sportOrder } = useFavorites();
 
   const [activeSport, setActiveSport] = useState('mlb');
+  const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const [rawGames, setRawGames] = useState([]);
   const [mlbScoreMap, setMlbScoreMap] = useState({});
   const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
 
-  const todayStr = toDateStr(new Date());
+  const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
+  const shiftDate = (n) => setSelectedDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; });
+  const dateStr = toDateStr(selectedDate);
+
   // myTeamIds always reflects current favorites — no stale closure
-  const myTeamIds = favorites.teams.filter(t=>t.sport===activeSport).map(t=>t.team.id);
+  const myTeamIds = favorites.teams
+    .filter(t => t.sport === activeSport)
+    .map(t => t.team.id?.toString());
 
   const stateOrder = { in: 0, post: 1, pre: 2 };
   // Derived sort: instantly re-sorts whenever rawGames OR favorites change
   const games = useMemo(() => [...rawGames].sort((a,b) => {
     const compsA = a.competitions?.[0]?.competitors || [];
     const compsB = b.competitions?.[0]?.competitors || [];
-    const aMine = compsA.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
-    const bMine = compsB.some(c=>myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    const aMine = compsA.some(c => myTeamIds.includes(c.team?.id?.toString())) ? 0 : 1;
+    const bMine = compsB.some(c => myTeamIds.includes(c.team?.id?.toString())) ? 0 : 1;
     if (aMine !== bMine) return aMine - bMine;
     const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
     const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
@@ -74,21 +92,25 @@ export default function ScoresPage() {
     clearInterval(pollRef.current);
     setLoading(true);
     setRawGames([]);
+    setMlbScoreMap({});
 
-    const load = () => getScoreboard(activeSport, todayStr)
+    const load = () => getScoreboard(activeSport, dateStr)
       .then(async (evts) => {
-        setRawGames(evts); // sort derived reactively via useMemo
+        setRawGames(evts);
         if (activeSport === 'mlb') {
-          const map = await fetchMlbScoreMap(todayStr, evts);
+          const map = await fetchMlbScoreMap(dateStr, evts);
           setMlbScoreMap(map);
         }
       })
       .catch(()=>{});
 
     load().finally(()=>setLoading(false));
-    pollRef.current = setInterval(load, 30000);
+    // Only poll live data for today
+    if (isToday) {
+      pollRef.current = setInterval(load, 30000);
+    }
     return () => clearInterval(pollRef.current);
-  }, [activeSport]);
+  }, [activeSport, dateStr]);
 
   const availableSports = ['mlb','nba','nfl','nhl'].filter(s=>
     sportOrder.includes(s) || true
@@ -96,7 +118,26 @@ export default function ScoresPage() {
 
   return (
     <div className="page-content">
-      <h1 className="page-title">Scores</h1>
+      {/* Header row: title + date nav */}
+      <div className="scores-page-header">
+        <h1 className="page-title" style={{margin:0}}>Scores</h1>
+        <div className="sp-date-nav">
+          <button className="sp-date-btn" onClick={() => shiftDate(-1)}>‹</button>
+          <label className="sp-date-label">
+            {formatDateLabel(selectedDate)}
+            <input
+              type="date"
+              className="sp-date-input"
+              value={selectedDate.toISOString().slice(0, 10)}
+              onChange={e => setSelectedDate(new Date(e.target.value + 'T12:00:00'))}
+            />
+          </label>
+          <button className="sp-date-btn" onClick={() => shiftDate(1)}>›</button>
+          {!isToday && (
+            <button className="sp-date-today" onClick={() => setSelectedDate(todayMidnight())}>↩</button>
+          )}
+        </div>
+      </div>
 
       {/* Sport selector */}
       <div className="scores-sport-tabs">
@@ -116,7 +157,10 @@ export default function ScoresPage() {
       )}
 
       {!loading && games.length === 0 && (
-        <div className="empty-state"><div className="empty-icon">🏟</div><p>No games today.</p></div>
+        <div className="empty-state">
+          <div className="empty-icon">🏟</div>
+          <p>No {SPORTS[activeSport]?.label || activeSport.toUpperCase()} games on {formatDateLabel(selectedDate).toLowerCase()}.</p>
+        </div>
       )}
 
       {!loading && games.length > 0 && (
@@ -124,19 +168,20 @@ export default function ScoresPage() {
           {games.map((game) => {
             const st = game.competitions?.[0]?.status?.type?.state;
             const competitors = game.competitions?.[0]?.competitors || [];
-            // Find favorite team in this game and use their color for gradient
+            // Find this game's team in favorites and derive accent color for gradient
             const favTeam = favorites.teams.find(ft =>
-              ft.sport === activeSport && competitors.some(c => c.team?.id === ft.team.id)
+              ft.sport === activeSport &&
+              competitors.some(c => c.team?.id?.toString() === ft.team.id?.toString())
             );
             const rawC = favTeam?.team?.color ? `#${favTeam.team.color}` : null;
             const rawA = favTeam?.team?.alternateColor ? `#${favTeam.team.alternateColor}` : null;
-            const accentColor = rawC ? adaptColorForDarkBg(rawC, rawA) : null;
+            // Always pass a fallback so favorite-team cards always get an accent color
+            const accentColor = favTeam ? adaptColorForDarkBg(rawC, rawA, '#0092ff') : null;
 
             if (activeSport === 'mlb') {
-              const mlbFeed = mlbScoreMap[game.id] || null;
               if (st === 'pre')  return <MlbPreCard  key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
               if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
-              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate}   accentColor={accentColor} />;
+              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
             }
             return <ScoreCardSimple key={game.id} game={game} sport={activeSport} navigate={navigate} myTeamIds={myTeamIds} accentColor={accentColor} />;
           })}
