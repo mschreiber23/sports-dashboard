@@ -1571,31 +1571,41 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
             const playerName = player.displayName || player.shortName || '';
             const playerAbs  = showAbs ? getPlayerAbs(playerName) : [];
             return (
-              <tr key={i} className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${player.id ? 'bsp-tr-clickable' : ''} ${isSub ? 'bsp-tr-sub' : ''}`}
+              <tr key={i}
+                className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${player.id ? 'bsp-tr-clickable' : ''} ${isSub ? 'bsp-tr-sub' : ''}`}
                 onClick={() => player.id && navigate(`/player/${sport}/${player.id}`)}>
                 <td className="bsp-td bsp-td-player">
-                  <div className={`bsp-player-cell ${isSub ? 'bsp-player-sub' : ''}`}>
-                    <div>
-                      <span className="bsp-player-name">{player.shortName || player.displayName}</span>
-                      <span className="bsp-player-pos"> {a.position?.abbreviation || ''}</span>
-                    </div>
-                    {showAbs && (
+                  {/* All on one line — name · pos · ABs pill */}
+                  <div className="bsp-player-cell">
+                    <span className={`bsp-player-name${isSub ? ' bsp-player-sub-name' : ''}`}>
+                      {player.shortName || player.displayName}
+                    </span>
+                    {a.position?.abbreviation && (
+                      <span className="bsp-player-pos">{a.position.abbreviation}</span>
+                    )}
+                    {showAbs && playerAbs.length > 0 && (
                       <button className="abs-pill" onClick={(e) => {
                         e.stopPropagation();
                         onShowAbs?.({ name: playerName, atBats: playerAbs });
                       }}>
-                        ABs{playerAbs.length > 0 ? ` ${playerAbs.length}` : ''}
+                        {playerAbs.length} AB{playerAbs.length !== 1 ? 's' : ''}
                       </button>
                     )}
                   </div>
                 </td>
                 {dnp
-                  ? <td className="bsp-td" colSpan={cols.length} style={{color:'var(--text2)',fontStyle:'italic'}}>DNP</td>
-                  : cols.map((c) => (
-                    <td key={c.label} className={`bsp-td ${hl.includes(c.label) ? 'bsp-hl' : ''}`}>
-                      {stats[c.index] ?? '—'}
-                    </td>
-                  ))}
+                  ? <td className="bsp-td" colSpan={cols.length} style={{color:'var(--text2)',fontStyle:'italic',fontSize:11}}>DNP</td>
+                  : cols.map((c) => {
+                    const val = stats[c.index] ?? '—';
+                    const isZero = val === '0' || val === '.000' || val === '.---';
+                    const isHl = hl.includes(c.label);
+                    return (
+                      <td key={c.label}
+                        className={`bsp-td${isHl ? ' bsp-hl' : ''}${isZero ? ' bsp-zero' : ''}`}>
+                        {val}
+                      </td>
+                    );
+                  })}
               </tr>
             );
           })}
