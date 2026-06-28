@@ -1744,7 +1744,10 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay })
 
   const awayScore = mlbTotals?.away?.runs ?? getScore(away) ?? '—';
   const homeScore = mlbTotals?.home?.runs ?? getScore(home) ?? '—';
-  const centerLabel = mlbInningDisplay || (isFinal ? 'Final' : isPre ? shortDetail : shortDetail);
+  // ESPN state always wins for Final/Pre; only use MLB inning string when live
+  const centerLabel = isFinal ? 'Final'
+    : isPre   ? shortDetail
+    : mlbInningDisplay || shortDetail;
 
   return (
     <div className="bsp-compact-header">
