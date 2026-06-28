@@ -6225,3 +6225,15 @@ thead .dfs-sticky-player {
   white-space: nowrap;
 }
 .mlbc-action-btn:hover { color: var(--accent2); }
+
+/* Score column on Scoring Summary tab */
+.scoring-play-score {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 6px;
+}

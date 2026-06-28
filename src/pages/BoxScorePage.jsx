@@ -268,9 +268,12 @@ function MlbScoringSummary({ mlbGamePk, venueId, teamColor, teamAltColor }) {
               </span>
             </div>
             {group.atBats.map((ab, i) => {
-              const result  = ab.result || {};
-              const pitches = (ab.playEvents || []).filter((e) => e.type === 'pitch');
+              const result   = ab.result || {};
+              const pitches  = (ab.playEvents || []).filter((e) => e.type === 'pitch');
               const headshot = mlbHeadshot(ab.matchup?.batter?.id);
+              const away = result.awayScore ?? null;
+              const home = result.homeScore ?? null;
+              const scoreStr = away !== null && home !== null ? `${away} - ${home}` : null;
               return (
                 <div key={i}
                   className={`mlb-pbp-ab${pitches.length ? ' mlb-pbp-ab-clickable' : ''}`}
@@ -287,6 +290,7 @@ function MlbScoringSummary({ mlbGamePk, venueId, teamColor, teamAltColor }) {
                       {result.description}
                     </span>
                   </div>
+                  {scoreStr && <span className="scoring-play-score">{scoreStr}</span>}
                   {pitches.length > 0 && <span className="mlb-pbp-chevron">›</span>}
                 </div>
               );
