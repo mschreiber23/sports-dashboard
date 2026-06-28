@@ -90,7 +90,9 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
     return { id: ath.id, team: c.team, name: ath.shortName || ath.displayName, headshot, hand: ath.throws?.abbreviation || '', record: sm.W && sm.L ? `${sm.W}-${sm.L}` : '', era: sm.ERA || '' };
   }).filter(Boolean);
   return (
-    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`} : undefined}
+    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
+      borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
+      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
       <div className="mlbc-header">
         <span className="mlbc-time">{timeStr}</span>
@@ -152,7 +154,9 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
   const pitchingTeamAbbr = inningStr.startsWith('BOT') ? home?.team?.abbreviation : away?.team?.abbreviation;
   const battingTeamAbbr  = inningStr.startsWith('BOT') ? away?.team?.abbreviation : home?.team?.abbreviation;
   return (
-    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`} : undefined}
+    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
+      borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
+      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
       <div className="mlbc-live-body">
         <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE
@@ -225,7 +229,9 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
     fetchMlbDecisions(gameDate, homeAbbr).then((dec) => { if (dec) setDecisions(dec); }).catch(()=>{});
   }, [game.id]);
   return (
-    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`} : undefined}
+    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
+      borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
+      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
       <MlbTeamRows away={away} home={home} sport={sport} showRHE finalLabel="FINAL" />
       {decisions && (

@@ -6259,3 +6259,38 @@ thead .dfs-sticky-player {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ── More dropdown (bottom nav) ───────────────────────── */
+.more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 149;
+}
+.more-dropdown {
+  position: fixed;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  right: 0;
+  z-index: 150;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0;
+  padding: 8px 0;
+  min-width: 160px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+.more-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+.more-dropdown-item:hover { background: var(--bg3); }

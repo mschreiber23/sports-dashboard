@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /* ── Shribely Logo Icon ──────────────────────────────── */
@@ -95,44 +96,78 @@ function TeamsIcon({ active }) {
   );
 }
 
-// Nav order: ShribeIQ - Standings - Shribely Logo - Players - Leaders
-const NAV_ITEMS = [
-  { path: '/dfs',       label: 'ShribeIQ',  Icon: DFSIcon },
-  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
-  { path: '/',          label: '',          logo: true },
-  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
-  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
+// Nav order: Standings - Scores - Home (logo) - Players - More
+const MORE_ITEMS = [
+  { path: '/leaders',  label: 'Leaders',   Icon: LeadersIcon },
+  { path: '/rankings', label: 'Rankings',  Icon: LeadersIcon },
+  { path: '/dfs',      label: 'ShribeIQ',  Icon: DFSIcon },
 ];
 
-function NavItem({ item, active }) {
-  if (item.logo) {
-    return (
-      <Link to={item.path} className={`nav-item nav-item-logo ${active ? 'nav-item-active' : ''}`}>
-        <div className="nav-logo-wrap">
-          <ShribelyIcon size={72} />
-        </div>
-        {/* No label under the logo */}
-      </Link>
-    );
-  }
-  const { Icon } = item;
+const NAV_ITEMS = [
+  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
+  { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
+  { path: '/',          label: '',          logo: true },
+  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
+  { path: null,         label: 'More',      more: true },
+];
+
+/* ── More dropdown ───────────────────────────────────── */
+function MoreDropdown({ onClose }) {
+  const navigate = useNavigate();
   return (
-    <Link to={item.path} className={`nav-item ${active ? 'nav-item-active' : ''}`}>
-      <Icon active={active} />
-      {item.label && <span className="nav-label">{item.label}</span>}
-    </Link>
+    <>
+      <div className="more-overlay" onClick={onClose} />
+      <div className="more-dropdown">
+        {MORE_ITEMS.map(({ path, label, Icon }) => (
+          <button key={path} className="more-dropdown-item" onClick={() => { navigate(path); onClose(); }}>
+            <Icon active={false} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
 /* ── Bottom Nav (mobile) ─────────────────────────────── */
 export function BottomNav() {
   const { pathname } = useLocation();
+  const [showMore, setShowMore] = useState(false);
+  const moreActive = MORE_ITEMS.some(i => pathname === i.path);
+
   return (
-    <nav className="bottom-nav">
-      {NAV_ITEMS.map((item) => (
-        <NavItem key={item.path} item={item} active={pathname === item.path} />
-      ))}
-    </nav>
+    <>
+      {showMore && <MoreDropdown onClose={() => setShowMore(false)} />}
+      <nav className="bottom-nav">
+        {NAV_ITEMS.map((item) => {
+          if (item.logo) return (
+            <Link key="logo" to="/" className={`nav-item nav-item-logo ${pathname === '/' ? 'nav-item-active' : ''}`}>
+              <div className="nav-logo-wrap"><ShribelyIcon size={72} /></div>
+            </Link>
+          );
+          if (item.more) return (
+            <button key="more" className={`nav-item${moreActive || showMore ? ' nav-item-active' : ''}`}
+              onClick={() => setShowMore(v => !v)}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke={(moreActive || showMore) ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round">
+                <circle cx="5" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
+                <circle cx="12" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
+                <circle cx="19" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
+              </svg>
+              <span className="nav-label">More</span>
+            </button>
+          );
+          const { Icon } = item;
+          const active = pathname === item.path;
+          return (
+            <Link key={item.path} to={item.path} className={`nav-item ${active ? 'nav-item-active' : ''}`}>
+              <Icon active={active} />
+              {item.label && <span className="nav-label">{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }
 
