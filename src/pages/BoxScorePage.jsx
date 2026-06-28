@@ -1194,8 +1194,9 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
             </div>
           )}
 
-          {/* Pitcher | diamond+count | batter — card */}
-          {!isBetweenInnings && <div className="gc-matchup-card">
+          {/* Pitcher | diamond+count | batter — card (hidden between innings) */}
+          {!isBetweenInnings && (
+          <div className="gc-matchup-card">
           <div className="gc-matchup-row">
             {/* Pitcher — stacked: photo → name/hand → stats */}
             <div className="gc-matchup-player">
@@ -1255,7 +1256,8 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
               {inHole && <span>In the hole: {lastName(inHole.fullName)}</span>}
             </div>
           )}
-          </div>}{/* end gc-matchup-card */}
+          </div>
+          )}{/* end gc-matchup-card conditional */}
 
           {/* Recent plays */}
           {(pitches.length > 0 || recentAtBats.length > 0) && (
