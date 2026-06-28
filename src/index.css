@@ -5666,6 +5666,7 @@ thead .dfs-sticky-player {
 }
 .mlb-pbp-desc {
   font-size: 13px;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.4;
 }
