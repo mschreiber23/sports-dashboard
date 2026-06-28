@@ -50,24 +50,35 @@ export default function useMlbLiveFeed(gamePk, active = true) {
   const matchup = current.matchup   || {};
   const count   = current.count     || {};
 
-  // Base runners from linescore (most accurate)
+  // ── Current at-bat pitches (must come early — used by isBetweenInnings) ──
+  const pitches   = (current.playEvents || []).filter((e) => e.type === 'pitch');
+  const lastPitch = pitches[pitches.length - 1] || null;
+
+  // ── All completed at-bats (must come before isBetweenInnings) ──
+  const allPlays = plays.allPlays || [];
+  const completedAtBats = allPlays
+    .filter((p) => p.about?.isComplete && (p.playEvents || []).some((e) => e.type === 'pitch'));
+  const recentAtBats = completedAtBats.slice(-5).reverse();
+  const allAtBats    = [...completedAtBats].reverse();
+
+  // ── Base runners ──
   const onFirst  = !!offense.first;
   const onSecond = !!offense.second;
   const onThird  = !!offense.third;
   const outs     = ls.outs ?? count.outs ?? 0;
 
-  // Current batter / pitcher from linescore
+  // ── Batter / pitcher ──
   const batterInfo  = offense.batter  || matchup.batter  || {};
   const pitcherInfo = defense.pitcher || matchup.pitcher || {};
   const batSide  = matchup.batSide?.code  || 'R';
   const venueId  = data.gameData?.venue?.id ?? null;
 
-  // Derive which side is pitching vs batting this half-inning
-  const inningHalf     = ls.inningHalf || 'Top'; // 'Top' | 'Bottom'
-  const pitchingSide   = inningHalf === 'Top' ? 'home' : 'away';
-  const battingSide    = inningHalf === 'Top' ? 'away' : 'home';
+  // ── Inning / sides ──
+  const inningHalf   = ls.inningHalf || 'Top';
+  const pitchingSide = inningHalf === 'Top' ? 'home' : 'away';
+  const battingSide  = inningHalf === 'Top' ? 'away' : 'home';
 
-  // Live game stats from boxscore
+  // ── Live game stats from boxscore ──
   const boxTeams = ld.boxscore?.teams || {};
   const getPlayerStats = (side, pid, type) => {
     const p = boxTeams[side]?.players?.[`ID${pid}`];
@@ -76,28 +87,29 @@ export default function useMlbLiveFeed(gamePk, active = true) {
   const pitcherGameStats = pitcherInfo.id
     ? getPlayerStats(pitchingSide, pitcherInfo.id, 'pitching') : {};
   const batterGameStats  = batterInfo.id
-    ? getPlayerStats(battingSide,  batterInfo.id,  'batting')  : {};
+    ? getPlayerStats(battingSide, batterInfo.id, 'batting')  : {};
   const batterPosition   = boxTeams[battingSide]?.players?.[`ID${batterInfo.id}`]?.position?.abbreviation || '';
 
-  // On deck / in hole (MLB linescore)
   const onDeck = offense.onDeck || null;
   const inHole = offense.inHole || null;
 
-  // Between-innings: no pitches in current play AND last completed play recorded 3 outs
-  const lastCompleted = completedAtBats[completedAtBats.length - 1];
+  // ── Strike zone ──
+  const szTop = matchup.strikeZoneTop    ?? lastPitch?.pitchData?.strikeZoneTop    ?? 3.38;
+  const szBot = matchup.strikeZoneBottom ?? lastPitch?.pitchData?.strikeZoneBottom ?? 1.53;
+
+  // ── Between-innings detection (requires pitches + completedAtBats above) ──
+  const lastCompleted    = completedAtBats[completedAtBats.length - 1];
   const isBetweenInnings = pitches.length === 0
     && !!lastCompleted
     && lastCompleted.count?.outs === 3;
 
-  // Compute "due up" (next 3 batters) when between innings
   let dueUp = [];
   if (isBetweenInnings) {
-    const lastHalf   = lastCompleted.about?.halfInning; // 'top' or 'bottom'
-    const nextSide   = lastHalf === 'top' ? 'home' : 'away'; // team about to bat
+    const lastHalf   = lastCompleted.about?.halfInning;
+    const nextSide   = lastHalf === 'top' ? 'home' : 'away';
     const battingOrd = boxTeams[nextSide]?.battingOrder || [];
     const bxPlayers  = boxTeams[nextSide]?.players || {};
 
-    // Find where in the lineup we left off (last batter from this team)
     const lastAtBatFromTeam = [...completedAtBats].reverse().find((ab) => {
       const bid = ab.matchup?.batter?.id;
       return battingOrd.some((id) => String(id) === String(bid));
@@ -111,63 +123,36 @@ export default function useMlbLiveFeed(gamePk, active = true) {
       const player = bxPlayers[`ID${id}`] || {};
       return {
         id,
-        fullName:      player.person?.fullName    || '',
-        jerseyNumber:  player.jerseyNumber         || '',
-        position:      player.position?.abbreviation || '',
-        order:         pos + 1,
+        fullName:     player.person?.fullName          || '',
+        jerseyNumber: player.jerseyNumber               || '',
+        position:     player.position?.abbreviation    || '',
+        order:        pos + 1,
       };
     }).filter((p) => p.fullName);
   }
 
-  // Inning display string (MLB.com format: "TOP 5" / "BOT 5")
+  // ── Inning display ──
   const inningDisplay = ls.currentInning
-    ? `${inningHalf === 'Top' ? 'TOP' : 'BOT'} ${ls.currentInning}`
-    : '';
+    ? `${inningHalf === 'Top' ? 'TOP' : 'BOT'} ${ls.currentInning}` : '';
 
-  // Current at-bat pitches
-  const pitches   = (current.playEvents || []).filter((e) => e.type === 'pitch');
-  const lastPitch = pitches[pitches.length - 1] || null;
-
-  // Strike zone
-  const szTop = matchup.strikeZoneTop  ?? lastPitch?.pitchData?.strikeZoneTop  ?? 3.38;
-  const szBot = matchup.strikeZoneBottom ?? lastPitch?.pitchData?.strikeZoneBottom ?? 1.53;
-
-  // All completed at-bats
-  const allPlays = plays.allPlays || [];
-  const completedAtBats = allPlays
-    .filter((p) => p.about?.isComplete && (p.playEvents || []).some((e) => e.type === 'pitch'));
-  const recentAtBats = completedAtBats.slice(-5).reverse();
-  const allAtBats    = [...completedAtBats].reverse(); // newest first, all game
-
-  // Current at-bat result (if just completed)
   const currentResult = current.about?.isComplete ? current.result : null;
 
   return {
     raw: data,
-    pitches,
-    lastPitch,
-    szTop,
-    szBot,
-    // MLB matchup
+    pitches, lastPitch, szTop, szBot,
     matchup: { batter: batterInfo, pitcher: pitcherInfo },
     count: { balls: count.balls ?? 0, strikes: count.strikes ?? 0, outs },
-    // Base runners (from linescore)
     onFirst, onSecond, onThird, outs,
-    // Current at-bat
     currentResult,
     currentAbout: current.about || {},
-    recentAtBats,
-    allAtBats,
-    batSide,
-    venueId,
+    recentAtBats, allAtBats,
+    batSide, venueId,
     pitcherGameStats, batterGameStats, batterPosition,
     onDeck, inHole,
-    isBetweenInnings, dueUp,
-    inningDisplay,
+    isBetweenInnings, dueUp, inningDisplay,
     gameState: data.gameData?.status?.detailedState,
-    // Linescore — per-inning + totals
     innings: ld.linescore?.innings || [],
-    linescoreTotals: ld.linescore?.teams || {},  // { away: {runs,hits,errors}, home: {...} }
+    linescoreTotals: ld.linescore?.teams || {},
     inning: ls.currentInning,
     inningHalf: ls.inningHalf,
     shortDetail: `${ls.inningHalf === 'Top' ? '▲' : '▼'} ${ls.currentInning}`,
