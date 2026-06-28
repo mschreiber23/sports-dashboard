@@ -65,15 +65,33 @@ export default function MyTeams({ editMode = false, setEditMode }) {
   return (
     <section className="section">
       <div className="section-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h2 className="section-title">My Teams</h2>
           {hiddenCount > 0 && (
-            <button
-              className="show-all-btn"
-              onClick={() => setShowHidden((v) => !v)}
-            >
-              {showHidden ? 'Hide Inactive' : `Show All`}
+            <button className="show-all-btn" onClick={() => setShowHidden((v) => !v)}>
+              {showHidden ? 'Hide Inactive' : 'Show All'}
             </button>
+          )}
+          {/* Date nav — inline, compact */}
+          {!editMode && !showPicker && (
+            <div className="mt-date-inline">
+              <button className="mt-date-btn" onClick={() => shiftDate(-1)}>‹</button>
+              <label className="mt-date-display">
+                {formatDisplay(selectedDate)}
+                <input
+                  type="date"
+                  className="mt-date-input"
+                  value={selectedDate.toISOString().slice(0, 10)}
+                  onChange={(e) => setSelectedDate(new Date(e.target.value + 'T12:00:00'))}
+                />
+              </label>
+              <button className="mt-date-btn" onClick={() => shiftDate(1)}>›</button>
+              {!isToday && (
+                <button className="mt-date-today" onClick={() => setSelectedDate(todayMidnight())}>
+                  ↩
+                </button>
+              )}
+            </div>
           )}
         </div>
         <div className="header-actions">
@@ -186,33 +204,7 @@ export default function MyTeams({ editMode = false, setEditMode }) {
         </div>
       )}
 
-      {/* Date navigation */}
-      {!editMode && !showPicker && (
-        <div className="mt-date-nav">
-          <button className="mt-date-btn" onClick={() => shiftDate(-1)}>←</button>
-          <label className="mt-date-display">
-            {formatDisplay(selectedDate)}
-            <input
-              type="date"
-              className="mt-date-input"
-              value={selectedDate.toISOString().slice(0, 10)}
-              onChange={(e) => {
-                const d = new Date(e.target.value + 'T12:00:00');
-                setSelectedDate(d);
-              }}
-            />
-          </label>
-          <button
-            className="mt-date-btn"
-            onClick={() => shiftDate(1)}
-          >→</button>
-          {!isToday && (
-            <button className="mt-date-today" onClick={() => setSelectedDate(todayMidnight())}>
-              Today
-            </button>
-          )}
-        </div>
-      )}
+      {/* Date navigation moved inline into section-header */}
 
       {favorites.teams.length === 0 && !showPicker && !editMode && (
         <div className="onboarding-prompt">

@@ -1275,42 +1275,38 @@ body {
 }
 
 /* ── My Teams Date Nav ── */
-.mt-date-nav {
+/* Inline date nav — same height as show-all-btn */
+.mt-date-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 12px;
+  gap: 2px;
 }
-
 .mt-date-btn {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  color: var(--text);
-  width: 32px; height: 32px;
-  border-radius: 8px;
-  font-size: 14px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  width: 20px; height: 20px;
+  font-size: 15px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  transition: all 0.15s;
+  padding: 0;
+  transition: color 0.15s;
 }
-.mt-date-btn:hover:not(:disabled) { border-color: var(--accent2); color: var(--accent2); }
+.mt-date-btn:hover { color: var(--text); }
 .mt-date-btn:disabled { opacity: 0.3; cursor: default; }
 
 .mt-date-display {
-  flex: 1;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
   cursor: pointer;
   position: relative;
   user-select: none;
+  white-space: nowrap;
+  padding: 0 2px;
 }
-.mt-date-display:hover { color: var(--accent2); }
+.mt-date-display:hover { color: var(--text); }
 
 .mt-date-input {
   position: absolute;
@@ -1321,18 +1317,15 @@ body {
 }
 
 .mt-date-today {
-  background: var(--accent);
+  background: none;
   border: none;
-  color: #fff;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
+  color: var(--text2);
+  font-size: 13px;
   cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s;
+  padding: 0 2px;
+  transition: color 0.15s;
 }
-.mt-date-today:hover { background: var(--accent2); }
+.mt-date-today:hover { color: var(--text); }
 
 /* ── Onboarding Prompt ── */
 .onboarding-prompt {
