@@ -1986,7 +1986,6 @@ export default function BoxScorePage() {
 
   return (
     <div className="bsp-page">
-      <button className="tp-back" onClick={() => navigate(-1)}>← Back</button>
 
       {loading && <div className="tp-loading">Loading…</div>}
       {error && <div className="error-banner">{error}</div>}
