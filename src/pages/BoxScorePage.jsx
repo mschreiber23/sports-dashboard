@@ -1111,6 +1111,7 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
     shortDetail: mlbShortDetail, inningDisplay,
     pitcherGameStats, batterGameStats, batterPosition,
     onDeck, inHole,
+    isBetweenInnings, dueUp,
   } = feed;
 
   const balls   = mlbCount.balls   ?? situation?.balls   ?? 0;
@@ -1163,8 +1164,29 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
             teamAltColor={home?.team?.alternateColor}
           />
 
+          {/* Between innings: Due Up */}
+          {isBetweenInnings && dueUp.length > 0 && (
+            <div className="gc-due-up-card">
+              <div className="gc-due-up-title">Due Up</div>
+              {dueUp.map((p, i) => (
+                <div key={i} className="gc-due-up-row">
+                  <div className="gc-due-up-order">{p.order}</div>
+                  <img
+                    src={mlbHeadshot(p.id)} alt=""
+                    className="gc-due-up-photo"
+                    onError={(e) => { e.target.style.display='none'; }}
+                  />
+                  <div className="gc-due-up-info">
+                    <span className="gc-due-up-name">{p.fullName}</span>
+                    <span className="gc-due-up-meta">{p.position}{p.jerseyNumber ? ` · #${p.jerseyNumber}` : ''}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Pitcher | diamond+count | batter — card */}
-          <div className="gc-matchup-card">
+          {!isBetweenInnings && <div className="gc-matchup-card">
           <div className="gc-matchup-row">
             {/* Pitcher — stacked: photo → name/hand → stats */}
             <div className="gc-matchup-player">
@@ -1224,7 +1246,7 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
               {inHole && <span>In the hole: {lastName(inHole.fullName)}</span>}
             </div>
           )}
-          </div>{/* end gc-matchup-card */}
+          </div>}{/* end gc-matchup-card */}
 
           {/* Recent plays */}
           {(pitches.length > 0 || recentAtBats.length > 0) && (

@@ -37,6 +37,7 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     innings: [], linescoreTotals: {},
     pitcherGameStats: {}, batterGameStats: {}, batterPosition: '',
     onDeck: null, inHole: null, inningDisplay: '',
+    isBetweenInnings: false, dueUp: [],
     batSide: 'R', venueId: null,
   };
 
@@ -82,6 +83,42 @@ export default function useMlbLiveFeed(gamePk, active = true) {
   const onDeck = offense.onDeck || null;
   const inHole = offense.inHole || null;
 
+  // Between-innings: no pitches in current play AND last completed play recorded 3 outs
+  const lastCompleted = completedAtBats[completedAtBats.length - 1];
+  const isBetweenInnings = pitches.length === 0
+    && !!lastCompleted
+    && lastCompleted.count?.outs === 3;
+
+  // Compute "due up" (next 3 batters) when between innings
+  let dueUp = [];
+  if (isBetweenInnings) {
+    const lastHalf   = lastCompleted.about?.halfInning; // 'top' or 'bottom'
+    const nextSide   = lastHalf === 'top' ? 'home' : 'away'; // team about to bat
+    const battingOrd = boxTeams[nextSide]?.battingOrder || [];
+    const bxPlayers  = boxTeams[nextSide]?.players || {};
+
+    // Find where in the lineup we left off (last batter from this team)
+    const lastAtBatFromTeam = [...completedAtBats].reverse().find((ab) => {
+      const bid = ab.matchup?.batter?.id;
+      return battingOrd.some((id) => String(id) === String(bid));
+    });
+    const lastBatterId = lastAtBatFromTeam?.matchup?.batter?.id;
+    const lastPos      = battingOrd.findIndex((id) => String(id) === String(lastBatterId));
+
+    dueUp = [0, 1, 2].map((offset) => {
+      const pos    = ((lastPos < 0 ? -1 : lastPos) + 1 + offset) % (battingOrd.length || 9);
+      const id     = battingOrd[pos];
+      const player = bxPlayers[`ID${id}`] || {};
+      return {
+        id,
+        fullName:      player.person?.fullName    || '',
+        jerseyNumber:  player.jerseyNumber         || '',
+        position:      player.position?.abbreviation || '',
+        order:         pos + 1,
+      };
+    }).filter((p) => p.fullName);
+  }
+
   // Inning display string (MLB.com format: "TOP 5" / "BOT 5")
   const inningDisplay = ls.currentInning
     ? `${inningHalf === 'Top' ? 'TOP' : 'BOT'} ${ls.currentInning}`
@@ -125,6 +162,7 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     venueId,
     pitcherGameStats, batterGameStats, batterPosition,
     onDeck, inHole,
+    isBetweenInnings, dueUp,
     inningDisplay,
     gameState: data.gameData?.status?.detailedState,
     // Linescore — per-inning + totals
