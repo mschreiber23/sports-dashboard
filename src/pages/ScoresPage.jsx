@@ -162,7 +162,7 @@ function ScoreCardSimple({ game, sport, navigate, myTeamIds, accentColor }) {
 
   return (
     <div className={`mlbc-card${isMine ? ' mlbc-card-mine' : ''}`}
-      style={{cursor:'pointer', ...(accentColor ? {background:`linear-gradient(135deg,${accentColor}20 0%,var(--bg2) 55%)`} : {})}}
+      style={{cursor:'pointer', ...(accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`} : {})}}
       onClick={()=>navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="mlbc-teams" style={{paddingTop:10}}>
         <div className="mlbc-rhe-header">
