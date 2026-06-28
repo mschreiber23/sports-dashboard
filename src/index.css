@@ -3401,6 +3401,9 @@ body {
   transition: color 0.15s;
   padding: 6px 4px;
   position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 .nav-item:hover { color: var(--text); }
 .nav-item-active { color: var(--accent2); }
@@ -6318,7 +6321,7 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
 }
 
-/* ── More dropdown (bottom nav) ───────────────────────── */
+/* ── More dropdown (bottom nav mobile) ───────────────── */
 .more-overlay {
   position: fixed;
   inset: 0;
@@ -6327,13 +6330,12 @@ thead .dfs-sticky-player {
 .more-dropdown {
   position: fixed;
   bottom: calc(60px + env(safe-area-inset-bottom));
+  left: 0;
   right: 0;
   z-index: 150;
   background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 12px 12px 0 0;
+  border-top: 1px solid var(--border);
   padding: 8px 0;
-  min-width: 160px;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
 }
 .more-dropdown-item {
@@ -6341,7 +6343,7 @@ thead .dfs-sticky-player {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 20px;
+  padding: 13px 20px;
   background: none;
   border: none;
   color: var(--text);
@@ -6352,3 +6354,52 @@ thead .dfs-sticky-player {
   transition: background 0.1s;
 }
 .more-dropdown-item:hover { background: var(--bg3); }
+
+/* ── More dropdown (top nav desktop) ─────────────────── */
+.top-nav-more-wrap {
+  position: relative;
+}
+.top-nav-more-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.top-more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+}
+.top-more-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  z-index: 200;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.top-more-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+  font-family: inherit;
+}
+.top-more-item:hover { background: var(--bg3); }

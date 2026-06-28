@@ -174,6 +174,10 @@ export function BottomNav() {
 /* ── Top Nav (desktop) ───────────────────────────────── */
 export function TopNav() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const [showMore, setShowMore] = useState(false);
+  const moreActive = MORE_ITEMS.some(i => pathname === i.path);
+
   return (
     <nav className="top-nav">
       <div className="top-nav-inner">
@@ -192,6 +196,33 @@ export function TopNav() {
               </Link>
             );
           })}
+          {/* More button */}
+          <div className="top-nav-more-wrap">
+            <button
+              className={`top-nav-link top-nav-more-btn ${moreActive || showMore ? 'top-nav-link-active' : ''}`}
+              onClick={() => setShowMore(v => !v)}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"
+                stroke={(moreActive || showMore) ? '#3aabff' : 'currentColor'}>
+                <circle cx="5" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
+                <circle cx="12" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
+                <circle cx="19" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
+              </svg>
+              <span>More</span>
+            </button>
+            {showMore && (
+              <>
+                <div className="top-more-overlay" onClick={() => setShowMore(false)} />
+                <div className="top-more-dropdown">
+                  {MORE_ITEMS.map(({ path, label, Icon }) => (
+                    <button key={path} className="top-more-item" onClick={() => { navigate(path); setShowMore(false); }}>
+                      <Icon active={pathname === path} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </nav>
