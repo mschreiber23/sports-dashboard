@@ -5921,7 +5921,7 @@ thead .dfs-sticky-player {
 .bsp-table { font-size: 12px; }
 .bsp-th { font-size: 10px; padding: 6px 8px; }
 .bsp-td { padding: 7px 8px; }
-.bsp-td-player { padding-left: 0; }
+.bsp-td-player { padding-left: 8px; }
 .bsp-player-name { font-size: 13px; }
 .bsp-tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
 .bsp-tr:hover { background: rgba(255,255,255,0.025); }
@@ -5960,7 +5960,7 @@ thead .dfs-sticky-player {
 /* Player name */
 .bsp-player-name {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -5995,8 +5995,8 @@ thead .dfs-sticky-player {
 /* Zero stat — dimmed so non-zero values stand out */
 .bsp-zero { color: var(--text2) !important; opacity: 0.5; }
 
-/* Stat highlight cells — white + slightly bold */
-.bsp-hl  { color: var(--text) !important; font-weight: 700; opacity: 1 !important; }
+/* Stat highlight cells — white, no bold */
+.bsp-hl  { color: var(--text) !important; font-weight: 400; opacity: 1 !important; }
 
 /* Substitute rows — indented + slightly dimmer */
 .bsp-tr-sub { opacity: 0.75; }
