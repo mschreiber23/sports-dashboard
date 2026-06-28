@@ -119,14 +119,20 @@ export default function ScoresPage() {
         <div className="teams-grid" style={{marginTop:12}}>
           {games.map((game) => {
             const st = game.competitions?.[0]?.status?.type?.state;
+            const competitors = game.competitions?.[0]?.competitors || [];
+            // Find favorite team in this game and use their color for gradient
+            const favTeam = favorites.teams.find(ft =>
+              ft.sport === activeSport && competitors.some(c => c.team?.id === ft.team.id)
+            );
+            const accentColor = favTeam?.team?.color ? `#${favTeam.team.color}` : null;
+
             if (activeSport === 'mlb') {
               const mlbFeed = mlbScoreMap[game.id] || null;
-              if (st === 'pre')  return <MlbPreCard  key={game.id} game={game} sport="mlb" navigate={navigate} />;
-              if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} />;
-              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} mlbFeed={mlbFeed} liveData={null} />;
+              if (st === 'pre')  return <MlbPreCard  key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
+              if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
+              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} mlbFeed={mlbFeed} liveData={null} accentColor={accentColor} />;
             }
-            // Non-MLB: simple clean card
-            return <ScoreCardSimple key={game.id} game={game} sport={activeSport} navigate={navigate} myTeamIds={myTeamIds} />;
+            return <ScoreCardSimple key={game.id} game={game} sport={activeSport} navigate={navigate} myTeamIds={myTeamIds} accentColor={accentColor} />;
           })}
         </div>
       )}
@@ -135,7 +141,7 @@ export default function ScoresPage() {
 }
 
 /* ── Simple card for non-MLB sports ── */
-function ScoreCardSimple({ game, sport, navigate, myTeamIds }) {
+function ScoreCardSimple({ game, sport, navigate, myTeamIds, accentColor }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find(c=>c.homeAway==='away')||competitors[0];
@@ -150,7 +156,8 @@ function ScoreCardSimple({ game, sport, navigate, myTeamIds }) {
 
   return (
     <div className={`mlbc-card${isMine ? ' mlbc-card-mine' : ''}`}
-      style={{cursor:'pointer'}} onClick={()=>navigate(`/boxscore/${sport}/${game.id}`)}>
+      style={{cursor:'pointer', ...(accentColor ? {background:`linear-gradient(135deg,${accentColor}20 0%,var(--bg2) 55%)`} : {})}}
+      onClick={()=>navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="mlbc-teams" style={{paddingTop:10}}>
         <div className="mlbc-rhe-header">
           {isLive

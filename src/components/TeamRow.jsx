@@ -73,7 +73,7 @@ function MlbTeamRows({ away, home, sport, mlbTotals, showRHE, finalLabel, liveLa
   );
 }
 
-function MlbPreCard({ game, sport, navigate }) {
+function MlbPreCard({ game, sport, navigate, accentColor }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
@@ -89,7 +89,8 @@ function MlbPreCard({ game, sport, navigate }) {
     return { id: ath.id, team: c.team, name: ath.shortName || ath.displayName, headshot, hand: ath.throws?.abbreviation || '', record: sm.W && sm.L ? `${sm.W}-${sm.L}` : '', era: sm.ERA || '' };
   }).filter(Boolean);
   return (
-    <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
+    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,${accentColor}20 0%,var(--bg2) 55%)`} : undefined}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
       <div className="mlbc-header">
         <span className="mlbc-time">{timeStr}</span>
         {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
@@ -124,7 +125,7 @@ function MlbPreCard({ game, sport, navigate }) {
   );
 }
 
-function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData }) {
+function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData, accentColor }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
@@ -148,7 +149,8 @@ function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData }) {
   const pitchingTeamAbbr = inningStr.startsWith('BOT') ? home?.team?.abbreviation : away?.team?.abbreviation;
   const battingTeamAbbr  = inningStr.startsWith('BOT') ? away?.team?.abbreviation : home?.team?.abbreviation;
   return (
-    <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
+    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,${accentColor}20 0%,var(--bg2) 55%)`} : undefined}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
       <div className="mlbc-live-body">
         <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE
           liveLabel={
@@ -207,7 +209,7 @@ function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData }) {
   );
 }
 
-function MlbFinalCard({ game, sport, navigate }) {
+function MlbFinalCard({ game, sport, navigate, accentColor }) {
   const [decisions, setDecisions] = useState(null);
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -220,7 +222,8 @@ function MlbFinalCard({ game, sport, navigate }) {
     fetchMlbDecisions(gameDate, homeAbbr).then((dec) => { if (dec) setDecisions(dec); }).catch(()=>{});
   }, [game.id]);
   return (
-    <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
+    <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,${accentColor}20 0%,var(--bg2) 55%)`} : undefined}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
       <MlbTeamRows away={away} home={home} sport={sport} showRHE finalLabel="FINAL" />
       {decisions && (
         <>
