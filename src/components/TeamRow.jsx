@@ -49,9 +49,11 @@ function MlbTeamRows({ away, home, sport, mlbTotals, showRHE }) {
         <div key={c.team?.id} className="mlbc-team-row"
           onClick={(ev) => { ev.stopPropagation(); c.team?.id && navigate(`/team/${sport}/${c.team.id}`); }}>
           <LogoImg team={c.team} className="mlbc-logo" />
-          <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
-          <span className="mlbc-rec">{rec(c)}</span>
-          <span className="mlbc-spacer" />
+          {/* Name + record as a flex block so stats stay on same line */}
+          <div className="mlbc-team-info">
+            <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
+            <span className="mlbc-rec">{rec(c)}</span>
+          </div>
           {showRHE && (
             <>
               <span className={`mlbc-stat${c.winner ? ' mlbc-winner' : ''}`}>{r(c)}</span>
