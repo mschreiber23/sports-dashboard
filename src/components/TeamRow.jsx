@@ -32,7 +32,7 @@ function getScore(c) {
 /* ══════════════════════════════════════════════════════
    NEW MLB CARD COMPONENTS — clean card design (dark mode)
    ══════════════════════════════════════════════════════ */
-function MlbTeamRows({ away, home, sport, mlbTotals, showRHE, finalLabel }) {
+function MlbTeamRows({ away, home, sport, mlbTotals, showRHE, finalLabel, liveLabel }) {
   const navigate = useNavigate();
   const rec = (c) => c.records?.[0]?.summary || '';
   const r = (c) => { const t = mlbTotals?.[c.homeAway]; return t?.runs ?? (typeof c.score === 'object' ? c.score?.displayValue : c.score) ?? '—'; };
@@ -44,6 +44,8 @@ function MlbTeamRows({ away, home, sport, mlbTotals, showRHE, finalLabel }) {
         <div className="mlbc-rhe-header">
           {finalLabel
             ? <span className="mlbc-final-label">{finalLabel}</span>
+            : liveLabel
+            ? liveLabel
             : <span className="mlbc-rhe-spacer"/>
           }
           <span>R</span><span>H</span><span>E</span>
@@ -147,14 +149,15 @@ function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData }) {
   const battingTeamAbbr  = inningStr.startsWith('BOT') ? away?.team?.abbreviation : home?.team?.abbreviation;
   return (
     <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
-      <div className="mlbc-header mlbc-live-header">
-        <span className="badge badge-live" style={{fontSize:10}}><span className="live-dot"/>LIVE</span>
-        <span className="mlbc-inning">{inningStr}</span>
-        {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
-      </div>
-      <div className="mlbc-divider" />
       <div className="mlbc-live-body">
-        <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE />
+        <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE
+          liveLabel={
+            <span className="mlbc-live-inline">
+              <span className="live-dot mlbc-live-dot-inline"/>
+              <span className="mlbc-inning">{inningStr}</span>
+              {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+            </span>
+          } />
         <div className="mlbc-diamond-col">
           <SmallDiamond onFirst={on1} onSecond={on2} onThird={on3} />
           <div className="mlbc-count-dots">

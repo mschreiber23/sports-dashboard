@@ -6242,3 +6242,19 @@ thead .dfs-sticky-player {
   margin-left: auto;
   padding: 0 6px;
 }
+
+/* Live indicator inline with R H E */
+.mlbc-live-inline {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.mlbc-live-dot-inline {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  flex-shrink: 0;
+  display: inline-block;
+}
