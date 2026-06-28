@@ -6105,7 +6105,7 @@ thead .dfs-sticky-player {
 .mlbc-live-header { padding: 8px 14px 6px; }
 .mlbc-time { font-size: 14px; font-weight: 700; color: var(--text); }
 .mlbc-broadcast { font-size: 10px; color: var(--text2); }
-.mlbc-final-label { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text2); }
+.mlbc-final-label { font-size: 11px; font-weight: 800; letter-spacing: normal; text-transform: uppercase; color: #f1f1f3; }
 .mlbc-inning { font-size: 12px; font-weight: 700; color: var(--text); }
 
 /* Team rows */
