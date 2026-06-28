@@ -6,6 +6,7 @@ import useMlbLiveGame from '../hooks/useMlbLiveGame';
 import { mlbHeadshot } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 function LogoImg({ team, className, style }) {
   const dark = getTeamLogo(team);
@@ -125,21 +126,23 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
   );
 }
 
-function MlbLiveCard({ game, sport, navigate, mlbFeed, liveData, accentColor }) {
+function MlbLiveCard({ game, sport, navigate, accentColor }) {
+  // Self-contained: always fetches its own live MLB feed — identical everywhere
+  const mlbFeed = useMlbLiveGame(sport, game);
+
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find((c) => c.homeAway === 'away') || competitors[0];
   const home = competitors.find((c) => c.homeAway === 'home') || competitors[1];
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
-  const sit = liveData?.situation || {};
   const mlbTotals = mlbFeed?.linescoreTotals || {};
   const inningStr = mlbFeed?.inningDisplay || comp?.status?.type?.shortDetail || '';
-  const balls   = mlbFeed?.count?.balls   ?? sit.balls   ?? 0;
-  const strikes = mlbFeed?.count?.strikes ?? sit.strikes ?? 0;
-  const outs    = mlbFeed?.outs           ?? sit.outs    ?? 0;
-  const on1 = mlbFeed?.raw ? !!mlbFeed.onFirst  : !!sit.onFirst;
-  const on2 = mlbFeed?.raw ? !!mlbFeed.onSecond : !!sit.onSecond;
-  const on3 = mlbFeed?.raw ? !!mlbFeed.onThird  : !!sit.onThird;
+  const balls   = mlbFeed?.count?.balls   ?? 0;
+  const strikes = mlbFeed?.count?.strikes ?? 0;
+  const outs    = mlbFeed?.outs           ?? 0;
+  const on1 = !!mlbFeed?.onFirst;
+  const on2 = !!mlbFeed?.onSecond;
+  const on3 = !!mlbFeed?.onThird;
   const pName  = mlbFeed?.matchup?.pitcher?.fullName;
   const pPhoto = pName ? mlbHeadshot(mlbFeed.matchup.pitcher.id) : null;
   const bName  = mlbFeed?.matchup?.batter?.fullName;
@@ -262,7 +265,7 @@ function GameScore({ game, teamId, sport, onOpen, mlbFeed, liveData }) {
   if (sport === 'mlb') {
     if (st === 'pre')  return <MlbPreCard  game={game} sport={sport} navigate={navigate} />;
     if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} />;
-    if (st === 'in')   return <MlbLiveCard  game={game} sport={sport} navigate={navigate} mlbFeed={mlbFeed} liveData={liveData} />;
+    if (st === 'in')   return <MlbLiveCard  game={game} sport={sport} navigate={navigate}   />;
   }
 
   const comp = game.competitions?.[0];
@@ -858,11 +861,13 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const navigate = useNavigate();
 
   const isLive = game?.competitions?.[0]?.status?.type?.state === 'in';
-  const liveData = useLiveSituation(sport, isLive ? game : null);
-  // For live MLB games: override with MLB Stats API data (more real-time)
-  const mlbFeed = useMlbLiveGame(sport, game);
+  const liveData = useLiveSituation(sport, isLive && sport !== 'mlb' ? game : null);
+  // MLB live games use useMlbLiveGame inside MlbLiveCard itself (self-contained)
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
-  const accentColor = `#${team.color || '0092ff'}`;
+  // Adapted accent color — visible even for dark team colors (e.g. navy, midnight green)
+  const rawColor = team.color ? `#${team.color}` : null;
+  const rawAlt   = team.alternateColor ? `#${team.alternateColor}` : null;
+  const accentColor = adaptColorForDarkBg(rawColor, rawAlt, '#0092ff');
 
   useEffect(() => {
     if (hasUpcomingGame !== undefined) {
@@ -875,11 +880,11 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   // MLB games use the new full-width card — no outer tr2-card wrapper needed
   if (sport === 'mlb') {
     if (loading) return <div className="mlbc-card mlbc-loading">Loading…</div>;
-    if (!game)   return null; // hide when no game
-    if (isLive)  return <MlbLiveCard  game={game} sport={sport} navigate={navigate} mlbFeed={mlbFeed} liveData={liveData} />;
+    if (!game)   return null;
+    if (isLive)  return <MlbLiveCard  game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
     const st = game.competitions?.[0]?.status?.type?.state;
-    if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} />;
-    return <MlbPreCard game={game} sport={sport} navigate={navigate} />;
+    if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+    return <MlbPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   }
 
   return (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
 import { MlbPreCard, MlbLiveCard, MlbFinalCard } from '../components/TeamRow';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
 async function fetchMlbScoreMap(dateStr, espnGames) {
@@ -127,13 +128,15 @@ export default function ScoresPage() {
             const favTeam = favorites.teams.find(ft =>
               ft.sport === activeSport && competitors.some(c => c.team?.id === ft.team.id)
             );
-            const accentColor = favTeam?.team?.color ? `#${favTeam.team.color}` : null;
+            const rawC = favTeam?.team?.color ? `#${favTeam.team.color}` : null;
+            const rawA = favTeam?.team?.alternateColor ? `#${favTeam.team.alternateColor}` : null;
+            const accentColor = rawC ? adaptColorForDarkBg(rawC, rawA) : null;
 
             if (activeSport === 'mlb') {
               const mlbFeed = mlbScoreMap[game.id] || null;
               if (st === 'pre')  return <MlbPreCard  key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
               if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
-              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} mlbFeed={mlbFeed} liveData={null} accentColor={accentColor} />;
+              return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate}   accentColor={accentColor} />;
             }
             return <ScoreCardSimple key={game.id} game={game} sport={activeSport} navigate={navigate} myTeamIds={myTeamIds} accentColor={accentColor} />;
           })}
