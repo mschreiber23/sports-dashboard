@@ -6115,8 +6115,12 @@ thead .dfs-sticky-player {
   align-items: center;
   padding: 0 0 3px;
 }
-.mlbc-rhe-spacer { flex: 1; } /* spans logo + team-info */
+.mlbc-rhe-spacer { flex: 1; }
+/* .mlbc-final-label inside the rhe-header takes the spacer role */
+.mlbc-rhe-header .mlbc-final-label { flex: 1; }
 .mlbc-rhe-header span { font-size: 11px; font-weight: 600; color: var(--text2); text-align: right; width: 30px; }
+/* R/H/E labels themselves */
+.mlbc-rhe-header > span:not(.mlbc-rhe-spacer):not(.mlbc-final-label) { width: 30px; text-align: right; }
 .mlbc-team-row {
   display: flex;
   align-items: center;

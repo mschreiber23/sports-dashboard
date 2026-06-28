@@ -32,7 +32,7 @@ function getScore(c) {
 /* ══════════════════════════════════════════════════════
    NEW MLB CARD COMPONENTS — clean card design (dark mode)
    ══════════════════════════════════════════════════════ */
-function MlbTeamRows({ away, home, sport, mlbTotals, showRHE }) {
+function MlbTeamRows({ away, home, sport, mlbTotals, showRHE, finalLabel }) {
   const navigate = useNavigate();
   const rec = (c) => c.records?.[0]?.summary || '';
   const r = (c) => { const t = mlbTotals?.[c.homeAway]; return t?.runs ?? (typeof c.score === 'object' ? c.score?.displayValue : c.score) ?? '—'; };
@@ -42,7 +42,11 @@ function MlbTeamRows({ away, home, sport, mlbTotals, showRHE }) {
     <div className="mlbc-teams">
       {showRHE && (
         <div className="mlbc-rhe-header">
-          <span className="mlbc-rhe-spacer"/><span>R</span><span>H</span><span>E</span>
+          {finalLabel
+            ? <span className="mlbc-final-label">{finalLabel}</span>
+            : <span className="mlbc-rhe-spacer"/>
+          }
+          <span>R</span><span>H</span><span>E</span>
         </div>
       )}
       {[away, home].filter(Boolean).map((c) => (
@@ -215,9 +219,7 @@ function MlbFinalCard({ game, sport, navigate }) {
   }, [game.id]);
   return (
     <div className="mlbc-card" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
-      <div className="mlbc-header"><span className="mlbc-final-label">FINAL</span></div>
-      <div className="mlbc-divider" />
-      <MlbTeamRows away={away} home={home} sport={sport} showRHE />
+      <MlbTeamRows away={away} home={home} sport={sport} showRHE finalLabel="FINAL" />
       {decisions && (
         <>
           <div className="mlbc-divider" />
