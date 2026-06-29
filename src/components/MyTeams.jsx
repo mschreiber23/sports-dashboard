@@ -75,7 +75,8 @@ export default function MyTeams({ editMode = false, setEditMode }) {
           const id = extractTeamId(t.uid || '');
           const sport = SLUG_TO_SPORT[(t.defaultLeagueSlug || t.sport || '').toLowerCase()];
           if (!id || !sport) return null;
-          return { id, sport, displayName: t.displayName };
+          const logo = t.image?.defaultDark || t.image?.default || '';
+          return { id, sport, displayName: t.displayName, logo };
         }).filter(Boolean);
         setTeamResults(items);
       })
@@ -180,13 +181,11 @@ export default function MyTeams({ editMode = false, setEditMode }) {
             <div className="picker-list">
               {teamResults.map((t) => {
                 const already = favorites.teams.some(ft => ft.team.id === t.id && ft.sport === t.sport);
-                const sportLabel = SPORTS[t.sport]?.label || t.sport.toUpperCase();
-                const color = SPORT_COLORS[t.sport] || '#888';
                 return (
                   <div key={`${t.sport}-${t.id}`} className="picker-item">
                     <div className="picker-team-info">
+                      {t.logo && <img src={t.logo} alt="" className="picker-team-logo" onError={e => e.target.style.display='none'} />}
                       <div className="picker-name">{t.displayName}</div>
-                      <span className="picker-sport-badge" style={{ background: color }}>{sportLabel}</span>
                     </div>
                     <button
                       className={already ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}
