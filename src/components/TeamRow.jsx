@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
 import useMlbLiveGame from '../hooks/useMlbLiveGame';
-import { mlbHeadshot } from '../hooks/useMlbLiveFeed';
+import { mlbHeadshot, extractTopPerformers } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
@@ -189,6 +189,26 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
   );
 }
 
+/* ── Top Performers section (MLB live + final cards) ── */
+function TopPerformersSection({ performers, sport, navigate }) {
+  return (
+    <div className="mlbc-tp-wrap">
+      <div className="mlbc-tp-label">TOP PERFORMERS</div>
+      <div className="mlbc-tp-row">
+        {performers.map((p, i) => (
+          <div key={i} className="mlbc-tp-player"
+            style={{ cursor: p.mlbId ? 'pointer' : 'default' }}
+            onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/${sport}/${p.mlbId}`); }}>
+            <img src={p.headshot} alt="" className="mlbc-tp-photo" onError={(e) => e.target.style.display = 'none'} />
+            <div className="mlbc-tp-name">{p.lastName}</div>
+            <div className="mlbc-tp-stat">{p.hAb}{p.statLine ? ` | ${p.statLine}` : ''}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MlbLiveCard({ game, sport, navigate, accentColor }) {
   // Self-contained: always fetches its own live MLB feed — identical everywhere
   const mlbFeed = useMlbLiveGame(sport, game);
@@ -279,6 +299,12 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
           </div>
         </>
       )}
+      {mlbFeed?.topPerformers?.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <TopPerformersSection performers={mlbFeed.topPerformers} sport={sport} navigate={navigate} />
+        </>
+      )}
       <div className="mlbc-divider" />
       <div className="mlbc-actions">
         <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Gamecast'}});}}>Gamecast</span>
@@ -306,6 +332,12 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
       boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
       <MlbTeamRows away={away} home={home} sport={sport} showRHE finalLabel="FINAL" />
+      {decisions?.topPerformers?.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <TopPerformersSection performers={decisions.topPerformers} sport={sport} navigate={navigate} />
+        </>
+      )}
       {decisions && (
         <>
           <div className="mlbc-divider" />
@@ -330,7 +362,6 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
                 <div key={label} className="mlbc-decision-col"
                   style={{ cursor: (p.espnId || p.mlbId) ? 'pointer' : 'default' }}
                   onClick={(ev) => { ev.stopPropagation(); if (p.espnId) navigate(`/player/mlb/${p.espnId}`); else if (p.fullName) goToEspnPlayer(p.fullName, 'mlb', navigate); }}>
-                  {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev) => ev.target.style.display = 'none'} />}
                   <div className="mlbc-decision-label">
                     {label}: <span className="mlbc-matchup-name">{p.shortName}</span>
                     {recordStr && <span className="mlbc-decision-record-inline"> ({recordStr})</span>}
@@ -577,6 +608,7 @@ async function fetchMlbDecisions(gameDate, homeTeamAbbr) {
     winner: byId[dec.winner.id],
     loser:  byId[dec.loser.id],
     save:   dec.save?.id ? byId[dec.save.id] : null,
+    topPerformers: extractTopPerformers(feedData.liveData?.boxscore),
   };
 }
 

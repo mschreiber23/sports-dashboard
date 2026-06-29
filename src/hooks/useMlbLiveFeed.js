@@ -9,6 +9,39 @@ export function mlbHeadshot(mlbId) {
     : null;
 }
 
+// Extract top 3 batting performers from a boxscore object
+export function extractTopPerformers(boxscore) {
+  const teams = boxscore?.teams || {};
+  const players = [];
+  for (const side of ['away', 'home']) {
+    for (const player of Object.values(teams[side]?.players || {})) {
+      if (player.battingOrder == null) continue;
+      const bs = player.stats?.batting || {};
+      const ab  = bs.atBats      ?? 0; if (ab === 0) continue;
+      const h   = bs.hits        ?? 0;
+      const hr  = bs.homeRuns    ?? 0;
+      const rbi = bs.rbi         ?? 0;
+      const db  = bs.doubles     ?? 0;
+      const tr  = bs.triples     ?? 0;
+      const sb  = bs.stolenBases ?? 0;
+      const score = hr * 4 + rbi * 2 + tr * 2 + db + sb + h * 0.5;
+      if (score === 0) continue;
+      const fullName = player.person?.fullName || '';
+      const lastName = fullName.includes(' ') ? fullName.split(' ').slice(1).join(' ') : fullName;
+      const mlbId = player.person?.id;
+      const statParts = [
+        hr  > 0 && (hr  > 1 ? `${hr} HR`  : 'HR'),
+        db  > 0 && (db  > 1 ? `${db} 2B`  : '2B'),
+        tr  > 0 && (tr  > 1 ? `${tr} 3B`  : '3B'),
+        rbi > 0 && `${rbi} RBI`,
+        sb  > 0 && `${sb} SB`,
+      ].filter(Boolean);
+      players.push({ mlbId, lastName, headshot: mlbHeadshot(mlbId), hAb: `${h}-${ab}`, statLine: statParts.join(', '), score });
+    }
+  }
+  return players.sort((a, b) => b.score - a.score).slice(0, 3);
+}
+
 export default function useMlbLiveFeed(gamePk, active = true) {
   const [data, setData] = useState(null);
   const timerRef = useRef(null);
@@ -38,7 +71,7 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     pitcherGameStats: {}, batterGameStats: {}, batterPosition: '',
     onDeck: null, inHole: null, inningDisplay: '',
     isBetweenInnings: false, dueUp: [],
-    batSide: 'R', venueId: null,
+    batSide: 'R', venueId: null, topPerformers: [],
   };
 
   const ld      = data.liveData  || {};
@@ -144,6 +177,8 @@ export default function useMlbLiveFeed(gamePk, active = true) {
 
   const currentResult = current.about?.isComplete ? current.result : null;
 
+  const topPerformers = extractTopPerformers(ld.boxscore);
+
   return {
     raw: data,
     pitches, lastPitch, szTop, szBot,
@@ -163,5 +198,6 @@ export default function useMlbLiveFeed(gamePk, active = true) {
     inning: ls.currentInning,
     inningHalf: ls.inningHalf,
     shortDetail: `${ls.inningHalf === 'Top' ? '▲' : '▼'} ${ls.currentInning}`,
+    topPerformers,
   };
 }

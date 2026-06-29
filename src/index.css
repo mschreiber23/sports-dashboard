@@ -6285,6 +6285,59 @@ thead .dfs-sticky-player {
 .mlbc-hand { font-size: 11px; color: var(--text2); font-weight: 500; }
 .mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
 
+/* ── Top Performers (MLB live + final cards) ── */
+.mlbc-tp-wrap { padding: 8px 14px 10px; }
+.mlbc-tp-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+.mlbc-tp-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.mlbc-tp-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 2px 4px;
+  border-radius: 8px;
+  transition: background 0.1s;
+}
+.mlbc-tp-player:hover { background: var(--bg3); }
+.mlbc-tp-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  background: var(--bg3);
+  border: 2px solid var(--accent);
+}
+.mlbc-tp-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.mlbc-tp-stat {
+  font-size: 10px;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 /* Pre-game pitcher stat grid (W-L · ERA · IP · SO) */
 .mlbc-pitcher-statrow {
   display: flex;
