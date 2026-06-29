@@ -105,10 +105,20 @@ function HamburgerIcon({ active }) {
 }
 
 // Nav order: Home - Standings - Scores - Players - Leaders - More
+function CardsIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <line x1="2" y1="10" x2="22" y2="10"/>
+    </svg>
+  );
+}
+
 const MORE_ITEMS = [
-  { path: '/me',       label: 'My Profile', Icon: MeIcon },
-  { path: '/rankings', label: 'Rankings',   Icon: LeadersIcon },
-  { path: '/dfs',      label: 'ShribeIQ',   Icon: DFSIcon },
+  { path: '/me',           label: 'My Profile',   Icon: MeIcon },
+  { path: '/player-cards', label: 'Player Cards',  Icon: CardsIcon },
+  { path: '/rankings',     label: 'Rankings',      Icon: LeadersIcon },
+  { path: '/dfs',          label: 'ShribeIQ',      Icon: DFSIcon },
 ];
 
 const NAV_ITEMS = [

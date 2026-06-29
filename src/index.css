@@ -6636,6 +6636,167 @@ thead .dfs-sticky-player {
 .nhl-shot-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 .nhl-shot-legend-note { font-size: 10px; color: var(--text2); }
 
+/* ════════════════════════════════════════════════════════
+   PLAYER CARDS PAGE
+   ════════════════════════════════════════════════════════ */
+.pc-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pc-search-wrap {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+/* Cards grid — 1 col mobile, 3 col desktop */
+.pc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .pc-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1024px) {
+  .pc-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Individual card — matches mlbc-card style */
+.pc-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Remove button */
+.pc-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  z-index: 1;
+  transition: color 0.1s;
+}
+.pc-remove:hover { color: #f87171; }
+
+/* Game header */
+.pc-game-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 6px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.pc-no-game { color: var(--text2); font-style: italic; }
+.pc-matchup { font-weight: 700; color: var(--text); }
+.pc-score { font-weight: 800; color: var(--text); font-size: 12px; display: flex; align-items: center; }
+.pc-score-live { color: var(--live); }
+.pc-status { color: var(--text2); }
+.pc-status-live { color: var(--live); font-weight: 700; }
+.pc-broadcast { color: var(--text2); }
+
+/* Player row */
+.pc-player-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.pc-player-row:hover { background: var(--bg3); }
+.pc-headshot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.pc-headshot-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.pc-player-info { flex: 1; min-width: 0; }
+.pc-player-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-player-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+.pc-sport-badge {
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fff;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.pc-pos { font-size: 11px; color: var(--text2); font-weight: 600; }
+
+/* Stats grid */
+.pc-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--border);
+  padding: 8px 10px 10px;
+}
+.pc-stat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px;
+}
+.pc-stat-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pc-stat-lbl {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+.pc-no-stats {
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--text2);
+  border-top: 1px solid var(--border);
+  font-style: italic;
+}
+
 /* ── Generic Sport Cards (NFL/NBA/NHL) ───────────────── */
 .sport-sit-line {
   padding: 7px 14px;
