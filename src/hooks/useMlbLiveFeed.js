@@ -36,7 +36,7 @@ export function extractTopPerformers(boxscore) {
         rbi > 0 && `${rbi} RBI`,
         sb  > 0 && `${sb} SB`,
       ].filter(Boolean);
-      players.push({ mlbId, lastName, headshot: mlbHeadshot(mlbId), hAb: `${h}-${ab}`, statLine: statParts.join(', '), score });
+      players.push({ mlbId, fullName, lastName, headshot: mlbHeadshot(mlbId), hAb: `${h}-${ab}`, statLine: statParts.join(', '), score });
     }
   }
   return players.sort((a, b) => b.score - a.score).slice(0, 3);

@@ -197,8 +197,8 @@ function TopPerformersSection({ performers, sport, navigate }) {
       <div className="mlbc-tp-row">
         {performers.map((p, i) => (
           <div key={i} className="mlbc-tp-player"
-            style={{ cursor: p.mlbId ? 'pointer' : 'default' }}
-            onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/${sport}/${p.mlbId}`); }}>
+            style={{ cursor: p.fullName ? 'pointer' : 'default' }}
+            onClick={(ev) => { ev.stopPropagation(); if (p.fullName) goToEspnPlayer(p.fullName, sport, navigate); }}>
             <img src={p.headshot} alt="" className="mlbc-tp-photo" onError={(e) => e.target.style.display = 'none'} />
             <div className="mlbc-tp-name">{p.lastName}</div>
             <div className="mlbc-tp-stat">{p.hAb}{p.statLine ? ` | ${p.statLine}` : ''}</div>
@@ -1170,8 +1170,8 @@ function SportFinalCard({ game, sport, navigate, accentColor }) {
           <div className="sport-leaders-row">
             {topLeaders.map((l, i) => (
               <div key={i} className="sport-leader-col"
-                style={{ cursor: l.espnId ? 'pointer' : 'default' }}
-                onClick={(ev) => { ev.stopPropagation(); l.espnId && navigate(`/player/${sport}/${l.espnId}`); }}>
+                style={{ cursor: (l.espnId || l.name) ? 'pointer' : 'default' }}
+                onClick={(ev) => { ev.stopPropagation(); if (l.espnId) navigate(`/player/${sport}/${l.espnId}`); else if (l.name) goToEspnPlayer(l.name, sport, navigate); }}>
                 {l.headshot && <img src={l.headshot} alt="" className="sport-leader-photo" onError={e => e.target.style.display = 'none'} />}
                 <div>
                   <div className="sport-leader-cat">{l.cat}</div>
