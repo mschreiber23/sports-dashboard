@@ -2090,11 +2090,18 @@ body {
   margin-bottom: 10px;
 }
 .pp-highlights-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
 }
-.pp-highlight-pill { text-align: center; }
+.pp-highlight-pill {
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+  border-right: 1px solid var(--border);
+}
+.pp-highlight-pill:last-child { border-right: none; }
 .pp-hl-value { font-size: 22px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
 .pp-hl-label { font-size: 11px; color: var(--text2); text-transform: uppercase; font-weight: 700; letter-spacing: 0.3px; margin-top: 2px; }
 .pp-hl-rank-pill {
@@ -2153,7 +2160,9 @@ body {
 @media (max-width: 640px) {
   .pp-headshot { width: 110px; }
   .pp-name { font-size: 18px; }
-  .pp-highlights-grid { grid-template-columns: repeat(2, 1fr); }
+  .pp-hl-value { font-size: 16px; }
+  .pp-hl-label { font-size: 9px; }
+  .pp-stat-highlights { padding: 10px 14px; }
   .pp-bio { padding: 14px; }
 }
 
