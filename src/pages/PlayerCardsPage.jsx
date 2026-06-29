@@ -2,6 +2,22 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const STORAGE_KEY = 'playerCards_v1';
+
+function toDateStr(d) {
+  return d.getFullYear().toString()
+    + String(d.getMonth()+1).padStart(2,'0')
+    + String(d.getDate()).padStart(2,'0');
+}
+function formatDateLabel(date) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(date); d.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === -1) return 'Yesterday';
+  if (diff === 1) return 'Tomorrow';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const ESPN_SEARCH = 'https://site.api.espn.com/apis/search/v2';
 const SPORT_COLORS = { mlb:'#e74c3c', nba:'#f39c12', nfl:'#27ae60', nhl:'#3498db' };
 const SLUG_TO_SPORT = {
@@ -75,11 +91,11 @@ function getStatCfgKey(sport, posAbb) {
 }
 
 /* ── Data fetching ────────────────────────────────────── */
-async function findGame(sport, teamId) {
+async function findGame(sport, teamId, dateStr) {
   const { sport: s, league: l } = SPORT_CFG[sport] || {};
   if (!s) return null;
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${s}/${l}/scoreboard?dates=${today}`);
+  const date = dateStr || toDateStr(new Date());
+  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${s}/${l}/scoreboard?dates=${date}`);
   const d = await r.json();
   return (d.events || []).find(e =>
     e.competitions?.[0]?.competitors?.some(c => c.team?.id === String(teamId))
@@ -137,7 +153,7 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
 }
 
 /* ── Individual player card ───────────────────────────── */
-function PlayerGameCard({ player, onRemove }) {
+function PlayerGameCard({ player, onRemove, dateStr }) {
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
   const [loading, setLoading] = useState(true);
@@ -147,7 +163,7 @@ function PlayerGameCard({ player, onRemove }) {
 
   const load = useCallback(async () => {
     try {
-      const game = await findGame(player.sport, player.team?.id);
+      const game = await findGame(player.sport, player.team?.id, dateStr);
       if (!game) { setGameData({ game: null }); setLoading(false); return; }
       const comp = game.competitions?.[0];
       const state = comp?.status?.type?.state;
@@ -160,10 +176,12 @@ function PlayerGameCard({ player, onRemove }) {
   }, [player.id, player.sport, player.team?.id]);
 
   useEffect(() => {
+    setGameData(null);
+    setLoading(true);
     load();
     const iv = setInterval(load, 30000);
     return () => clearInterval(iv);
-  }, [load]);
+  }, [load, dateStr]);
 
   const comp = gameData?.game?.competitions?.[0];
   const state = comp?.status?.type?.state;
@@ -258,6 +276,11 @@ export default function PlayerCardsPage() {
   const [cards, setCards] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
   });
+  const [selectedDate, setSelectedDate] = useState(todayMidnight);
+  const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
+  const shiftDate = (n) => setSelectedDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; });
+  const dateStr = toDateStr(selectedDate);
+
   const [query, setQuery]     = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -338,9 +361,27 @@ export default function PlayerCardsPage() {
     <div className="page-content">
       <div className="pc-page-header">
         <h1 className="page-title" style={{margin:0}}>Player Cards</h1>
-        <button className="btn-primary btn-sm" onClick={() => setShowSearch(v => !v)}>
-          {showSearch ? '✕ Close' : '+ Add Player'}
-        </button>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <div className="sp-date-nav">
+            <button className="sp-date-btn" onClick={() => shiftDate(-1)}>‹</button>
+            <label className="sp-date-label">
+              {formatDateLabel(selectedDate)}
+              <input
+                type="date"
+                className="sp-date-input"
+                value={selectedDate.toISOString().slice(0,10)}
+                onChange={e => setSelectedDate(new Date(e.target.value + 'T12:00:00'))}
+              />
+            </label>
+            <button className="sp-date-btn" onClick={() => shiftDate(1)}>›</button>
+            {!isToday && (
+              <button className="sp-date-today" onClick={() => setSelectedDate(todayMidnight())}>↩</button>
+            )}
+          </div>
+          <button className="btn-primary btn-sm" onClick={() => setShowSearch(v => !v)}>
+            {showSearch ? '✕' : '+ Add'}
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -394,7 +435,7 @@ export default function PlayerCardsPage() {
 
       <div className="pc-grid">
         {cards.map(player => (
-          <PlayerGameCard key={player.id} player={player} onRemove={removeCard} />
+          <PlayerGameCard key={`${player.id}-${dateStr}`} player={player} onRemove={removeCard} dateStr={dateStr} />
         ))}
       </div>
     </div>
