@@ -3448,19 +3448,20 @@ body {
 
 /* App layout with bottom nav */
 .app { display: flex; flex-direction: column; min-height: 100vh; }
-.app-body { flex: 1; padding-bottom: 80px; } /* space for bottom nav */
+/* Bottom padding = nav height + home-indicator safe area */
+.app-body { flex: 1; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
 /* Bottom nav (mobile) */
 .bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 64px;
   background: var(--bg2);
   border-top: 1px solid var(--border);
   display: flex;
-  align-items: stretch;
+  align-items: flex-start; /* icons align to top, safe-area padding fills below */
   z-index: 200;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* No fixed height — grows naturally to fit icons + safe area */
 }
 
 .nav-item {
@@ -3511,6 +3512,7 @@ body {
 .app-sticky-header {
   position: sticky;
   top: 0;
+  padding-top: env(safe-area-inset-top, 0px); /* clear Dynamic Island / notch */
   z-index: 100;
   background: var(--bg2);
 }
@@ -3569,6 +3571,7 @@ body {
   .bottom-nav { display: none; }
   .top-nav { display: block; }
   .app-body { padding-bottom: 0; }
+  .app-sticky-header { padding-top: 0; } /* no notch on desktop */
 }
 
 /* Page content wrapper */
@@ -6699,7 +6702,7 @@ thead .dfs-sticky-player {
 }
 .more-dropdown {
   position: fixed;
-  bottom: calc(60px + env(safe-area-inset-bottom));
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   z-index: 150;
