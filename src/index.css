@@ -1,5 +1,5 @@
 /* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-size: 12px; }
 
 /* Prevent iOS auto-zoom on input focus (triggers when font-size < 16px) */
 input, select, textarea {
@@ -2728,8 +2728,8 @@ body {
 .bsp-ls-rhe { border-left: 1px solid var(--border); color: var(--text); }
 .bsp-ls-td { padding: 9px 8px; text-align: center; color: var(--text2); font-variant-numeric: tabular-nums; }
 .bsp-ls-team-col.bsp-ls-td { text-align: left; padding-left: 14px; display: flex; align-items: center; gap: 7px; }
-.bsp-ls-logo { width: 20px; height: 20px; object-fit: contain; }
-.bsp-ls-abbr { font-weight: 700; font-size: 13px; color: var(--text); }
+.bsp-ls-logo { width: 18px; height: 18px; object-fit: contain; }
+.bsp-ls-abbr { font-weight: 700; font-size: 12px; color: var(--text); }
 .bsp-ls-rhe.bsp-ls-td { border-left: 1px solid var(--border); }
 .bsp-ls-bold { font-weight: 800; color: var(--text); }
 
@@ -6014,7 +6014,7 @@ thead .dfs-sticky-player {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 12px;
+  padding: 3px 3px;
   border-radius: 9px;
   border: none;
   background: none;
@@ -6030,7 +6030,7 @@ thead .dfs-sticky-player {
   color: var(--text) !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
-.bs-seg-logo { width: 22px; height: 22px; object-fit: contain; }
+.bs-seg-logo { width: 18px; height: 18px; object-fit: contain; }
 
 /* Section labels (HITTING / PITCHING) */
 .bs-team-stats, .bs-team-stats { display: flex; flex-direction: column; gap: 0; }
