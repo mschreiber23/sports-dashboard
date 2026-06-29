@@ -6481,6 +6481,145 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
 }
 
+/* ════════════════════════════════════════════════════════
+   NHL GAMECAST
+   ════════════════════════════════════════════════════════ */
+.nhl-gc { display: flex; flex-direction: column; gap: 0; }
+.nhl-gc-loading { padding: 24px; text-align: center; }
+
+/* Header / scoreline */
+.nhl-gc-header {
+  padding: 16px 16px 10px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.nhl-gc-series {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--text2); text-align: center; margin-bottom: 8px;
+}
+.nhl-gc-scoreline {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.nhl-gc-team { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.nhl-gc-logo { width: 48px; height: 48px; object-fit: contain; }
+.nhl-gc-team-name { font-size: 13px; font-weight: 800; color: var(--text); }
+.nhl-gc-center { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.nhl-gc-scores { display: flex; align-items: center; gap: 10px; }
+.nhl-gc-score { font-size: 40px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+.nhl-gc-score-win { color: #fff; }
+.nhl-gc-score-sep { font-size: 24px; color: var(--text2); }
+.nhl-gc-status { font-size: 13px; font-weight: 700; color: var(--text2); display: flex; align-items: center; }
+.nhl-gc-live { color: var(--live); }
+.nhl-gc-strength { font-size: 11px; font-weight: 700; color: #ffb700; background: rgba(255,183,0,0.15); padding: 2px 8px; border-radius: 10px; }
+.nhl-gc-en { font-size: 11px; font-weight: 700; color: #f87171; }
+.nhl-gc-broadcast { font-size: 11px; color: var(--text2); }
+.nhl-gc-sog-bar {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 8px; font-size: 11px;
+}
+.nhl-gc-sog-val { font-weight: 700; color: var(--text); font-size: 13px; }
+.nhl-gc-sog-lbl { color: var(--text2); }
+
+/* Tabs */
+.nhl-gc-tabs {
+  display: flex; overflow-x: auto; background: var(--bg2);
+  border-bottom: 1px solid var(--border); scrollbar-width: none;
+}
+.nhl-gc-tabs::-webkit-scrollbar { display: none; }
+.nhl-gc-tab {
+  flex-shrink: 0; background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text2); padding: 10px 14px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.nhl-gc-tab:hover { color: var(--text); }
+.nhl-gc-tab-active { color: var(--text); border-bottom-color: var(--accent2); }
+
+/* Body */
+.nhl-gc-body { display: flex; flex-direction: column; gap: 0; padding: 12px 0; }
+.nhl-gc-empty { padding: 20px; text-align: center; color: var(--text2); font-size: 13px; }
+.nhl-gc-section { padding: 0 0 12px; }
+.nhl-gc-section-title {
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text2); padding: 6px 14px 4px;
+}
+
+/* Stat comparison rows */
+.nhl-gc-stat-rows { display: flex; flex-direction: column; gap: 6px; padding: 0 14px; }
+.nhl-gc-stat-row {
+  display: flex; align-items: center; gap: 8px; font-size: 12px;
+}
+.nhl-gc-stat-val { font-weight: 700; color: var(--text); min-width: 28px; }
+.nhl-gc-stat-away { text-align: right; }
+.nhl-gc-stat-home { text-align: left; }
+.nhl-gc-stat-label { font-size: 11px; color: var(--text2); min-width: 80px; text-align: center; }
+.nhl-gc-stat-bar-wrap { flex: 1; display: flex; align-items: center; height: 6px; gap: 1px; }
+.nhl-gc-stat-bar { height: 6px; border-radius: 3px; min-width: 4px; transition: width 0.3s; }
+
+/* Goal rows */
+.nhl-goal-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+}
+.nhl-goal-row:last-child { border-bottom: none; }
+.nhl-goal-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+.nhl-goal-info { flex: 1; min-width: 0; }
+.nhl-goal-scorer { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nhl-goal-team { font-size: 10px; font-weight: 800; color: var(--text2); text-transform: uppercase; }
+.nhl-goal-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.nhl-goal-assists { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.nhl-goal-meta { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.nhl-goal-score { font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+
+/* Strength tags */
+.nhl-strength-tag {
+  font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.nhl-strength-pp { background: rgba(255,183,0,0.2); color: #ffb700; }
+.nhl-strength-en { background: rgba(248,113,113,0.2); color: #f87171; }
+
+/* Penalty rows */
+.nhl-penalty-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+}
+.nhl-penalty-icon { flex-shrink: 0; }
+.nhl-penalty-info { flex: 1; }
+.nhl-penalty-name { display: flex; gap: 6px; font-size: 12px; color: var(--text); font-weight: 600; }
+.nhl-penalty-desc { font-size: 11px; color: var(--text2); margin-top: 2px; text-transform: capitalize; }
+
+/* Event feed */
+.nhl-gc-event-filters {
+  display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid var(--border);
+}
+.nhl-gc-filter-btn {
+  padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border); background: none; color: var(--text2);
+  cursor: pointer; transition: all 0.1s;
+}
+.nhl-gc-filter-btn:hover { color: var(--text); }
+.nhl-gc-filter-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.nhl-gc-event-feed { display: flex; flex-direction: column; max-height: 500px; overflow-y: auto; }
+.nhl-event-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 14px; border-bottom: 1px solid var(--border); font-size: 12px;
+  transition: background 0.1s;
+}
+.nhl-event-row:hover { background: var(--bg3); }
+.nhl-event-icon { flex-shrink: 0; width: 20px; text-align: center; }
+.nhl-event-info { flex: 1; min-width: 0; }
+.nhl-event-desc { color: var(--text); line-height: 1.4; }
+.nhl-event-meta { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Shot map */
+.nhl-shot-map-wrap { padding: 0 14px; }
+.nhl-shot-map { width: 100%; border-radius: 8px; }
+.nhl-shot-legend {
+  display: flex; gap: 14px; justify-content: center;
+  font-size: 11px; color: var(--text2); margin-top: 8px; flex-wrap: wrap;
+}
+.nhl-shot-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.nhl-shot-legend-note { font-size: 10px; color: var(--text2); }
+
 /* ── Generic Sport Cards (NFL/NBA/NHL) ───────────────── */
 .sport-sit-line {
   padding: 7px 14px;

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import useMlbLiveFeed, { mlbHeadshot } from '../hooks/useMlbLiveFeed';
+import NhlGamecast from './NhlGamecast';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
 const PITCH_NAMES = {
@@ -2023,6 +2024,8 @@ export default function BoxScorePage() {
             {activeTab === 'Gamecast' && (
               sport === 'mlb'
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
+                : sport === 'nhl'
+                ? <NhlGamecast espnGame={data} sport={sport} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 

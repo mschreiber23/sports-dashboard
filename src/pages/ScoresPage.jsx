@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
 import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard } from '../components/TeamRow';
+import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
@@ -55,6 +56,25 @@ function formatDateLabel(date) {
 
 const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
+async function fetchNhlScoreMap(dateStr, espnGames) {
+  try {
+    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+    const r = await fetch(`https://api-web.nhle.com/v1/score/${isoDate}`);
+    const data = await r.json();
+    const nhlGames = data.games || [];
+    const map = {};
+    for (const eg of espnGames) {
+      const comps = eg.competitions?.[0]?.competitors || [];
+      const ea = normNhlAbb(comps.find(c => c.homeAway === 'away')?.team?.abbreviation || '');
+      const eh = normNhlAbb(comps.find(c => c.homeAway === 'home')?.team?.abbreviation || '');
+      const ng = nhlGames.find(g => normNhlAbb(g.awayTeam?.abbrev) === ea && normNhlAbb(g.homeTeam?.abbrev) === eh);
+      if (!ng) continue;
+      map[eg.id] = { nhlGameId: ng.id, awayScore: ng.awayTeam?.score, homeScore: ng.homeTeam?.score, period: ng.periodDescriptor?.number || ng.period, periodType: ng.periodDescriptor?.periodType || 'REG', clock: ng.clock?.timeRemaining || '', state: ng.gameState };
+    }
+    return map;
+  } catch { return {}; }
+}
+
 export default function ScoresPage() {
   const navigate = useNavigate();
   const { favorites, sportOrder } = useFavorites();
@@ -63,6 +83,7 @@ export default function ScoresPage() {
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const [rawGames, setRawGames] = useState([]);
   const [mlbScoreMap, setMlbScoreMap] = useState({});
+  const [nhlScoreMap, setNhlScoreMap] = useState({});
   const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
 
@@ -100,6 +121,10 @@ export default function ScoresPage() {
         if (activeSport === 'mlb') {
           const map = await fetchMlbScoreMap(dateStr, evts);
           setMlbScoreMap(map);
+        }
+        if (activeSport === 'nhl') {
+          const map = await fetchNhlScoreMap(dateStr, evts);
+          setNhlScoreMap(map);
         }
       })
       .catch(()=>{});
@@ -185,7 +210,7 @@ export default function ScoresPage() {
             }
             if (st === 'pre')  return <SportPreCard   key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
             if (st === 'post') return <SportFinalCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
-            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
+            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} nhlScore={activeSport === 'nhl' ? nhlScoreMap[game.id] : null} />;
           })}
         </div>
       )}

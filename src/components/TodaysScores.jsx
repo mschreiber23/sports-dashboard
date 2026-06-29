@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
+import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 
 function getScore(c) {
   const s = c?.score;
@@ -52,7 +53,7 @@ function MiniDiamond({ onFirst, onSecond, onThird }) {
 }
 
 /* ── Compact ticker card ──────────────────────────────── */
-function TickerCard({ game, sport, myTeamIds, mlbScore }) {
+function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -64,9 +65,9 @@ function TickerCard({ game, sport, myTeamIds, mlbScore }) {
   const isFinal = state === 'post';
   const isPre = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
-  // Use MLB live score if available (more real-time than ESPN)
-  const awayScore = mlbScore?.awayRuns ?? getScore(away);
-  const homeScore = mlbScore?.homeRuns ?? getScore(home);
+  // Use sport-specific live score if available
+  const awayScore = nhlScore?.awayScore ?? mlbScore?.awayRuns ?? getScore(away);
+  const homeScore = nhlScore?.homeScore ?? mlbScore?.homeRuns ?? getScore(home);
   const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
   const sit = comp?.situation || {};
@@ -105,9 +106,10 @@ function TickerCard({ game, sport, myTeamIds, mlbScore }) {
     <button className={`ticker-card ticker-card-live-style ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
         <span className="ticker-live"><span className="live-dot" />{
-          // Prefer MLB inning string for MLB games
-          (sport === 'mlb' && mlbScore?.inning && mlbScore?.inningHalf)
+          sport === 'mlb' && mlbScore?.inning && mlbScore?.inningHalf
             ? `${mlbScore.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${mlbScore.inning}`
+          : sport === 'nhl' && nhlScore?.period
+            ? `${nhlScore.periodType === 'OT' ? 'OT' : `P${nhlScore.period}`} ${nhlScore.clock}`
             : shortDetail
         }</span>
         {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
@@ -254,6 +256,48 @@ function GridCard({ game, sport, myTeamIds, mlbScore }) {
   );
 }
 
+/* ── NHL live score overlay via NHL.com API ─────────────
+   Returns a map: ESPN game id → { awayScore, homeScore, period, clock, strength }
+──────────────────────────────────────────────────────── */
+async function fetchNhlLiveScores(dateStr, espnGames) {
+  try {
+    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+    const r = await fetch(`https://api-web.nhle.com/v1/score/${isoDate}`);
+    const data = await r.json();
+    const nhlGames = data.games || [];
+    const map = {};
+    for (const eg of espnGames) {
+      const comps = eg.competitions?.[0]?.competitors || [];
+      const ea = normNhlAbb(comps.find(c => c.homeAway === 'away')?.team?.abbreviation || '');
+      const eh = normNhlAbb(comps.find(c => c.homeAway === 'home')?.team?.abbreviation || '');
+      const ng = nhlGames.find(g => normNhlAbb(g.awayTeam?.abbrev) === ea && normNhlAbb(g.homeTeam?.abbrev) === eh);
+      if (!ng) continue;
+      const period = ng.periodDescriptor?.number || ng.period;
+      const pType  = ng.periodDescriptor?.periodType || 'REG';
+      const ppTeam = (() => {
+        const sit = ng.situation;
+        if (!sit) return null;
+        const a = parseInt(sit.awayTeam?.situationCode?.[1] || '5');
+        const h = parseInt(sit.awayTeam?.situationCode?.[2] || '5');
+        if (a > h) return ng.awayTeam?.abbrev;
+        if (h > a) return ng.homeTeam?.abbrev;
+        return null;
+      })();
+      map[eg.id] = {
+        awayScore: ng.awayTeam?.score ?? null,
+        homeScore: ng.homeTeam?.score ?? null,
+        period,
+        periodType: pType,
+        clock: ng.clock?.timeRemaining || '',
+        state: ng.gameState,
+        ppTeam,
+        nhlGameId: ng.id,
+      };
+    }
+    return map;
+  } catch { return {}; }
+}
+
 /* ── MLB live score overlay via MLB Stats API ───────────
    Returns a map: ESPN game id → { awayRuns, homeRuns, awayHits, homeHits, awayErrors, homeErrors }
    Matched by comparing ESPN team displayNames to MLB team names.
@@ -305,6 +349,7 @@ export default function TodaysScores({ compact = false }) {
   const [activeSport, setActiveSport] = useState(sportOrder[0] || 'mlb');
   const [rawGames, setRawGames] = useState([]);
   const [mlbScores, setMlbScores] = useState({});
+  const [nhlScores, setNhlScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [editOrder, setEditOrder] = useState(false);
@@ -329,12 +374,18 @@ export default function TodaysScores({ compact = false }) {
     return (stateOrderConst[sa] ?? 2) - (stateOrderConst[sb] ?? 2);
   }), [rawGames, favorites.teams, activeSport]);
 
-  // Re-fetch MLB live scores every 30s when viewing today's MLB
   const refreshMlbScores = useRef(null);
   refreshMlbScores.current = async (evts) => {
     if (activeSport !== 'mlb' || !isToday || !evts.length) return;
     const scores = await fetchMlbLiveScores(toDateStr(selectedDate), evts);
     setMlbScores(scores);
+  };
+
+  const refreshNhlScores = useRef(null);
+  refreshNhlScores.current = async (evts) => {
+    if (activeSport !== 'nhl' || !isToday || !evts.length) return;
+    const scores = await fetchNhlLiveScores(toDateStr(selectedDate), evts);
+    setNhlScores(scores);
   };
 
   useEffect(() => {
@@ -348,18 +399,19 @@ export default function TodaysScores({ compact = false }) {
     const load = () =>
       getScoreboard(activeSport, dateStr)
         .then((evts) => {
-          setRawGames(evts); // sort handled reactively by useMemo above
+          setRawGames(evts);
           refreshMlbScores.current(evts);
+          refreshNhlScores.current(evts);
           return evts;
         })
         .catch(() => { setRawGames([]); return []; });
 
     load().finally(() => setLoading(false));
 
-    // Live polling: ESPN every 60s (for status changes), MLB every 30s (for scores)
     pollRef.current = setInterval(async () => {
       const evts = await load();
       await refreshMlbScores.current(evts);
+      await refreshNhlScores.current(evts);
     }, 30000);
 
     return () => clearInterval(pollRef.current);
@@ -400,7 +452,7 @@ export default function TodaysScores({ compact = false }) {
           {loading && [1,2,3,4].map((i) => <div key={i} className="ticker-skeleton" />)}
           {!loading && games.length === 0 && <span className="ts-no-games">No games</span>}
           {!loading && games.map((game) => (
-            <TickerCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} mlbScore={mlbScores[game.id]} />
+            <TickerCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} mlbScore={mlbScores[game.id]} nhlScore={nhlScores[game.id]} />
           ))}
         </div>
       </div>
@@ -417,7 +469,7 @@ export default function TodaysScores({ compact = false }) {
           </div>
           <div className="scores-grid">
             {games.map((game) => (
-              <GridCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} mlbScore={mlbScores[game.id]} />
+              <GridCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} mlbScore={mlbScores[game.id]} nhlScore={nhlScores[game.id]} />
             ))}
           </div>
         </div>

@@ -1060,10 +1060,12 @@ const accentStyle = (color) => color ? {
 } : undefined;
 
 /** Team rows reused by all three sport card states */
-function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel }) {
+function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, awayScoreOverride, homeScoreOverride }) {
   const nav = useNavigate();
   const rec = (c) => c?.records?.[0]?.summary || '';
   const score = (c) => {
+    if (c?.homeAway === 'away' && awayScoreOverride != null) return awayScoreOverride;
+    if (c?.homeAway === 'home' && homeScoreOverride != null) return homeScoreOverride;
     const s = c?.score;
     if (s == null) return '—';
     return typeof s === 'object' ? s.displayValue : String(s);
@@ -1118,21 +1120,33 @@ function SportPreCard({ game, sport, navigate, accentColor }) {
   );
 }
 
-function SportLiveCard({ game, sport, navigate, accentColor }) {
+function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
   const home = competitors.find(c => c.homeAway === 'home') || competitors[1];
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
-  const liveStr = comp?.status?.type?.shortDetail || '';
+  const espnLiveStr = comp?.status?.type?.shortDetail || '';
   const sit = comp?.situation || {};
+
+  // NHL: use NHL API data when available
+  const isNhl = sport === 'nhl';
+  const nhlPeriod = nhlScore?.period;
+  const nhlClock  = nhlScore?.clock || '';
+  const nhlPType  = nhlScore?.periodType || 'REG';
+  const nhlPLabel = nhlPeriod ? (nhlPType === 'OT' ? 'OT' : `P${nhlPeriod}`) : '';
+  const liveStr = isNhl && nhlPLabel ? `${nhlPLabel} ${nhlClock}` : espnLiveStr;
+
+  // Override scores with NHL API
+  const awayOverride = isNhl && nhlScore?.awayScore != null ? String(nhlScore.awayScore) : null;
+  const homeOverride = isNhl && nhlScore?.homeScore != null ? String(nhlScore.homeScore) : null;
 
   const sitLine = sport === 'nfl'
     ? sit.downDistanceText || ''
     : sport === 'nba'
     ? (sit.possessionText ? `${sit.possessionText} possession` : '')
     : sport === 'nhl'
-    ? (sit.powerPlayText || '')
+    ? (nhlScore?.ppTeam ? `${nhlScore.ppTeam} Power Play` : '')
     : '';
 
   const liveLabel = (
@@ -1144,7 +1158,8 @@ function SportLiveCard({ game, sport, navigate, accentColor }) {
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
       <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
-        <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel} />
+        <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel}
+          awayScoreOverride={awayOverride} homeScoreOverride={homeOverride} />
       </div>
       {sitLine && (
         <>
