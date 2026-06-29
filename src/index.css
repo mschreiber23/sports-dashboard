@@ -6677,13 +6677,14 @@ thead .dfs-sticky-player {
   gap: 0;
 }
 
-/* Card controls (reorder + remove) */
+/* Card controls */
 .pc-controls {
   position: absolute;
   top: 7px;
   right: 7px;
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
   z-index: 1;
 }
 .pc-ctrl-btn {
@@ -6697,9 +6698,33 @@ thead .dfs-sticky-player {
   line-height: 1;
   transition: color 0.1s, background 0.1s;
 }
-.pc-ctrl-btn:hover:not(:disabled) { color: var(--text); background: var(--bg3); }
-.pc-ctrl-btn:disabled { opacity: 0.25; cursor: default; }
-.pc-ctrl-remove:hover:not(:disabled) { color: #f87171 !important; }
+.pc-ctrl-btn:hover { color: var(--text); background: var(--bg3); }
+.pc-ctrl-remove:hover { color: #f87171 !important; }
+
+/* Drag handle */
+.pc-drag-handle {
+  cursor: grab;
+  color: var(--text2);
+  font-size: 16px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  user-select: none;
+  touch-action: none;
+}
+.pc-drag-handle:hover { color: var(--text); background: var(--bg3); }
+.pc-drag-handle:active { cursor: grabbing; }
+
+/* Edit mode: force single column so vertical drag works predictably */
+.pc-grid-edit {
+  grid-template-columns: 1fr !important;
+}
+
+/* Visual feedback when dragging over a card */
+.pc-card-drag-over {
+  border-color: var(--accent2) !important;
+  box-shadow: 0 0 0 2px var(--accent2) !important;
+}
 
 /* Game header */
 .pc-game-header {

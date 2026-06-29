@@ -173,7 +173,8 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
 }
 
 /* ── Individual player card ───────────────────────────── */
-function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, onMoveDown, isFirst, isLast }) {
+function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
+  onDragStart, onDragEnter, onDragEnd, onTouchStart, isDragOver }) {
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
   const [loading, setLoading] = useState(true);
@@ -241,15 +242,26 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, o
   const headshotUrl = typeof player.headshot === 'object' ? player.headshot?.href : player.headshot;
 
   return (
-    <div className="pc-card" style={accentColor ? {
-      background: `linear-gradient(135deg, color-mix(in srgb,${accentColor} 12%,var(--bg2)) 0%, var(--bg2) 60%)`,
-      borderColor: `color-mix(in srgb,${accentColor} 50%,transparent)`,
-      boxShadow: `0 0 14px color-mix(in srgb,${accentColor} 22%,transparent)`,
-    } : undefined}>
-      {/* Controls: reorder + remove */}
+    <div
+      className={`pc-card${isDragOver ? ' pc-card-drag-over' : ''}`}
+      style={accentColor ? {
+        background: `linear-gradient(135deg, color-mix(in srgb,${accentColor} 12%,var(--bg2)) 0%, var(--bg2) 60%)`,
+        borderColor: `color-mix(in srgb,${accentColor} 50%,transparent)`,
+        boxShadow: `0 0 14px color-mix(in srgb,${accentColor} 22%,transparent)`,
+      } : undefined}
+      onDragOver={e => { e.preventDefault(); onDragEnter?.(); }}
+      onDrop={onDragEnd}
+    >
+      {/* Controls */}
       <div className="pc-controls">
-        <button className="pc-ctrl-btn" onClick={onMoveUp}   disabled={isFirst}  title="Move up">↑</button>
-        <button className="pc-ctrl-btn" onClick={onMoveDown} disabled={isLast}   title="Move down">↓</button>
+        {editMode && (
+          <div
+            className="pc-drag-handle"
+            draggable
+            onDragStart={onDragStart}
+            onTouchStart={onTouchStart}
+          >≡</div>
+        )}
         <button className="pc-ctrl-btn pc-ctrl-remove" onClick={() => onRemove(player.id)} title="Remove">✕</button>
       </div>
 
@@ -452,15 +464,47 @@ export default function PlayerCardsPage() {
     setShowSearch(false);
   };
 
+  const [editMode, setEditMode] = useState(false);
+  const [dragFrom, setDragFrom] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+
   const removeCard = (id) => setCards(prev => prev.filter(c => c.id !== id));
   const updateCard = (id, patch) => setCards(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
-  const moveCard = (idx, dir) => setCards(prev => {
-    const next = [...prev];
-    const target = idx + dir;
-    if (target < 0 || target >= next.length) return prev;
-    [next[idx], next[target]] = [next[target], next[idx]];
-    return next;
-  });
+
+  const commitDrag = (fromIdx, toIdx) => {
+    if (fromIdx === null || toIdx === null || fromIdx === toIdx) return;
+    setCards(prev => {
+      const next = [...prev];
+      const [item] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, item);
+      return next;
+    });
+  };
+
+  // Touch drag: track which card is being held and which we're hovering over
+  const touchDragRef = useRef({ active: false, fromIdx: null });
+  const cardRefs = useRef([]);
+
+  const handleTouchStart = (idx) => (e) => {
+    touchDragRef.current = { active: true, fromIdx: idx };
+    setDragFrom(idx);
+  };
+  const handleTouchMove = (e) => {
+    if (!touchDragRef.current.active) return;
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cardEl = el?.closest('[data-card-idx]');
+    if (cardEl) {
+      const toIdx = parseInt(cardEl.dataset.cardIdx);
+      setDragOver(toIdx);
+    }
+  };
+  const handleTouchEnd = () => {
+    commitDrag(touchDragRef.current.fromIdx, dragOver);
+    touchDragRef.current = { active: false, fromIdx: null };
+    setDragFrom(null);
+    setDragOver(null);
+  };
 
   return (
     <div className="page-content">
@@ -483,6 +527,17 @@ export default function PlayerCardsPage() {
               <button className="sp-date-today" onClick={() => setSelectedDate(todayMidnight())}>↩</button>
             )}
           </div>
+          <button className="mt-customize-btn" onClick={() => { setEditMode(v => !v); setShowSearch(false); }}>
+            {editMode ? '✓ Done' : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit
+              </>
+            )}
+          </button>
           <button className="btn-primary btn-sm" onClick={() => setShowSearch(v => !v)}>
             {showSearch ? '✕' : '+ Add'}
           </button>
@@ -538,12 +593,23 @@ export default function PlayerCardsPage() {
         </div>
       )}
 
-      <div className="pc-grid">
+      <div
+        className={`pc-grid${editMode ? ' pc-grid-edit' : ''}`}
+        onTouchMove={editMode ? handleTouchMove : undefined}
+        onTouchEnd={editMode ? handleTouchEnd : undefined}
+      >
         {cards.map((player, idx) => (
-          <PlayerGameCard key={`${player.id}-${dateStr}`} player={player}
-            onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard}
-            onMoveUp={() => moveCard(idx, -1)} onMoveDown={() => moveCard(idx, 1)}
-            isFirst={idx === 0} isLast={idx === cards.length - 1} />
+          <div key={`${player.id}-${dateStr}`} data-card-idx={idx}>
+            <PlayerGameCard player={player}
+              onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard}
+              editMode={editMode}
+              isDragOver={dragOver === idx && dragFrom !== idx}
+              onDragStart={() => { setDragFrom(idx); setDragOver(idx); }}
+              onDragEnter={() => setDragOver(idx)}
+              onDragEnd={() => { commitDrag(dragFrom, dragOver); setDragFrom(null); setDragOver(null); }}
+              onTouchStart={handleTouchStart(idx)}
+            />
+          </div>
         ))}
       </div>
     </div>
