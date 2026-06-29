@@ -56,10 +56,13 @@ function formatDateLabel(date) {
 
 const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
+const NHL_SCORE_PROXY = 'https://api.allorigins.win/raw?url=';
+const nhlScoreUrl = (path) => `${NHL_SCORE_PROXY}${encodeURIComponent(`https://api-web.nhle.com${path}`)}`;
+
 async function fetchNhlScoreMap(dateStr, espnGames) {
   try {
     const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
-    const r = await fetch(`https://api-web.nhle.com/v1/score/${isoDate}`);
+    const r = await fetch(nhlScoreUrl(`/v1/score/${isoDate}`));
     const data = await r.json();
     const nhlGames = data.games || [];
     const map = {};

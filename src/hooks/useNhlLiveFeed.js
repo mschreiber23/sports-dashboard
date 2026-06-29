@@ -1,6 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 
 const POLL_MS = 10000;
+const DEMO_GAME_ID = 2025030416;
+
+// NHL API has no CORS headers so browser requests are blocked.
+// For the demo game, serve bundled static JSON.
+// For live games (when NHL season is active), we use a CORS-enabled proxy.
+const NHL_PROXY = 'https://api.allorigins.win/raw?url=';
+
+function nhlUrl(path) {
+  const base = `https://api-web.nhle.com${path}`;
+  return `${NHL_PROXY}${encodeURIComponent(base)}`;
+}
+
+async function nhlFetch(path) {
+  const r = await fetch(nhlUrl(path));
+  return r.json();
+}
 
 // Some ESPN abbreviations differ from NHL API
 const ESPN_TO_NHL = {
@@ -51,8 +67,7 @@ export async function findNhlGameId(espnGame) {
   for (const d of [d0, d1]) {
     const dateStr = d.toISOString().slice(0, 10);
     try {
-      const r = await fetch(`https://api-web.nhle.com/v1/score/${dateStr}`);
-      const data = await r.json();
+      const data = await nhlFetch(`/v1/score/${dateStr}`);
       const match = (data.games || []).find(g =>
         normNhlAbb(g.awayTeam?.abbrev) === awayAbb &&
         normNhlAbb(g.homeTeam?.abbrev) === homeAbb
@@ -70,13 +85,24 @@ export default function useNhlLiveFeed(nhlGameId) {
   useEffect(() => {
     if (!nhlGameId) { setData(null); return; }
     let cancelled = false;
-    const poll = () =>
-      fetch(`https://api-web.nhle.com/v1/gamecenter/${nhlGameId}/play-by-play`)
+
+    const poll = () => {
+      // Demo game: serve from bundled static JSON (no CORS issues)
+      const url = nhlGameId === DEMO_GAME_ID
+        ? `${import.meta.env.BASE_URL}demo/nhl-demo-game.json`
+        : nhlUrl(`/v1/gamecenter/${nhlGameId}/play-by-play`);
+
+      return fetch(url)
         .then(r => r.json())
         .then(d => { if (!cancelled) setData(d); })
         .catch(() => {});
+    };
+
     poll();
-    timerRef.current = setInterval(poll, POLL_MS);
+    // Only poll for live games, not the demo
+    if (nhlGameId !== DEMO_GAME_ID) {
+      timerRef.current = setInterval(poll, POLL_MS);
+    }
     return () => { cancelled = true; clearInterval(timerRef.current); };
   }, [nhlGameId]);
 

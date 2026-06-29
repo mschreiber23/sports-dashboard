@@ -259,10 +259,13 @@ function GridCard({ game, sport, myTeamIds, mlbScore }) {
 /* ── NHL live score overlay via NHL.com API ─────────────
    Returns a map: ESPN game id → { awayScore, homeScore, period, clock, strength }
 ──────────────────────────────────────────────────────── */
+const NHL_PROXY = 'https://api.allorigins.win/raw?url=';
+const nhlFetchUrl = (path) => `${NHL_PROXY}${encodeURIComponent(`https://api-web.nhle.com${path}`)}`;
+
 async function fetchNhlLiveScores(dateStr, espnGames) {
   try {
     const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
-    const r = await fetch(`https://api-web.nhle.com/v1/score/${isoDate}`);
+    const r = await fetch(nhlFetchUrl(`/v1/score/${isoDate}`));
     const data = await r.json();
     const nhlGames = data.games || [];
     const map = {};
