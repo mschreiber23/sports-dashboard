@@ -1281,6 +1281,29 @@ body {
   .tp-schedule-row { grid-template-columns: 80px 1fr auto; gap: 8px; }
 }
 
+/* ── My Teams Customize Button ── */
+.mt-customize-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.mt-customize-btn:hover { color: var(--text); border-color: var(--text2); }
+.mt-customize-btn-done {
+  color: var(--accent2);
+  border-color: var(--accent2);
+}
+.mt-customize-btn-done:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
 /* ── My Teams Date Nav ── */
 /* Inline date nav — same height as show-all-btn */
 .mt-date-inline {
