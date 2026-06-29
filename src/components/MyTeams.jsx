@@ -1,7 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
 import TeamRow from './TeamRow';
-import { searchTeams, SPORTS } from '../api/espn';
+import { SPORTS } from '../api/espn';
+
+const SLUG_TO_SPORT = { mlb:'mlb', nba:'nba', nfl:'nfl', nhl:'nhl', baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl' };
+const SPORT_COLORS  = { mlb:'#e74c3c', nba:'#f39c12', nfl:'#27ae60', nhl:'#3498db' };
+
+function extractTeamId(uid = '') {
+  const m = uid.match(/t:(\d+)/);
+  return m ? m[1] : null;
+}
 
 function toDateStr(date) {
   return date.toISOString().slice(0, 10).replace(/-/g, '');
@@ -26,19 +34,23 @@ export default function MyTeams({ editMode = false, setEditMode }) {
   const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
-  const dateStr = isToday ? null : toDateStr(selectedDate); // null = use live scoreboard
+  const dateStr = isToday ? null : toDateStr(selectedDate);
 
   const shiftDate = (days) => setSelectedDate((d) => {
     const next = new Date(d);
     next.setDate(next.getDate() + days);
     return next;
   });
-  const [pickerSport, setPickerSport] = useState('nba');
-  const [query, setQuery] = useState('');
-  const [allTeams, setAllTeams] = useState([]);
-  const [loadingTeams, setLoadingTeams] = useState(false);
+
   const [hiddenTeams, setHiddenTeams] = useState({});
   const [showHidden, setShowHidden] = useState(false);
+
+  // Team search state
+  const [teamQuery, setTeamQuery]         = useState('');
+  const [teamResults, setTeamResults]     = useState([]);
+  const [teamSearching, setTeamSearching] = useState(false);
+  const debounceRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const handleHiddenChange = useCallback((teamId, sport, isHidden) => {
     setHiddenTeams((prev) => ({ ...prev, [`${teamId}-${sport}`]: isHidden }));
@@ -46,21 +58,58 @@ export default function MyTeams({ editMode = false, setEditMode }) {
 
   const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
 
-  // Fetch all teams for the selected sport once — filter locally by query
+  // Auto-focus when picker opens
   useEffect(() => {
-    if (!showPicker) return;
-    setLoadingTeams(true);
-    setAllTeams([]);
-    setQuery('');
-    searchTeams(pickerSport, '')
-      .then(setAllTeams)
-      .catch(() => setAllTeams([]))
-      .finally(() => setLoadingTeams(false));
-  }, [showPicker, pickerSport]);
+    if (showPicker) setTimeout(() => searchInputRef.current?.focus(), 80);
+    else { setTeamQuery(''); setTeamResults([]); }
+  }, [showPicker]);
 
-  const teams = query
-    ? allTeams.filter((t) => t.displayName.toLowerCase().includes(query.toLowerCase()))
-    : allTeams;
+  const doTeamSearch = useCallback((q) => {
+    if (!q.trim()) { setTeamResults([]); setTeamSearching(false); return; }
+    setTeamSearching(true);
+    fetch(`https://site.api.espn.com/apis/search/v2?query=${encodeURIComponent(q)}&limit=15`)
+      .then(r => r.json())
+      .then(data => {
+        const teamResult = (data.results || []).find(r => r.type === 'team');
+        const items = (teamResult?.contents || []).map(t => {
+          const id = extractTeamId(t.uid || '');
+          const sport = SLUG_TO_SPORT[(t.defaultLeagueSlug || t.sport || '').toLowerCase()];
+          if (!id || !sport) return null;
+          return { id, sport, displayName: t.displayName };
+        }).filter(Boolean);
+        setTeamResults(items);
+      })
+      .catch(() => setTeamResults([]))
+      .finally(() => setTeamSearching(false));
+  }, []);
+
+  const handleQueryChange = (e) => {
+    const q = e.target.value;
+    setTeamQuery(q);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doTeamSearch(q), 300);
+  };
+
+  const handleAddTeam = async (t) => {
+    const sport = t.sport;
+    const { league } = SPORTS[sport] || {};
+    if (!league) return;
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams/${t.id}`);
+      const d = await r.json();
+      const tm = d.team;
+      addTeam(sport, {
+        id: tm.id,
+        displayName: tm.displayName,
+        abbreviation: tm.abbreviation,
+        color: tm.color,
+        alternateColor: tm.alternateColor,
+        logo: tm.logos?.[0]?.href || '',
+      });
+    } catch {
+      addTeam(sport, { id: t.id, displayName: t.displayName, abbreviation: '', color: '', alternateColor: '', logo: '' });
+    }
+  };
 
   return (
     <section className="section">
@@ -97,10 +146,10 @@ export default function MyTeams({ editMode = false, setEditMode }) {
         <div className="header-actions">
           {editMode ? (
             <>
-              <button className="btn-primary" onClick={() => { setShowPicker((v) => !v); }}>
-                {showPicker ? 'Done' : '+ Add Team'}
+              <button className="btn-primary" onClick={() => setShowPicker((v) => !v)}>
+                {showPicker ? '✕ Close' : '+ Add Team'}
               </button>
-              <button className="mt-customize-btn mt-customize-btn-done" onClick={() => setEditMode?.(false)}>
+              <button className="mt-customize-btn mt-customize-btn-done" onClick={() => { setEditMode?.(false); setShowPicker(false); }}>
                 ✓ Done
               </button>
             </>
@@ -158,62 +207,43 @@ export default function MyTeams({ editMode = false, setEditMode }) {
         </div>
       )}
 
-      {/* Add team picker */}
+      {/* Add team search — appears above the team list */}
       {showPicker && (
-        <div className="picker-panel">
-          <div className="sport-tabs-row">
-            {Object.entries(SPORTS).map(([key, { label }]) => (
-              <button
-                key={key}
-                className={`sport-tab ${pickerSport === key ? 'sport-tab-active' : ''}`}
-                onClick={() => { setPickerSport(key); setQuery(''); }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="pr-search-wrap" style={{ marginBottom: 8 }}>
           <input
+            ref={searchInputRef}
             className="search-input"
-            placeholder={`Search ${SPORTS[pickerSport]?.label} teams…`}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ marginTop: 12 }}
+            placeholder="Search any team across MLB, NBA, NFL, NHL…"
+            value={teamQuery}
+            onChange={handleQueryChange}
           />
-          {loadingTeams && <div className="loading-text">Loading…</div>}
-          <div className="picker-list">
-            {teams.map((team) => {
-              const already = favorites.teams.some(
-                (t) => t.team.id === team.id && t.sport === pickerSport
-              );
-              return (
-                <div key={team.id} className="picker-item">
-                  <div className="picker-player-info">
-                    {team.logos?.[0]?.href && (
-                      <img src={team.logos[0].href} alt={team.abbreviation} className="picker-avatar" />
-                    )}
-                    <div>
-                      <div className="picker-name">{team.displayName}</div>
-                      <div className="picker-pos">{SPORTS[pickerSport]?.label}</div>
+          {teamSearching && <div className="loading-text" style={{ padding: '8px 0' }}>Searching…</div>}
+          {teamResults.length > 0 && (
+            <div className="picker-list">
+              {teamResults.map((t) => {
+                const already = favorites.teams.some(ft => ft.team.id === t.id && ft.sport === t.sport);
+                const sportLabel = SPORTS[t.sport]?.label || t.sport.toUpperCase();
+                const color = SPORT_COLORS[t.sport] || '#888';
+                return (
+                  <div key={`${t.sport}-${t.id}`} className="picker-item">
+                    <div className="picker-player-info">
+                      <div>
+                        <div className="picker-name">{t.displayName}</div>
+                        <span className="picker-sport-badge" style={{ background: color }}>{sportLabel}</span>
+                      </div>
                     </div>
+                    <button
+                      className={already ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}
+                      disabled={already}
+                      onClick={() => handleAddTeam(t)}
+                    >
+                      {already ? 'Added' : 'Add'}
+                    </button>
                   </div>
-                  <button
-                    className={already ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}
-                    disabled={already}
-                    onClick={() => addTeam(pickerSport, {
-                      id: team.id,
-                      displayName: team.displayName,
-                      abbreviation: team.abbreviation,
-                      color: team.color,
-                      alternateColor: team.alternateColor,
-                      logo: team.logos?.[0]?.href || '',
-                    })}
-                  >
-                    {already ? 'Added' : 'Add'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
