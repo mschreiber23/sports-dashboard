@@ -161,7 +161,7 @@ export default function PlayerCard({ player, sport }) {
       <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">
         <div className="sports-card-photo-wrap" style={{ '--card-color': cardColor }}>
           {player.headshot ? (
-            <img src={player.headshot} alt={player.displayName} className="sports-card-photo" />
+            <img src={typeof player.headshot === 'object' ? player.headshot?.href : player.headshot} alt={player.displayName} className="sports-card-photo" />
           ) : (
             <div className="sports-card-photo-placeholder">{player.displayName?.[0]}</div>
           )}

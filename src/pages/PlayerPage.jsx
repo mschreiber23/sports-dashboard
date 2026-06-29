@@ -660,7 +660,7 @@ export default function PlayerPage() {
                   onClick={() => isFav ? removePlayer(playerId) : addPlayer({
                     id: playerId, sport,
                     displayName: athlete.displayName,
-                    headshot: athlete.headshot,
+                    headshot: typeof athlete.headshot === 'object' ? athlete.headshot?.href : athlete.headshot,
                     team: athlete.team,
                     position: athlete.position,
                     _position: athlete.position?.abbreviation || '',
