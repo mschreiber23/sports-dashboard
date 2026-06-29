@@ -3885,25 +3885,26 @@ body {
   border-top: 1px solid var(--border);
 }
 
-/* ── Statcast button on PlayerPage ─────────────────────────────────── */
-/* Add/Remove My Players button on PlayerPage */
-.pp-fav-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; padding: 12px 18px; border-radius: var(--radius);
-  font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+/* ── Favorite star button (top-right of player header) ── */
+.pp-star-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text2);
+  padding: 6px;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.pp-fav-btn-add {
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  color: var(--accent2);
-}
-.pp-fav-btn-add:hover { background: color-mix(in srgb, var(--accent) 20%, var(--bg2)); }
-.pp-fav-btn-remove {
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #f87171;
-}
-.pp-fav-btn-remove:hover { background: rgba(239,68,68,0.15); }
+.pp-star-btn:hover { background: rgba(255,255,255,0.1); color: #fbbf24; }
+.pp-star-btn-on { color: #fbbf24; }
+.pp-star-btn-on:hover { color: #f59e0b; }
 
 .pp-statcast-btn {
   display: flex;

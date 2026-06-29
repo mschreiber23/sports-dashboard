@@ -650,7 +650,32 @@ export default function PlayerPage() {
 
       {!loading && athlete.displayName && (
         <>
-          <div className="pp-header">
+          <div className="pp-header" style={{ position: 'relative' }}>
+            {/* Favorite star — top-right corner */}
+            {(() => {
+              const isFav = favorites.players.some((p) => p.id === playerId);
+              return (
+                <button
+                  className={`pp-star-btn ${isFav ? 'pp-star-btn-on' : ''}`}
+                  onClick={() => isFav ? removePlayer(playerId) : addPlayer({
+                    id: playerId, sport,
+                    displayName: athlete.displayName,
+                    headshot: athlete.headshot,
+                    team: athlete.team,
+                    position: athlete.position,
+                    _position: athlete.position?.abbreviation || '',
+                  })}
+                  aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24"
+                    fill={isFav ? 'currentColor' : 'none'}
+                    stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+              );
+            })()}
             {/* Colored top strip using team color */}
             {teamColor && (
               <div className="pp-team-stripe" style={{ background: teamColor }} />
@@ -729,25 +754,6 @@ export default function PlayerPage() {
             </Link>
           )}
 
-          {/* Add / Remove from My Players */}
-          {(()=>{
-            const isFav = favorites.players.some((p) => p.id === playerId);
-            return (
-              <button
-                className={`pp-fav-btn ${isFav ? 'pp-fav-btn-remove' : 'pp-fav-btn-add'}`}
-                onClick={() => isFav ? removePlayer(playerId) : addPlayer({
-                  id: playerId, sport,
-                  displayName: athlete.displayName,
-                  headshot: athlete.headshot,
-                  team: athlete.team,
-                  position: athlete.position,
-                  _position: athlete.position?.abbreviation || '',
-                })}
-              >
-                {isFav ? '✕  Remove from My Players' : '＋  Add to My Players'}
-              </button>
-            );
-          })()}
 
           {/* Career stats table */}
           <div className="pp-stats-section">
