@@ -3482,16 +3482,6 @@ body {
 .nav-item:hover { color: var(--text); }
 .nav-item-active { color: var(--accent2); }
 
-.nav-item-logo {
-  flex: 1.2;
-}
-.nav-logo-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: -8px; /* lift the logo above the bar */
-  filter: drop-shadow(0 2px 8px rgba(124,58,237,0.5));
-}
 
 .nav-label {
   font-size: 9px;
@@ -3511,15 +3501,9 @@ body {
   cursor: pointer; transition: all 0.15s;
 }
 .dashboard-signout-btn:hover { border-color: #f87171; color: #f87171; }
-.nav-label-logo { font-size: 9px; font-weight: 700; color: var(--accent2); }
-
-/* 5-item nav */
-.bottom-nav .nav-item:not(.nav-item-logo) svg { width: 22px; height: 22px; }
+/* 5-item nav — all items equal */
 .bottom-nav .nav-item { padding: 6px 4px; gap: 3px; }
-.bottom-nav .nav-item-logo { flex: 1.4; }
-/* Logo center button */
-.bottom-nav .nav-item-logo svg { width: 56px !important; height: 56px !important; }
-.bottom-nav .nav-logo-wrap { margin-top: -20px; filter: drop-shadow(0 4px 12px rgba(168,85,247,0.6)); }
+.bottom-nav .nav-item svg { width: 22px; height: 22px; }
 
 /* Top nav (desktop — hidden on mobile) */
 /* ── Global sticky ticker (shows on non-home pages) ── */

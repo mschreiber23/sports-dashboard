@@ -85,28 +85,37 @@ function PlayersIcon({ active }) {
   );
 }
 
-function TeamsIcon({ active }) {
+function HomeIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
+      <polyline points="9 21 9 12 15 12 15 21"/>
     </svg>
   );
 }
 
-// Nav order: Standings - Scores - Home (logo) - Players - More
+function HamburgerIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="6"  x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  );
+}
+
+// Nav order: Home - Scores - Standings - Players - More
 const MORE_ITEMS = [
-  { path: '/leaders',  label: 'Leaders',   Icon: LeadersIcon },
-  { path: '/rankings', label: 'Rankings',  Icon: LeadersIcon },
-  { path: '/dfs',      label: 'ShribeIQ',  Icon: DFSIcon },
+  { path: '/me',       label: 'My Profile', Icon: MeIcon },
+  { path: '/leaders',  label: 'Leaders',    Icon: LeadersIcon },
+  { path: '/rankings', label: 'Rankings',   Icon: LeadersIcon },
+  { path: '/dfs',      label: 'ShribeIQ',   Icon: DFSIcon },
 ];
 
 const NAV_ITEMS = [
-  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
+  { path: '/',          label: 'Home',      Icon: HomeIcon },
   { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
-  { path: '/',          label: '',          logo: true },
+  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
   { path: '/players',   label: 'Players',   Icon: PlayersIcon },
   { path: 'more',       label: 'More',      more: true },
 ];
@@ -140,29 +149,22 @@ export function BottomNav() {
       {showMore && <MoreDropdown onClose={() => setShowMore(false)} />}
       <nav className="bottom-nav">
         {NAV_ITEMS.map((item) => {
-          if (item.logo) return (
-            <Link key="logo" to="/" className={`nav-item nav-item-logo ${pathname === '/' ? 'nav-item-active' : ''}`}>
-              <div className="nav-logo-wrap"><ShribelyIcon size={72} /></div>
-            </Link>
-          );
-          if (item.more) return (
-            <button key="more" className={`nav-item${moreActive || showMore ? ' nav-item-active' : ''}`}
-              onClick={() => setShowMore(v => !v)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke={(moreActive || showMore) ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round">
-                <circle cx="5" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
-                <circle cx="12" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
-                <circle cx="19" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
-              </svg>
-              <span className="nav-label">More</span>
-            </button>
-          );
+          if (item.more) {
+            const active = moreActive || showMore;
+            return (
+              <button key="more" className={`nav-item${active ? ' nav-item-active' : ''}`}
+                onClick={() => setShowMore(v => !v)}>
+                <HamburgerIcon active={active} />
+                <span className="nav-label">More</span>
+              </button>
+            );
+          }
           const { Icon } = item;
           const active = pathname === item.path;
           return (
             <Link key={item.path} to={item.path} className={`nav-item ${active ? 'nav-item-active' : ''}`}>
               <Icon active={active} />
-              {item.label && <span className="nav-label">{item.label}</span>}
+              <span className="nav-label">{item.label}</span>
             </Link>
           );
         })}
@@ -201,12 +203,7 @@ export function TopNav() {
             <button
               className={`top-nav-link top-nav-more-btn ${moreActive || showMore ? 'top-nav-link-active' : ''}`}
               onClick={() => setShowMore(v => !v)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"
-                stroke={(moreActive || showMore) ? '#3aabff' : 'currentColor'}>
-                <circle cx="5" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
-                <circle cx="12" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
-                <circle cx="19" cy="12" r="1.5" fill={(moreActive || showMore) ? '#3aabff' : 'currentColor'}/>
-              </svg>
+              <HamburgerIcon active={moreActive || showMore} />
               <span>More</span>
             </button>
             {showMore && (
