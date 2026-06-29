@@ -922,10 +922,10 @@ body {
   .section-title { font-size: 18px; }
   .stat-pills { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .stat-value { font-size: 16px; }
-  .tp-header-logo { width: 52px; height: 52px; }
-  .tp-header-name { font-size: 20px; }
-  .tp-schedule-row { grid-template-columns: 100px 1fr auto; gap: 8px; font-size: 13px; }
-  .tp-tab { padding: 12px 14px; font-size: 13px; }
+  .tp-header-logo { width: 40px; height: 40px; }
+  .tp-header-name { font-size: 18px; }
+  .tp-schedule-row { grid-template-columns: 80px 1fr auto; gap: 8px; font-size: 12px; }
+  .tp-tab { padding: 8px 12px; font-size: 12px; }
   .tr2-name { font-size: 14px; }
   .tr2-score { font-size: 20px; }
   /* ── Box score modal v2: slides up from bottom ── */
@@ -989,30 +989,29 @@ body {
 .tp-header {
   background: linear-gradient(135deg, var(--bg2) 0%, color-mix(in srgb, var(--team-color, var(--accent)) 15%, var(--bg2)) 100%);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 24px;
+  border-radius: 14px 14px 0 0;
+  padding: 14px 16px;
   margin-bottom: 0;
   border-bottom: none;
-  border-radius: 14px 14px 0 0;
 }
 
 .tp-header-inner {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
 }
 
 .tp-header-logo {
-  width: 80px;
-  height: 80px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .tp-header-name {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   line-height: 1.1;
 }
 
@@ -1020,9 +1019,9 @@ body {
 .tp-header-nickname { color: var(--text); }
 
 .tp-header-meta {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text2);
-  margin-top: 6px;
+  margin-top: 3px;
 }
 
 .tp-header-record { color: var(--text); font-weight: 600; }
@@ -1044,8 +1043,8 @@ body {
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text2);
-  padding: 14px 20px;
-  font-size: 14px;
+  padding: 9px 14px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -1065,8 +1064,8 @@ body {
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 14px 14px;
-  min-height: 400px;
-  padding: 20px;
+  min-height: 300px;
+  padding: 14px 16px;
 }
 
 .tp-loading {
@@ -1076,39 +1075,39 @@ body {
 }
 
 /* Schedule */
-.tp-schedule { display: flex; flex-direction: column; gap: 24px; }
+.tp-schedule { display: flex; flex-direction: column; gap: 14px; }
 
-.tp-schedule-section { display: flex; flex-direction: column; gap: 2px; }
+.tp-schedule-section { display: flex; flex-direction: column; gap: 0; }
 
 .tp-schedule-label {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text2);
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .tp-schedule-row {
   display: grid;
-  grid-template-columns: 120px 1fr auto;
+  grid-template-columns: 100px 1fr auto;
   align-items: center;
-  gap: 16px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 6px;
   transition: background 0.1s;
 }
 
 .tp-schedule-row:hover { background: var(--bg3); }
 .tp-row-live { background: var(--live-bg); }
 
-.tp-row-date { font-size: 13px; color: var(--text2); white-space: nowrap; }
+.tp-row-date { font-size: 12px; color: var(--text2); white-space: nowrap; }
 
 .tp-row-opponent {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -1126,8 +1125,8 @@ body {
 .tp-row-result {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   justify-content: flex-end;
 }
@@ -1220,15 +1219,15 @@ body {
 }
 
 /* News */
-.tp-news { display: flex; flex-direction: column; gap: 16px; }
+.tp-news { display: flex; flex-direction: column; gap: 8px; }
 
 .tp-news-card {
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 10px 12px;
   background: var(--bg3);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   text-decoration: none;
   color: inherit;
   transition: border-color 0.15s;
@@ -1236,25 +1235,25 @@ body {
 .tp-news-card:hover { border-color: rgba(255,255,255,0.25); }
 
 .tp-news-img {
-  width: 120px;
-  height: 80px;
+  width: 80px;
+  height: 56px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 6px;
   flex-shrink: 0;
   background: var(--bg2);
 }
 
-.tp-news-body { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.tp-news-body { display: flex; flex-direction: column; gap: 3px; justify-content: center; }
 
 .tp-news-headline {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--text);
 }
 
 .tp-news-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text2);
   line-height: 1.4;
   display: -webkit-box;
@@ -1264,14 +1263,14 @@ body {
 }
 
 .tp-news-meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text2);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 @media (max-width: 640px) {
-  .tp-news-img { width: 80px; height: 60px; }
-  .tp-schedule-row { grid-template-columns: 90px 1fr auto; gap: 8px; }
+  .tp-news-img { width: 64px; height: 48px; }
+  .tp-schedule-row { grid-template-columns: 80px 1fr auto; gap: 8px; }
 }
 
 /* ── My Teams Date Nav ── */
@@ -4559,7 +4558,7 @@ thead .dfs-sticky-player {
 .tp-view-schedule-btn:hover { background: var(--bg3); }
 
 /* ── Stats Tab ── */
-.tp-stats-wrap { display: flex; flex-direction: column; gap: 14px; }
+.tp-stats-wrap { display: flex; flex-direction: column; gap: 10px; }
 
 .tp-stats-controls {
   display: flex;
@@ -4608,7 +4607,7 @@ thead .dfs-sticky-player {
   font-size: 13px;
 }
 .tp-stats-th {
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: right;
   font-size: 11px;
   font-weight: 700;
@@ -4623,14 +4622,14 @@ thead .dfs-sticky-player {
 .tp-stats-tr-link { cursor: pointer; }
 .tp-stats-tr-link:hover { background: var(--bg3); }
 .tp-stats-td {
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: right;
   color: var(--text);
   white-space: nowrap;
 }
 .tp-stats-td-name { text-align: left; padding-left: 12px; }
 .tp-stats-avatar {
-  width: 28px; height: 28px;
+  width: 24px; height: 24px;
   border-radius: 50%;
   object-fit: cover; object-position: top;
   background: var(--bg2);
@@ -4644,16 +4643,16 @@ thead .dfs-sticky-player {
 .tp-stats-empty { color: var(--text2); font-style: italic; padding: 20px 12px; }
 
 /* ── Roster Tab ── */
-.tp-roster-wrap { display: flex; flex-direction: column; gap: 20px; }
+.tp-roster-wrap { display: flex; flex-direction: column; gap: 12px; }
 .tp-roster-group-header {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--team-color, var(--accent));
-  padding: 6px 0;
+  padding: 4px 0;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .tp-roster-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tp-roster-table {
@@ -4663,7 +4662,7 @@ thead .dfs-sticky-player {
   font-size: 13px;
 }
 .tp-roster-th {
-  padding: 7px 10px;
+  padding: 5px 8px;
   text-align: center;
   font-size: 11px;
   font-weight: 700;
@@ -4680,7 +4679,7 @@ thead .dfs-sticky-player {
 .tp-roster-tr-link { cursor: pointer; }
 .tp-roster-tr-link:hover { background: var(--bg3); }
 .tp-roster-td {
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: center;
   color: var(--text);
   font-size: 13px;
@@ -4690,7 +4689,7 @@ thead .dfs-sticky-player {
 .tp-roster-td-name { text-align: left; display: flex; align-items: center; gap: 10px; }
 .tp-roster-td-hw { font-size: 12px; color: var(--text2); }
 .tp-roster-headshot {
-  width: 32px; height: 32px;
+  width: 26px; height: 26px;
   border-radius: 50%;
   object-fit: cover; object-position: top;
   background: var(--bg2);
@@ -4749,24 +4748,24 @@ thead .dfs-sticky-player {
 .tp-inj-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 10px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
 .tp-inj-row-link { cursor: pointer; }
 .tp-inj-row-link:hover { background: var(--bg3); border-radius: 8px; padding-left: 8px; padding-right: 8px; }
 .tp-inj-headshot {
-  width: 44px; height: 44px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   object-fit: cover; object-position: top;
   background: var(--bg2);
   flex-shrink: 0;
 }
 .tp-inj-info { flex: 1; min-width: 0; }
-.tp-inj-name { font-size: 14px; font-weight: 700; color: var(--text); }
-.tp-inj-pos { font-size: 12px; color: var(--text2); margin-bottom: 3px; }
-.tp-inj-comment { font-size: 12px; color: var(--text2); line-height: 1.4; }
+.tp-inj-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.tp-inj-pos { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
+.tp-inj-comment { font-size: 11px; color: var(--text2); line-height: 1.4; }
 .tp-inj-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 .tp-inj-date { font-size: 11px; color: var(--text2); }
 
