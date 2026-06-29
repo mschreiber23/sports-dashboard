@@ -6304,6 +6304,10 @@ thead .dfs-sticky-player {
 .mlbc-hand { font-size: 11px; color: var(--text2); font-weight: 500; }
 .mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
 
+/* Clickable top section of game cards */
+.mlbc-top-tap { cursor: pointer; }
+.mlbc-top-tap:hover { background: rgba(255,255,255,0.025); border-radius: 12px 12px 0 0; }
+
 /* ── Top Performers (MLB live + final cards) ── */
 .mlbc-tp-wrap { padding: 8px 14px 10px; }
 .mlbc-tp-label {

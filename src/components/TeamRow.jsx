@@ -143,14 +143,15 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
   return (
     <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
       borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
-      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
-      <div className="mlbc-header">
-        <span className="mlbc-time">{timeStr}</span>
-        {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Preview' } })}>
+        <div className="mlbc-header">
+          <span className="mlbc-time">{timeStr}</span>
+          {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+        </div>
+        <div className="mlbc-divider" />
+        <MlbTeamRows away={away} home={home} sport={sport} showRHE={false} />
       </div>
-      <div className="mlbc-divider" />
-      <MlbTeamRows away={away} home={home} sport={sport} showRHE={false} />
       {probables.length > 0 && (
         <>
           <div className="mlbc-divider" />
@@ -241,8 +242,8 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
   return (
     <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
       borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
-      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
+      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
       <div className="mlbc-live-body">
         <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE
           liveLabel={
@@ -261,6 +262,7 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
           <div className="mlbc-count-num">{balls} - {strikes}</div>
         </div>
       </div>
+      </div>{/* end mlbc-top-tap */}
       {(pName || bName) && (
         <>
           <div className="mlbc-divider" />
@@ -353,9 +355,10 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
   return (
     <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
       borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
-      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
-      <MlbTeamRows away={away} home={home} sport={sport} showRHE finalLabel="FINAL" />
+      boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
+        <MlbTeamRows away={away} home={home} sport={sport} showRHE finalLabel="FINAL" />
+      </div>
       {decisions?.topPerformers?.length > 0 && (
         <>
           <div className="mlbc-divider" />
@@ -1102,14 +1105,15 @@ function SportPreCard({ game, sport, navigate, accentColor }) {
   const shortDetail = comp?.status?.type?.shortDetail || '';
   const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
   return (
-    <div className="mlbc-card" style={accentStyle(accentColor)}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
-      <div className="mlbc-header">
-        <span className="mlbc-time">{timeStr}</span>
-        {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+    <div className="mlbc-card" style={accentStyle(accentColor)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+        <div className="mlbc-header">
+          <span className="mlbc-time">{timeStr}</span>
+          {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+        </div>
+        <div className="mlbc-divider" />
+        <GenericTeamRows away={away} home={home} sport={sport} />
       </div>
-      <div className="mlbc-divider" />
-      <GenericTeamRows away={away} home={home} sport={sport} />
     </div>
   );
 }
@@ -1138,9 +1142,10 @@ function SportLiveCard({ game, sport, navigate, accentColor }) {
     </span>
   );
   return (
-    <div className="mlbc-card" style={accentStyle(accentColor)}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
-      <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel} />
+    <div className="mlbc-card" style={accentStyle(accentColor)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+        <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel} />
+      </div>
       {sitLine && (
         <>
           <div className="mlbc-divider" />
@@ -1184,9 +1189,10 @@ function SportFinalCard({ game, sport, navigate, accentColor }) {
   }).filter(Boolean);
 
   return (
-    <div className="mlbc-card" style={accentStyle(accentColor)}
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
-      <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel="FINAL" />
+    <div className="mlbc-card" style={accentStyle(accentColor)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+        <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel="FINAL" />
+      </div>
       {topLeaders.length > 0 && (
         <>
           <div className="mlbc-divider" />
