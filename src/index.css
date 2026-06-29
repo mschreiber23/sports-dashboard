@@ -6312,18 +6312,18 @@ thead .dfs-sticky-player {
 }
 .mlbc-tp-player:hover { background: var(--bg3); }
 .mlbc-tp-photo {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
   object-position: center 15%;
   background: var(--bg3);
-  border: 2px solid var(--accent);
+  border: 1px solid #f1f1f3;
 }
 .mlbc-tp-name {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent2);
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6402,13 +6402,13 @@ thead .dfs-sticky-player {
   background: var(--bg3);
   flex-shrink: 0;
 }
-.mlbc-matchup-name  { font-size: 13px; font-weight: 700; color: var(--text); }
+.mlbc-matchup-name  { font-size: 11px; font-weight: 700; color: var(--text); }
 .mlbc-matchup-stats { font-size: 11px; color: var(--text2); }
 .mlbc-decision-label { font-size: 10px; color: var(--text2); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.mlbc-decision-label .mlbc-matchup-name { font-size: 10px; font-weight: 700; color: var(--text); }
-.mlbc-decision-record-inline { font-size: 9px; font-weight: 400; color: var(--text2); }
-.mlbc-decision-gamestats { font-size: 10px; color: var(--text2); line-height: 1.5; }
-.mlbc-gs-lbl { font-size: 8px; color: var(--text2); }
+.mlbc-decision-label .mlbc-matchup-name { font-size: 11px; font-weight: 700; color: var(--text); }
+.mlbc-decision-record-inline { font-size: 10px; font-weight: 400; color: var(--text2); }
+.mlbc-decision-gamestats { font-size: 11px; color: var(--text2); line-height: 1.5; }
+.mlbc-gs-lbl { font-size: 10px; color: var(--text2); }
 
 /* Action buttons */
 .mlbc-actions {

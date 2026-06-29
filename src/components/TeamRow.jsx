@@ -269,7 +269,7 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
                 if (espnId) navigate(`/player/${sport}/${espnId}`);
                 else goToEspnPlayer(pName, sport, navigate);
               }}>
-                <div className="mlbc-matchup-label">PITCHING {pitchingTeamAbbr}</div>
+                <div className="mlbc-matchup-label">PITCHING</div>
                 <div className="mlbc-matchup-info">
                   {pPhoto && <img src={pPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
                   <div>
@@ -286,7 +286,7 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
                 if (espnId) navigate(`/player/${sport}/${espnId}`);
                 else goToEspnPlayer(bName, sport, navigate);
               }}>
-                <div className="mlbc-matchup-label">AT BAT {battingTeamAbbr}</div>
+                <div className="mlbc-matchup-label">AT BAT</div>
                 <div className="mlbc-matchup-info">
                   {bPhoto && <img src={bPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
                   <div>
