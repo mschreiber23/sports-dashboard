@@ -69,10 +69,8 @@ function MlbTeamRows({ away, home, sport, mlbTotals, showRHE, finalLabel, liveLa
         </div>
       )}
       {[away, home].filter(Boolean).map((c) => (
-        <div key={c.team?.id} className="mlbc-team-row"
-          onClick={(ev) => { ev.stopPropagation(); c.team?.id && navigate(`/team/${sport}/${c.team.id}`); }}>
+        <div key={c.team?.id} className="mlbc-team-row">
           <LogoImg team={c.team} className="mlbc-logo" />
-          {/* Name + record as a flex block so stats stay on same line */}
           <div className="mlbc-team-info">
             <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
             <span className="mlbc-rec">{rec(c)}</span>
@@ -1058,8 +1056,7 @@ function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel }
         </div>
       )}
       {[away, home].filter(Boolean).map((c) => (
-        <div key={c.team?.id} className="mlbc-team-row"
-          onClick={(ev) => { ev.stopPropagation(); c.team?.id && nav(`/team/${sport}/${c.team.id}`); }}>
+        <div key={c.team?.id} className="mlbc-team-row">
           <LogoImg team={c.team} className="mlbc-logo" />
           <div className="mlbc-team-info">
             <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
