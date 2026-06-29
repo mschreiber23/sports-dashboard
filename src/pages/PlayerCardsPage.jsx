@@ -242,6 +242,21 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
   const headshotUrl = typeof player.headshot === 'object' ? player.headshot?.href : player.headshot;
 
   return (
+    {/* ── Edit mode: collapsed row for easy drag ── */}
+    {editMode ? (
+      <div
+        className={`pc-edit-row${isDragOver ? ' pc-card-drag-over' : ''}`}
+        onDragOver={e => { e.preventDefault(); onDragEnter?.(); }}
+        onDrop={onDragEnd}
+      >
+        <div className="pc-drag-handle" draggable onDragStart={onDragStart} onTouchStart={onTouchStart}>≡</div>
+        {headshotUrl && <img src={headshotUrl} alt="" className="pc-edit-headshot" onError={e=>e.target.style.display='none'}/>}
+        <span className="pc-edit-name">{player.displayName}</span>
+        {posAbb && <span className="pc-edit-pos">{posAbb}</span>}
+        <button className="pc-ctrl-btn pc-ctrl-remove" style={{marginLeft:'auto'}} onClick={() => onRemove(player.id)}>✕</button>
+      </div>
+    ) : (
+
     <div
       className={`pc-card${isDragOver ? ' pc-card-drag-over' : ''}`}
       style={accentColor ? {
@@ -254,14 +269,6 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
     >
       {/* Controls */}
       <div className="pc-controls">
-        {editMode && (
-          <div
-            className="pc-drag-handle"
-            draggable
-            onDragStart={onDragStart}
-            onTouchStart={onTouchStart}
-          >≡</div>
-        )}
         <button className="pc-ctrl-btn pc-ctrl-remove" onClick={() => onRemove(player.id)} title="Remove">✕</button>
       </div>
 
@@ -363,6 +370,7 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
         <div className="pc-no-stats">Stats not available</div>
       )}
     </div>
+    )}{/* end editMode ternary */}
   );
 }
 

@@ -6720,6 +6720,43 @@ thead .dfs-sticky-player {
   grid-template-columns: 1fr !important;
 }
 
+/* Collapsed edit row */
+.pc-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  transition: border-color 0.1s;
+}
+.pc-edit-headshot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.pc-edit-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pc-edit-pos {
+  font-size: 11px;
+  color: var(--text2);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* Visual feedback when dragging over a card */
 .pc-card-drag-over {
   border-color: var(--accent2) !important;
