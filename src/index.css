@@ -6797,6 +6797,41 @@ thead .dfs-sticky-player {
   font-style: italic;
 }
 
+/* Pre-game matchup row */
+.pc-matchup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  gap: 8px;
+}
+.pc-matchup-team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pc-team-logo { width: 24px; height: 24px; object-fit: contain; }
+.pc-matchup-vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pc-at { font-size: 11px; color: var(--text2); font-weight: 600; }
+.pc-game-time { font-size: 10px; color: var(--text2); white-space: nowrap; }
+.pc-season-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  padding: 4px 14px 0;
+}
+
 /* ── Generic Sport Cards (NFL/NBA/NHL) ───────────────── */
 .sport-sit-line {
   padding: 7px 14px;

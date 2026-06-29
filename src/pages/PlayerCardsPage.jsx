@@ -108,6 +108,25 @@ async function fetchGameSummary(sport, gameId) {
   return r.json();
 }
 
+async function fetchSeasonStats(sport, athleteId, posAbb) {
+  try {
+    const year = new Date().getFullYear();
+    const { sport: s, league: l } = SPORT_CFG[sport] || {};
+    const r = await fetch(`https://sports.core.api.espn.com/v2/sports/${s}/leagues/${l}/seasons/${year}/types/2/athletes/${athleteId}/statistics/0?lang=en&region=us`);
+    const d = await r.json();
+    const cats = d?.splits?.categories || [];
+    const sm = {};
+    // For MLB, get batting or pitching category; for others get all
+    const wantCat = sport === 'mlb' ? (isPitcher(posAbb) ? 'pitching' : 'batting') : null;
+    for (const cat of cats) {
+      if (!wantCat || cat.name?.toLowerCase() === wantCat) {
+        for (const s of cat.stats || []) sm[s.abbreviation] = s.displayValue;
+      }
+    }
+    return sm;
+  } catch { return {}; }
+}
+
 function extractPlayerStats(summary, athleteId, sport, posAbb) {
   const isQb = nflGroup(posAbb) === 'qb';
   const isRb = nflGroup(posAbb) === 'rb';
@@ -167,13 +186,15 @@ function PlayerGameCard({ player, onRemove, dateStr }) {
       if (!game) { setGameData({ game: null }); setLoading(false); return; }
       const comp = game.competitions?.[0];
       const state = comp?.status?.type?.state;
-      const summary = (state === 'in' || state === 'post')
-        ? await fetchGameSummary(player.sport, game.id) : null;
+      const [summary, seasonStats] = await Promise.all([
+        (state === 'in' || state === 'post') ? fetchGameSummary(player.sport, game.id) : null,
+        (state === 'pre') ? fetchSeasonStats(player.sport, player.id, posAbb) : null,
+      ]);
       const statMap = summary ? extractPlayerStats(summary, player.id, player.sport, posAbb) : null;
-      setGameData({ game, summary, statMap, state });
+      setGameData({ game, summary, statMap, seasonStats, state });
     } catch { setGameData({ game: null }); }
     setLoading(false);
-  }, [player.id, player.sport, player.team?.id]);
+  }, [player.id, player.sport, player.team?.id, dateStr, posAbb]);
 
   useEffect(() => {
     setGameData(null);
@@ -242,8 +263,49 @@ function PlayerGameCard({ player, onRemove, dateStr }) {
         </div>
       </div>
 
-      {/* Stats grid */}
-      {gameData?.statMap && statCfg.length > 0 ? (
+      {/* Pre-game: matchup + season stats */}
+      {state === 'pre' && (
+        <>
+          <div className="pc-matchup-row">
+            <div className="pc-matchup-team">
+              {competitors.find(c => c.homeAway === 'away')?.team?.logo
+                ? <img src={competitors.find(c=>c.homeAway==='away')?.team?.logo} alt="" className="pc-team-logo" onError={e=>e.target.style.display='none'}/>
+                : null}
+              <span>{competitors.find(c=>c.homeAway==='away')?.team?.abbreviation}</span>
+            </div>
+            <div className="pc-matchup-vs">
+              <div className="pc-game-time">{shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}</div>
+              <span className="pc-at">@</span>
+            </div>
+            <div className="pc-matchup-team">
+              {competitors.find(c => c.homeAway === 'home')?.team?.logo
+                ? <img src={competitors.find(c=>c.homeAway==='home')?.team?.logo} alt="" className="pc-team-logo" onError={e=>e.target.style.display='none'}/>
+                : null}
+              <span>{competitors.find(c=>c.homeAway==='home')?.team?.abbreviation}</span>
+            </div>
+          </div>
+          {gameData?.seasonStats && statCfg.length > 0 && (
+            <>
+              <div className="pc-season-label">2026 Season</div>
+              <div className="pc-stats-grid">
+                {statCfg.map(({ s, l }) => {
+                  const val = gameData.seasonStats[s];
+                  if (val === undefined) return null;
+                  return (
+                    <div key={s} className="pc-stat-cell">
+                      <div className="pc-stat-val">{val}</div>
+                      <div className="pc-stat-lbl">{l}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Live / final: game stats */}
+      {(state === 'in' || state === 'post') && gameData?.statMap && statCfg.length > 0 && (
         <div className="pc-stats-grid">
           {statCfg.map(({ s, l }) => {
             const val = gameData.statMap[s];
@@ -256,11 +318,10 @@ function PlayerGameCard({ player, onRemove, dateStr }) {
             );
           })}
         </div>
-      ) : gameData?.game && (state === 'in' || state === 'post') ? (
+      )}
+      {(state === 'in' || state === 'post') && !gameData?.statMap && (
         <div className="pc-no-stats">Stats not available</div>
-      ) : gameData?.game && state === 'pre' ? (
-        <div className="pc-no-stats">Game hasn't started</div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -333,18 +394,24 @@ export default function PlayerCardsPage() {
 
   const addCard = async (player) => {
     if (cards.some(c => c.id === player.id)) return;
-    // Fetch full player data to get team ID and position
     const { sport: s, league: l } = SPORT_CFG[player.sport] || {};
     try {
-      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${s}/${l}/athletes/${player.id}`);
+      // Use the common/v3 endpoint which works reliably for all athletes
+      const r = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/${s}/${l}/athletes/${player.id}`);
       const d = await r.json();
       const ath = d.athlete || {};
       const full = {
         id: player.id,
         sport: player.sport,
         displayName: ath.displayName || player.displayName,
-        headshot: ath.headshot?.href || player.headshot,
-        team: { id: ath.team?.id, abbreviation: ath.team?.abbreviation, displayName: ath.team?.displayName },
+        headshot: typeof ath.headshot === 'object' ? ath.headshot?.href : (ath.headshot || player.headshot),
+        team: {
+          id: ath.team?.id,
+          abbreviation: ath.team?.abbreviation,
+          displayName: ath.team?.displayName,
+          logo: ath.team?.logos?.[0]?.href || ath.team?.logo,
+          color: ath.team?.color,
+        },
         position: ath.position?.abbreviation,
         _position: ath.position?.abbreviation || '',
       };
