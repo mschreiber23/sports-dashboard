@@ -13,8 +13,14 @@ async function goToEspnPlayer(fullName, sport, navigate) {
   try {
     const r = await fetch(`https://site.api.espn.com/apis/search/v2?query=${encodeURIComponent(fullName)}&limit=5`);
     const d = await r.json();
-    const hit = d.items?.find(i => i.type === 'athlete');
-    if (hit?.id) navigate(`/player/${sport}/${hit.id}`);
+    // Results are under d.results; athlete results have type === 'player'
+    const playerResult = (d.results || []).find(res => res.type === 'player');
+    const hit = playerResult?.contents?.[0];
+    if (!hit) return;
+    // ESPN athlete ID is in uid as "s:1~l:10~a:36052" — extract the numeric part after "a:"
+    const uidMatch = hit.uid?.match(/a:(\d+)/);
+    const espnId = uidMatch ? uidMatch[1] : null;
+    if (espnId) navigate(`/player/${sport}/${espnId}`);
   } catch {}
 }
 
