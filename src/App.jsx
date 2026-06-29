@@ -20,6 +20,7 @@ import DFSPage from './pages/DFSPage';
 import RankingsPage from './pages/RankingsPage';
 import PlayersPage from './pages/PlayersPage';
 import TeamsPage from './pages/TeamsPage';
+import NhlDemoPage from './pages/NhlDemoPage';
 import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
@@ -63,6 +64,7 @@ function AppShell({ userId }) {
             <Route path="/player/:sport/:playerId"          element={<main className="main"><PlayerPage /></main>} />
             <Route path="/statcast/mlb/:playerId"            element={<main className="main"><StatcastPage /></main>} />
             <Route path="/dfs"                               element={<main className="main"><DFSPage /></main>} />
+            <Route path="/demo/nhl"                          element={<main className="main"><NhlDemoPage /></main>} />
             <Route path="/rankings"                          element={<main className="main"><RankingsPage /></main>} />
             <Route path="/players"                           element={<main className="main"><PlayersPage /></main>} />
             <Route path="/teams"                             element={<main className="main"><TeamsPage /></main>} />

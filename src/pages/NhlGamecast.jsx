@@ -79,16 +79,17 @@ const EVENT_ICONS = {
 };
 
 /* ── Main NhlGamecast component ──────────────────────── */
-export default function NhlGamecast({ espnGame, sport }) {
+export default function NhlGamecast({ espnGame, sport, directNhlGameId }) {
   const navigate = useNavigate();
-  const [nhlGameId, setNhlGameId] = useState(null);
+  const [nhlGameId, setNhlGameId] = useState(directNhlGameId || null);
   const [activeTab, setActiveTab] = useState('gamecast');
   const [eventFilter, setEventFilter] = useState('all');
 
   useEffect(() => {
+    if (directNhlGameId) { setNhlGameId(directNhlGameId); return; }
     if (!espnGame) return;
     findNhlGameId(espnGame).then(id => { if (id) setNhlGameId(id); });
-  }, [espnGame?.id]);
+  }, [espnGame?.id, directNhlGameId]);
 
   const feed = useNhlLiveFeed(nhlGameId);
 
