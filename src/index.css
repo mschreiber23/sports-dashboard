@@ -6242,7 +6242,7 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
 }
 .mlbc-pitcher-details { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.mlbc-pitcher-name { font-size: 11px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
+.mlbc-pitcher-name { font-size: 10px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
 .mlbc-hand { font-size: 11px; color: var(--text2); font-weight: 500; }
 .mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
 
