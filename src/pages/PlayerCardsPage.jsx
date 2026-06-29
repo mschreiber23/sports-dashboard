@@ -241,9 +241,7 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
   const headshotUrl = typeof player.headshot === 'object' ? player.headshot?.href : player.headshot;
 
-  return (
-    {/* ── Edit mode: collapsed row for easy drag ── */}
-    {editMode ? (
+  return editMode ? (
       <div
         className={`pc-edit-row${isDragOver ? ' pc-card-drag-over' : ''}`}
         onDragOver={e => { e.preventDefault(); onDragEnter?.(); }}
@@ -255,8 +253,7 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
         {posAbb && <span className="pc-edit-pos">{posAbb}</span>}
         <button className="pc-ctrl-btn pc-ctrl-remove" style={{marginLeft:'auto'}} onClick={() => onRemove(player.id)}>✕</button>
       </div>
-    ) : (
-
+  ) : (
     <div
       className={`pc-card${isDragOver ? ' pc-card-drag-over' : ''}`}
       style={accentColor ? {
@@ -370,7 +367,6 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
         <div className="pc-no-stats">Stats not available</div>
       )}
     </div>
-    )}{/* end editMode ternary */}
   );
 }
 
