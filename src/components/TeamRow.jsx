@@ -989,6 +989,195 @@ function LiveBar({ game, teamId, sport, liveData, mlbFeed, onBoxScore }) {
   );
 }
 
+/* ══════════════════════════════════════════════════════
+   GENERIC SPORT CARDS  (NFL / NBA / NHL)
+   Same visual language as the MLB cards above.
+   ══════════════════════════════════════════════════════ */
+
+const accentStyle = (color) => color ? {
+  background: `linear-gradient(135deg,color-mix(in srgb,${color} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
+  borderColor: `color-mix(in srgb,${color} 55%,transparent)`,
+  boxShadow: `0 0 12px color-mix(in srgb,${color} 25%,transparent)`,
+} : undefined;
+
+/** Team rows reused by all three sport card states */
+function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel }) {
+  const nav = useNavigate();
+  const rec = (c) => c?.records?.[0]?.summary || '';
+  const score = (c) => {
+    const s = c?.score;
+    if (s == null) return '—';
+    return typeof s === 'object' ? s.displayValue : String(s);
+  };
+  return (
+    <div className="mlbc-teams">
+      {showScore && (
+        <div className="mlbc-rhe-header">
+          {finalLabel ? <span className="mlbc-final-label">{finalLabel}</span>
+          : liveLabel  ? liveLabel
+          : <span className="mlbc-rhe-spacer" />}
+          <span style={{width:40,textAlign:'right',fontSize:11,color:'var(--text2)'}}>PTS</span>
+        </div>
+      )}
+      {[away, home].filter(Boolean).map((c) => (
+        <div key={c.team?.id} className="mlbc-team-row"
+          onClick={(ev) => { ev.stopPropagation(); c.team?.id && nav(`/team/${sport}/${c.team.id}`); }}>
+          <LogoImg team={c.team} className="mlbc-logo" />
+          <div className="mlbc-team-info">
+            <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
+            <span className="mlbc-rec">{rec(c)}</span>
+          </div>
+          {showScore && (
+            <span className={`mlbc-stat${c.winner ? ' mlbc-winner' : ''}`} style={{width:40}}>
+              {score(c)}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SportPreCard({ game, sport, navigate, accentColor }) {
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[1];
+  const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const shortDetail = comp?.status?.type?.shortDetail || '';
+  const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
+  return (
+    <div className="mlbc-card" style={accentStyle(accentColor)}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="mlbc-header">
+        <span className="mlbc-time">{timeStr}</span>
+        {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+      </div>
+      <div className="mlbc-divider" />
+      <GenericTeamRows away={away} home={home} sport={sport} />
+    </div>
+  );
+}
+
+function SportLiveCard({ game, sport, navigate, accentColor }) {
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[1];
+  const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const liveStr = comp?.status?.type?.shortDetail || '';
+  const sit = comp?.situation || {};
+
+  const sitLine = sport === 'nfl'
+    ? sit.downDistanceText || ''
+    : sport === 'nba'
+    ? (sit.possessionText ? `${sit.possessionText} possession` : '')
+    : sport === 'nhl'
+    ? (sit.powerPlayText || '')
+    : '';
+
+  const liveLabel = (
+    <span className="mlbc-live-inline">
+      <span className="mlbc-inning-live">{liveStr}</span>
+      {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+    </span>
+  );
+  return (
+    <div className="mlbc-card" style={accentStyle(accentColor)}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel} />
+      {sitLine && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="sport-sit-line">{sitLine}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SportFinalCard({ game, sport, navigate, accentColor }) {
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[1];
+  const allLeaders = comp?.leaders || [];
+
+  // Pick the most relevant leader categories per sport
+  const wantedKeys = sport === 'nfl'
+    ? ['passingYards', 'rushingYards']
+    : sport === 'nba'
+    ? ['points', 'rebounds', 'assists']
+    : sport === 'nhl'
+    ? ['saves', 'goals']
+    : [];
+  const leaderCats = wantedKeys.length
+    ? wantedKeys.map(k => allLeaders.find(l => l.name === k)).filter(Boolean)
+    : allLeaders.slice(0, 2);
+
+  const topLeaders = leaderCats.map(cat => {
+    const top = cat.leaders?.[0];
+    if (!top) return null;
+    const ath = top.athlete;
+    return {
+      cat: cat.shortDisplayName || cat.displayName,
+      name: ath?.shortName || ath?.displayName || '',
+      value: top.displayValue || '',
+      headshot: typeof ath?.headshot === 'string' ? ath.headshot : ath?.headshot?.href,
+      espnId: ath?.id,
+    };
+  }).filter(Boolean);
+
+  return (
+    <div className="mlbc-card" style={accentStyle(accentColor)}
+      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel="FINAL" />
+      {topLeaders.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="sport-leaders-row">
+            {topLeaders.map((l, i) => (
+              <div key={i} className="sport-leader-col"
+                style={{ cursor: l.espnId ? 'pointer' : 'default' }}
+                onClick={(ev) => { ev.stopPropagation(); l.espnId && navigate(`/player/${sport}/${l.espnId}`); }}>
+                {l.headshot && <img src={l.headshot} alt="" className="sport-leader-photo" onError={e => e.target.style.display = 'none'} />}
+                <div>
+                  <div className="sport-leader-cat">{l.cat}</div>
+                  <div className="sport-leader-name">{l.name}</div>
+                  <div className="sport-leader-val">{l.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="mlbc-divider" />
+      <div className="mlbc-actions">
+        <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } }); }}>Box Score</span>
+      </div>
+    </div>
+  );
+}
+
+function SportNoGameCard({ team, sport, accentColor }) {
+  const nav = useNavigate();
+  const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
+  const SPORT_BADGE_COLORS = { mlb: '#e74c3c', nba: '#f39c12', nfl: '#27ae60', nhl: '#3498db' };
+  return (
+    <div className="mlbc-card sport-nogame-card" style={accentStyle(accentColor)}
+      onClick={() => nav(`/team/${sport}/${team.id}`)}>
+      <div className="sport-nogame-header">
+        <LogoImg team={team} className="sport-nogame-logo" />
+        <div>
+          <div className="sport-nogame-name">{team.displayName}</div>
+          <span className="sport-nogame-badge" style={{ background: SPORT_BADGE_COLORS[sport] || '#555' }}>{sportLabel}</span>
+        </div>
+      </div>
+      <div className="sport-nogame-text">No game today</div>
+    </div>
+  );
+}
+
 /* ── Main TeamRow ────────────────────────────────────── */
 export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const { removeTeam } = useFavorites();
@@ -1012,44 +1201,24 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
 
   const goToBoxScore = () => game && navigate(`/boxscore/${sport}/${game.id}`);
 
-  // MLB games use the new full-width card — no outer tr2-card wrapper needed
+  if (loading) return <div className="mlbc-card mlbc-loading">Loading…</div>;
+
+  // MLB — self-contained cards
   if (sport === 'mlb') {
-    if (loading) return <div className="mlbc-card mlbc-loading">Loading…</div>;
-    if (!game)   return null;
-    if (isLive)  return <MlbLiveCard  game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+    if (!game) return null;
+    if (isLive) return <MlbLiveCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
     const st = game.competitions?.[0]?.status?.type?.state;
     if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
     return <MlbPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   }
 
-  return (
-    <div className="tr2-card" style={{ '--team-accent': accentColor }}>
-      {/* Card header */}
-      <div className="tr2-header">
-        <Link to={`/team/${sport}/${team.id}`} className="tr2-identity">
-          <LogoImg team={team} className="tr2-logo" />
-          <div>
-            <div className="tr2-name">{team.displayName}</div>
-            <div className="tr2-sport">{sportLabel}</div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Game section */}
-      <div className="tr2-body">
-        {loading ? (
-          <div className="tr2-no-game">Loading…</div>
-        ) : isLive ? (
-          <LiveBar game={game} teamId={team.id} sport={sport} liveData={liveData} mlbFeed={mlbFeed} onBoxScore={goToBoxScore} />
-        ) : game ? (
-          <GameScore game={game} teamId={team.id} sport={sport} onOpen={goToBoxScore} />
-        ) : (
-          <div className="tr2-no-game">No game today</div>
-        )}
-      </div>
-    </div>
-  );
+  // NFL / NBA / NHL — generic sport cards
+  if (!game) return <SportNoGameCard team={team} sport={sport} accentColor={accentColor} />;
+  if (isLive) return <SportLiveCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+  const st2 = game.competitions?.[0]?.status?.type?.state;
+  if (st2 === 'post') return <SportFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+  return <SportPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
 }
 
-// Named exports for use in ScoresPage
-export { MlbPreCard, MlbLiveCard, MlbFinalCard, fetchMlbDecisions };
+// Named exports for use in ScoresPage and elsewhere
+export { MlbPreCard, MlbLiveCard, MlbFinalCard, fetchMlbDecisions, SportPreCard, SportLiveCard, SportFinalCard };

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
-import { MlbPreCard, MlbLiveCard, MlbFinalCard } from '../components/TeamRow';
+import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard } from '../components/TeamRow';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
@@ -183,7 +183,9 @@ export default function ScoresPage() {
               if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
               return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
             }
-            return <ScoreCardSimple key={game.id} game={game} sport={activeSport} navigate={navigate} myTeamIds={myTeamIds} accentColor={accentColor} />;
+            if (st === 'pre')  return <SportPreCard   key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
+            if (st === 'post') return <SportFinalCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
+            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
           })}
         </div>
       )}
@@ -191,47 +193,3 @@ export default function ScoresPage() {
   );
 }
 
-/* ── Simple card for non-MLB sports ── */
-function ScoreCardSimple({ game, sport, navigate, myTeamIds, accentColor }) {
-  const comp = game.competitions?.[0];
-  const competitors = comp?.competitors || [];
-  const away = competitors.find(c=>c.homeAway==='away')||competitors[0];
-  const home = competitors.find(c=>c.homeAway==='home')||competitors[1];
-  const status = comp?.status;
-  const state = status?.type?.state;
-  const isLive = state === 'in';
-  const isFinal = state === 'post';
-  const shortDetail = status?.type?.shortDetail || '';
-  const getScore = (c) => { const s=c?.score; return s==null?null:typeof s==='object'?s.displayValue:String(s); };
-  const isMine = myTeamIds.some(id=>competitors.some(c=>c.team?.id===id));
-
-  return (
-    <div className={`mlbc-card${isMine ? ' mlbc-card-mine' : ''}`}
-      style={{cursor:'pointer', ...(accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
-        borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
-        boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : {})}}
-      onClick={()=>navigate(`/boxscore/${sport}/${game.id}`)}>
-      <div className="mlbc-teams" style={{paddingTop:10}}>
-        <div className="mlbc-rhe-header">
-          {isLive
-            ? <span className="mlbc-inning-live">{shortDetail}</span>
-            : isFinal
-            ? <span className="mlbc-final-label">FINAL</span>
-            : <span className="mlbc-time">{shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}</span>
-          }
-          {(isLive||isFinal) && <span style={{width:40,textAlign:'right',fontSize:11,color:'var(--text2)'}}>PTS</span>}
-        </div>
-        {[away,home].filter(Boolean).map(c=>(
-          <div key={c.team?.id} className="mlbc-team-row">
-            <img src={c.team?.logos?.[0]?.href||c.team?.logo||''} alt="" className="mlbc-logo" onError={e=>e.target.style.display='none'} />
-            <div className="mlbc-team-info">
-              <span className="mlbc-name">{c.team?.shortDisplayName||c.team?.displayName}</span>
-              <span className="mlbc-rec">{c.records?.[0]?.summary||''}</span>
-            </div>
-            {(isLive||isFinal) && <span className={`mlbc-stat${c.winner?' mlbc-winner':''}`} style={{width:40}}>{getScore(c)??'—'}</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
