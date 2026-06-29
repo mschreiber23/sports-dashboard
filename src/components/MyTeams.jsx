@@ -165,6 +165,44 @@ export default function MyTeams({ editMode = false, setEditMode }) {
         </div>
       </div>
 
+      {/* Add team search — above the team list */}
+      {showPicker && (
+        <div className="mt-team-search">
+          <input
+            ref={searchInputRef}
+            className="search-input"
+            placeholder="Search any team across MLB, NBA, NFL, NHL…"
+            value={teamQuery}
+            onChange={handleQueryChange}
+          />
+          {teamSearching && <div className="loading-text" style={{ padding: '8px 0' }}>Searching…</div>}
+          {teamResults.length > 0 && (
+            <div className="picker-list">
+              {teamResults.map((t) => {
+                const already = favorites.teams.some(ft => ft.team.id === t.id && ft.sport === t.sport);
+                const sportLabel = SPORTS[t.sport]?.label || t.sport.toUpperCase();
+                const color = SPORT_COLORS[t.sport] || '#888';
+                return (
+                  <div key={`${t.sport}-${t.id}`} className="picker-item">
+                    <div className="picker-team-info">
+                      <div className="picker-name">{t.displayName}</div>
+                      <span className="picker-sport-badge" style={{ background: color }}>{sportLabel}</span>
+                    </div>
+                    <button
+                      className={already ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}
+                      disabled={already}
+                      onClick={() => handleAddTeam(t)}
+                    >
+                      {already ? 'Added' : 'Add'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Edit mode panel */}
       {editMode && (
         <div className="edit-panel">
@@ -207,45 +245,6 @@ export default function MyTeams({ editMode = false, setEditMode }) {
         </div>
       )}
 
-      {/* Add team search — appears above the team list */}
-      {showPicker && (
-        <div className="pr-search-wrap" style={{ marginBottom: 8 }}>
-          <input
-            ref={searchInputRef}
-            className="search-input"
-            placeholder="Search any team across MLB, NBA, NFL, NHL…"
-            value={teamQuery}
-            onChange={handleQueryChange}
-          />
-          {teamSearching && <div className="loading-text" style={{ padding: '8px 0' }}>Searching…</div>}
-          {teamResults.length > 0 && (
-            <div className="picker-list">
-              {teamResults.map((t) => {
-                const already = favorites.teams.some(ft => ft.team.id === t.id && ft.sport === t.sport);
-                const sportLabel = SPORTS[t.sport]?.label || t.sport.toUpperCase();
-                const color = SPORT_COLORS[t.sport] || '#888';
-                return (
-                  <div key={`${t.sport}-${t.id}`} className="picker-item">
-                    <div className="picker-player-info">
-                      <div>
-                        <div className="picker-name">{t.displayName}</div>
-                        <span className="picker-sport-badge" style={{ background: color }}>{sportLabel}</span>
-                      </div>
-                    </div>
-                    <button
-                      className={already ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}
-                      disabled={already}
-                      onClick={() => handleAddTeam(t)}
-                    >
-                      {already ? 'Added' : 'Add'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Date navigation moved inline into section-header */}
 
