@@ -307,14 +307,12 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
                 : p.wl;
               return (
                 <div key={label} className="mlbc-decision-col"
-                  style={{ cursor: p.mlbId ? 'pointer' : 'default', alignItems: 'flex-start' }}
+                  style={{ cursor: p.mlbId ? 'pointer' : 'default' }}
                   onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/mlb/${p.mlbId}`); }}>
                   {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev) => ev.target.style.display = 'none'} />}
-                  <div>
-                    <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
-                    {recordStr && <div className="mlbc-decision-record">{recordStr}</div>}
-                    {gameStatStr && <div className="mlbc-decision-gamestats">{gameStatStr}</div>}
-                  </div>
+                  <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
+                  {recordStr && <div className="mlbc-decision-record">{recordStr}</div>}
+                  {gameStatStr && <div className="mlbc-decision-gamestats">{gameStatStr}</div>}
                 </div>
               );
             })}
