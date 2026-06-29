@@ -331,8 +331,10 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
                   style={{ cursor: (p.espnId || p.mlbId) ? 'pointer' : 'default' }}
                   onClick={(ev) => { ev.stopPropagation(); if (p.espnId) navigate(`/player/mlb/${p.espnId}`); else if (p.fullName) goToEspnPlayer(p.fullName, 'mlb', navigate); }}>
                   {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev) => ev.target.style.display = 'none'} />}
-                  <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
-                  {recordStr && <div className="mlbc-decision-record">{recordStr}</div>}
+                  <div className="mlbc-decision-label">
+                    {label}: <span className="mlbc-matchup-name">{p.shortName}</span>
+                    {recordStr && <span className="mlbc-decision-record-inline"> ({recordStr})</span>}
+                  </div>
                   {gameStatStr && <div className="mlbc-decision-gamestats">{gameStatStr}</div>}
                 </div>
               );
