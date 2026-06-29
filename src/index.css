@@ -6315,7 +6315,8 @@ thead .dfs-sticky-player {
 .mlbc-decision-label { font-size: 10px; color: var(--text2); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .mlbc-decision-label .mlbc-matchup-name { font-size: 10px; font-weight: 700; color: var(--text); }
 .mlbc-decision-record-inline { font-size: 9px; font-weight: 400; color: var(--text2); }
-.mlbc-decision-gamestats { font-size: 9px; color: var(--text2); line-height: 1.5; word-break: break-word; }
+.mlbc-decision-gamestats { font-size: 10px; color: var(--text2); line-height: 1.5; }
+.mlbc-gs-lbl { font-size: 8px; color: var(--text2); }
 
 /* Action buttons */
 .mlbc-actions {

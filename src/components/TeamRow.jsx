@@ -316,13 +316,13 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
               decisions.save && { label: 'S', p: decisions.save },
             ].filter(Boolean).map(({ label, p }) => {
               const gs = p.gameStat || {};
-              const gameStatStr = [
-                gs.ip && `${gs.ip} IP`,
-                gs.h  && `${gs.h} H`,
-                gs.er && `${gs.er} ER`,
-                gs.k  && `${gs.k} K`,
-                gs.bb && `${gs.bb} BB`,
-              ].filter(Boolean).join(' · ');
+              const gameStats = [
+                gs.ip && { val: gs.ip,  lbl: 'IP' },
+                gs.h  && { val: gs.h,   lbl: 'H'  },
+                gs.er && { val: gs.er,  lbl: 'ER' },
+                gs.k  && { val: gs.k,   lbl: 'K'  },
+                gs.bb && { val: gs.bb,  lbl: 'BB' },
+              ].filter(Boolean);
               const recordStr = label === 'S'
                 ? (p.sv != null ? `${p.sv} SV` : '')
                 : p.wl;
@@ -335,7 +335,16 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
                     {label}: <span className="mlbc-matchup-name">{p.shortName}</span>
                     {recordStr && <span className="mlbc-decision-record-inline"> ({recordStr})</span>}
                   </div>
-                  {gameStatStr && <div className="mlbc-decision-gamestats">{gameStatStr}</div>}
+                  {gameStats.length > 0 && (
+                    <div className="mlbc-decision-gamestats">
+                      {gameStats.map((s, i) => (
+                        <span key={s.lbl}>
+                          {i > 0 && ' '}
+                          {s.val}<span className="mlbc-gs-lbl">{s.lbl}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
