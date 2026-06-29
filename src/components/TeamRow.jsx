@@ -278,7 +278,17 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
                   {pPhoto && <img src={pPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
                   <div>
                     <div className="mlbc-matchup-name">{pName.split(' ').slice(-1)[0]}</div>
-                    <div className="mlbc-matchup-stats">{[pStats.numberOfPitches&&`${pStats.numberOfPitches}P`,pStats.inningsPitched&&`${pStats.inningsPitched} IP`,pStats.earnedRuns!=null&&`${pStats.earnedRuns} ER`].filter(Boolean).join(' · ')}</div>
+                    <div className="mlbc-matchup-stats">
+                      {[
+                        pStats.inningsPitched != null && { v: pStats.inningsPitched, l: 'IP' },
+                        pStats.hits          != null && { v: pStats.hits,          l: 'H'  },
+                        pStats.earnedRuns    != null && { v: pStats.earnedRuns,    l: 'ER' },
+                        pStats.strikeOuts    != null && { v: pStats.strikeOuts,    l: 'K'  },
+                        pStats.baseOnBalls   != null && { v: pStats.baseOnBalls,   l: 'BB' },
+                      ].filter(Boolean).map((s, i) => (
+                        <span key={s.l}>{i > 0 ? ' ' : ''}{s.v}<span className="mlbc-gs-lbl">{s.l}</span></span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -295,7 +305,17 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
                   {bPhoto && <img src={bPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
                   <div>
                     <div className="mlbc-matchup-name">{bName.split(' ').slice(-1)[0]}</div>
-                    <div className="mlbc-matchup-stats">{bStats.hits!=null?`${bStats.hits}-${bStats.atBats??0}`:''}</div>
+                    <div className="mlbc-matchup-stats">{(() => {
+                      if (bStats.hits == null) return '';
+                      const parts = [
+                        (bStats.homeRuns  > 0) && ((bStats.homeRuns  > 1 ? `${bStats.homeRuns}`  : '') + 'HR'),
+                        (bStats.doubles   > 0) && ((bStats.doubles   > 1 ? `${bStats.doubles}`   : '') + '2B'),
+                        (bStats.triples   > 0) && ((bStats.triples   > 1 ? `${bStats.triples}`   : '') + '3B'),
+                        (bStats.rbi       > 0) && `${bStats.rbi}RBI`,
+                      ].filter(Boolean);
+                      const base = `${bStats.hits}-${bStats.atBats ?? 0}`;
+                      return parts.length ? `${base} | ${parts.join(', ')}` : base;
+                    })()}</div>
                   </div>
                 </div>
               </div>
