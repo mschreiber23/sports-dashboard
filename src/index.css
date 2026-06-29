@@ -6753,17 +6753,10 @@ thead .dfs-sticky-player {
 }
 .pc-player-info { flex: 1; min-width: 0; }
 .pc-player-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pc-player-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
-.pc-sport-badge {
-  font-size: 8px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: #fff;
-  padding: 2px 5px;
-  border-radius: 3px;
-}
-.pc-pos { font-size: 11px; color: var(--text2); font-weight: 600; }
+.pc-player-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+.pc-pos { font-size: 11px; color: var(--text2); font-weight: 700; }
+.pc-jersey { font-size: 11px; color: var(--text2); font-weight: 600; }
+.pc-team-abbr { font-size: 11px; color: var(--text2); font-weight: 600; }
 
 /* Stats grid — single scrollable row */
 .pc-stats-grid {
@@ -6832,8 +6825,7 @@ thead .dfs-sticky-player {
   align-items: center;
   gap: 2px;
 }
-.pc-at { font-size: 11px; color: var(--text2); font-weight: 600; }
-.pc-game-time { font-size: 10px; color: var(--text2); white-space: nowrap; }
+.pc-game-time { font-size: 11px; color: var(--text2); white-space: nowrap; font-weight: 600; }
 .pc-season-label {
   font-size: 9px;
   font-weight: 800;

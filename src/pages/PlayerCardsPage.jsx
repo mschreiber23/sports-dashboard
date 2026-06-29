@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -180,6 +181,11 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, o
   const cfgKey = getStatCfgKey(player.sport, posAbb);
   const statCfg = STAT_CFGS[cfgKey] || [];
 
+  // Team color for gradient + glow
+  const rawC = player.team?.color ? `#${player.team.color}` : null;
+  const rawA = player.team?.alternateColor ? `#${player.team.alternateColor}` : null;
+  const accentColor = rawC ? adaptColorForDarkBg(rawC, rawA, '#0092ff') : null;
+
   const load = useCallback(async () => {
     try {
       let teamId = player.team?.id;
@@ -235,7 +241,11 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, o
   const headshotUrl = typeof player.headshot === 'object' ? player.headshot?.href : player.headshot;
 
   return (
-    <div className="pc-card">
+    <div className="pc-card" style={accentColor ? {
+      background: `linear-gradient(135deg, color-mix(in srgb,${accentColor} 12%,var(--bg2)) 0%, var(--bg2) 60%)`,
+      borderColor: `color-mix(in srgb,${accentColor} 50%,transparent)`,
+      boxShadow: `0 0 14px color-mix(in srgb,${accentColor} 22%,transparent)`,
+    } : undefined}>
       {/* Controls: reorder + remove */}
       <div className="pc-controls">
         <button className="pc-ctrl-btn" onClick={onMoveUp}   disabled={isFirst}  title="Move up">↑</button>
@@ -275,10 +285,9 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, o
         <div className="pc-player-info">
           <div className="pc-player-name">{player.displayName}</div>
           <div className="pc-player-meta">
-            <span className="pc-sport-badge" style={{background: SPORT_BADGE_COLORS[cfgKey] || SPORT_COLORS[player.sport] || '#555'}}>
-              {cfgKey?.replace('_',' ').toUpperCase() || player.sport?.toUpperCase()}
-            </span>
             {posAbb && <span className="pc-pos">{posAbb}</span>}
+            {player.jersey && <span className="pc-jersey">#{player.jersey}</span>}
+            <span className="pc-team-abbr">{player.team?.abbreviation}</span>
           </div>
         </div>
       </div>
@@ -295,7 +304,6 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, o
             </div>
             <div className="pc-matchup-vs">
               <div className="pc-game-time">{shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail}</div>
-              <span className="pc-at">@</span>
             </div>
             <div className="pc-matchup-team">
               {competitors.find(c => c.homeAway === 'home')?.team?.logo
@@ -425,12 +433,14 @@ export default function PlayerCardsPage() {
         sport: player.sport,
         displayName: ath.displayName || player.displayName,
         headshot: typeof ath.headshot === 'object' ? ath.headshot?.href : (ath.headshot || player.headshot),
+        jersey: ath.jersey || '',
         team: {
           id: ath.team?.id,
           abbreviation: ath.team?.abbreviation,
           displayName: ath.team?.displayName,
           logo: ath.team?.logos?.[0]?.href || ath.team?.logo,
           color: ath.team?.color,
+          alternateColor: ath.team?.alternateColor,
         },
         position: ath.position?.abbreviation,
         _position: ath.position?.abbreviation || '',
