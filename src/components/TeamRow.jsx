@@ -293,16 +293,35 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
         <>
           <div className="mlbc-divider" />
           <div className="mlbc-decisions">
-            {[{label:'W',p:decisions.winner},{label:'L',p:decisions.loser},decisions.save&&{label:'S',p:decisions.save}].filter(Boolean).map(({label,p})=>(
-              <div key={label} className="mlbc-decision-col" style={{cursor: p.mlbId ? 'pointer' : 'default'}}
-                onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/mlb/${p.mlbId}`); }}>
-                {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
-                <div>
-                  <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
-                  <div className="mlbc-matchup-stats">{p.wl} · {p.era} ERA</div>
+            {[
+              { label: 'W', p: decisions.winner },
+              { label: 'L', p: decisions.loser },
+              decisions.save && { label: 'S', p: decisions.save },
+            ].filter(Boolean).map(({ label, p }) => {
+              const gs = p.gameStat || {};
+              const gameStatStr = [
+                gs.ip && `${gs.ip} IP`,
+                gs.h  && `${gs.h} H`,
+                gs.er && `${gs.er} ER`,
+                gs.k  && `${gs.k} K`,
+                gs.bb && `${gs.bb} BB`,
+              ].filter(Boolean).join(' · ');
+              const recordStr = label === 'S'
+                ? (p.sv != null ? `${p.sv} SV` : '')
+                : p.wl;
+              return (
+                <div key={label} className="mlbc-decision-col"
+                  style={{ cursor: p.mlbId ? 'pointer' : 'default', alignItems: 'flex-start' }}
+                  onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/mlb/${p.mlbId}`); }}>
+                  {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev) => ev.target.style.display = 'none'} />}
+                  <div>
+                    <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
+                    {recordStr && <div className="mlbc-decision-record">{recordStr}</div>}
+                    {gameStatStr && <div className="mlbc-decision-gamestats">{gameStatStr}</div>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -477,7 +496,24 @@ async function fetchMlbDecisions(gameDate, homeTeamAbbr) {
   const dec = feedData.liveData?.decisions;
   if (!dec?.winner?.id) return null;
 
-  // 3. Batch-fetch pitcher stats (jersey, W-L, ERA, saves)
+  // 3. Extract game pitching stats from the boxscore in the feed we already fetched
+  const allPlayers = {
+    ...feedData.liveData?.boxscore?.teams?.away?.players,
+    ...feedData.liveData?.boxscore?.teams?.home?.players,
+  };
+  const gameStatFor = (mlbId) => {
+    const entry = allPlayers[`ID${mlbId}`];
+    const ps = entry?.stats?.pitching || {};
+    return {
+      ip: ps.inningsPitched || '',
+      h:  ps.hits != null ? String(ps.hits) : '',
+      er: ps.earnedRuns != null ? String(ps.earnedRuns) : '',
+      k:  ps.strikeOuts != null ? String(ps.strikeOuts) : '',
+      bb: ps.baseOnBalls != null ? String(ps.baseOnBalls) : '',
+    };
+  };
+
+  // 4. Batch-fetch pitcher season stats (W-L, ERA, saves)
   const ids = [dec.winner.id, dec.loser.id, dec.save?.id].filter(Boolean).join(',');
   const peopleRes = await fetch(
     `https://statsapi.mlb.com/api/v1/people?personIds=${ids}&hydrate=currentTeam,stats(group=pitching,type=season)`
@@ -496,6 +532,7 @@ async function fetchMlbDecisions(gameDate, homeTeamAbbr) {
       era: sp.era || '—',
       sv: sp.saves ?? null,
       headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${p.id}/headshot/67/current`,
+      gameStat: gameStatFor(p.id),
     };
   }
 

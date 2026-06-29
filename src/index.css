@@ -6274,20 +6274,33 @@ thead .dfs-sticky-player {
   line-height: 1.2;
 }
 
-/* Pitcher/batter matchup (live) and W/L decisions (final) */
-.mlbc-matchup-row, .mlbc-decisions {
+/* Pitcher/batter matchup (live) */
+.mlbc-matchup-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 10px 14px;
 }
-.mlbc-matchup-col, .mlbc-decision-col {
+/* W/L/S decisions (final) — stacked rows */
+.mlbc-decisions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.mlbc-matchup-col {
   display: flex;
   flex-direction: column;
   gap: 5px;
   cursor: pointer;
 }
-.mlbc-decision-col { flex-direction: row; align-items: center; gap: 8px; cursor: default; }
+.mlbc-decision-col {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: default;
+}
 .mlbc-matchup-label { font-size: 9px; font-weight: 400; letter-spacing: 0; color: var(--text2); text-transform: uppercase; }
 .mlbc-matchup-info  { display: flex; align-items: center; gap: 8px; }
 .mlbc-matchup-photo {
@@ -6299,8 +6312,10 @@ thead .dfs-sticky-player {
 }
 .mlbc-matchup-name  { font-size: 13px; font-weight: 700; color: var(--text); }
 .mlbc-matchup-stats { font-size: 11px; color: var(--text2); }
-.mlbc-decision-label { font-size: 11px; color: var(--text2); }
+.mlbc-decision-label { font-size: 11px; color: var(--text2); line-height: 1.4; }
 .mlbc-decision-label .mlbc-matchup-name { font-size: 13px; }
+.mlbc-decision-record { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.4; }
+.mlbc-decision-gamestats { font-size: 10px; color: var(--text2); line-height: 1.4; }
 
 /* Action buttons */
 .mlbc-actions {
