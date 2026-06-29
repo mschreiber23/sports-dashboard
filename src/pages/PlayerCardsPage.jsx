@@ -172,7 +172,7 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
 }
 
 /* ── Individual player card ───────────────────────────── */
-function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer }) {
+function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, onMoveUp, onMoveDown, isFirst, isLast }) {
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
   const [loading, setLoading] = useState(true);
@@ -236,8 +236,12 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer }) {
 
   return (
     <div className="pc-card">
-      {/* Remove button */}
-      <button className="pc-remove" onClick={() => onRemove(player.id)} title="Remove">✕</button>
+      {/* Controls: reorder + remove */}
+      <div className="pc-controls">
+        <button className="pc-ctrl-btn" onClick={onMoveUp}   disabled={isFirst}  title="Move up">↑</button>
+        <button className="pc-ctrl-btn" onClick={onMoveDown} disabled={isLast}   title="Move down">↓</button>
+        <button className="pc-ctrl-btn pc-ctrl-remove" onClick={() => onRemove(player.id)} title="Remove">✕</button>
+      </div>
 
       {/* Game context header */}
       {gameData?.game ? (
@@ -440,6 +444,13 @@ export default function PlayerCardsPage() {
 
   const removeCard = (id) => setCards(prev => prev.filter(c => c.id !== id));
   const updateCard = (id, patch) => setCards(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
+  const moveCard = (idx, dir) => setCards(prev => {
+    const next = [...prev];
+    const target = idx + dir;
+    if (target < 0 || target >= next.length) return prev;
+    [next[idx], next[target]] = [next[target], next[idx]];
+    return next;
+  });
 
   return (
     <div className="page-content">
@@ -518,8 +529,11 @@ export default function PlayerCardsPage() {
       )}
 
       <div className="pc-grid">
-        {cards.map(player => (
-          <PlayerGameCard key={`${player.id}-${dateStr}`} player={player} onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard} />
+        {cards.map((player, idx) => (
+          <PlayerGameCard key={`${player.id}-${dateStr}`} player={player}
+            onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard}
+            onMoveUp={() => moveCard(idx, -1)} onMoveDown={() => moveCard(idx, 1)}
+            isFirst={idx === 0} isLast={idx === cards.length - 1} />
         ))}
       </div>
     </div>
