@@ -8,6 +8,16 @@ import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
+/** Search ESPN by player name and navigate to their player page. */
+async function goToEspnPlayer(fullName, sport, navigate) {
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/search/v2?query=${encodeURIComponent(fullName)}&limit=5`);
+    const d = await r.json();
+    const hit = d.items?.find(i => i.type === 'athlete');
+    if (hit?.id) navigate(`/player/${sport}/${hit.id}`);
+  } catch {}
+}
+
 function LogoImg({ team, className, style }) {
   const dark = getTeamLogo(team);
   const orig = getTeamLogoFallback(team);
@@ -232,7 +242,13 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
           <div className="mlbc-divider" />
           <div className="mlbc-matchup-row">
             {pName && (
-              <div className="mlbc-matchup-col" onClick={(ev)=>{ev.stopPropagation(); mlbFeed?.matchup?.pitcher?.id && navigate(`/player/${sport}/${mlbFeed.matchup.pitcher.id}`);}}>
+              <div className="mlbc-matchup-col" onClick={(ev)=>{
+                ev.stopPropagation();
+                // Use ESPN situation pitcher ID (ESPN athlete ID) when available
+                const espnId = comp?.situation?.pitcher?.id;
+                if (espnId) navigate(`/player/${sport}/${espnId}`);
+                else goToEspnPlayer(pName, sport, navigate);
+              }}>
                 <div className="mlbc-matchup-label">PITCHING {pitchingTeamAbbr}</div>
                 <div className="mlbc-matchup-info">
                   {pPhoto && <img src={pPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
@@ -244,7 +260,12 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
               </div>
             )}
             {bName && (
-              <div className="mlbc-matchup-col" onClick={(ev)=>{ev.stopPropagation(); mlbFeed?.matchup?.batter?.id && navigate(`/player/${sport}/${mlbFeed.matchup.batter.id}`);}}>
+              <div className="mlbc-matchup-col" onClick={(ev)=>{
+                ev.stopPropagation();
+                const espnId = comp?.situation?.batter?.id;
+                if (espnId) navigate(`/player/${sport}/${espnId}`);
+                else goToEspnPlayer(bName, sport, navigate);
+              }}>
                 <div className="mlbc-matchup-label">AT BAT {battingTeamAbbr}</div>
                 <div className="mlbc-matchup-info">
                   {bPhoto && <img src={bPhoto} alt="" className="mlbc-matchup-photo" onError={(ev)=>ev.target.style.display='none'} />}
@@ -307,8 +328,8 @@ function MlbFinalCard({ game, sport, navigate, accentColor }) {
                 : p.wl;
               return (
                 <div key={label} className="mlbc-decision-col"
-                  style={{ cursor: p.mlbId ? 'pointer' : 'default' }}
-                  onClick={(ev) => { ev.stopPropagation(); p.mlbId && navigate(`/player/mlb/${p.mlbId}`); }}>
+                  style={{ cursor: (p.espnId || p.mlbId) ? 'pointer' : 'default' }}
+                  onClick={(ev) => { ev.stopPropagation(); if (p.espnId) navigate(`/player/mlb/${p.espnId}`); else if (p.fullName) goToEspnPlayer(p.fullName, 'mlb', navigate); }}>
                   {p.headshot && <img src={p.headshot} alt="" className="mlbc-matchup-photo" onError={(ev) => ev.target.style.display = 'none'} />}
                   <div className="mlbc-decision-label">{label}: <span className="mlbc-matchup-name">{p.shortName}</span></div>
                   {recordStr && <div className="mlbc-decision-record">{recordStr}</div>}
@@ -527,8 +548,19 @@ async function fetchMlbDecisions(gameDate, homeTeamAbbr) {
       sv: sp.saves ?? null,
       headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${p.id}/headshot/67/current`,
       gameStat: gameStatFor(p.id),
+      espnId: null, // filled in below
     };
   }
+
+  // Look up ESPN athlete IDs so player page links work correctly
+  await Promise.all(Object.values(byId).map(async (p) => {
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/search/v2?query=${encodeURIComponent(p.fullName)}&limit=5`);
+      const d = await r.json();
+      const hit = d.items?.find(i => i.type === 'athlete');
+      if (hit?.id) p.espnId = hit.id;
+    } catch {}
+  }));
 
   return {
     winner: byId[dec.winner.id],
