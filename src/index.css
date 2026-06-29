@@ -6241,8 +6241,8 @@ thead .dfs-sticky-player {
   background: var(--bg3);
   flex-shrink: 0;
 }
-.mlbc-pitcher-details { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.mlbc-pitcher-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mlbc-pitcher-details { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mlbc-pitcher-name { font-size: 11px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
 .mlbc-hand { font-size: 11px; color: var(--text2); font-weight: 500; }
 .mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
 
@@ -6313,7 +6313,7 @@ thead .dfs-sticky-player {
 .mlbc-matchup-name  { font-size: 13px; font-weight: 700; color: var(--text); }
 .mlbc-matchup-stats { font-size: 11px; color: var(--text2); }
 .mlbc-decision-label { font-size: 11px; color: var(--text2); line-height: 1.4; }
-.mlbc-decision-label .mlbc-matchup-name { font-size: 13px; }
+.mlbc-decision-label .mlbc-matchup-name { font-size: 11px; }
 .mlbc-decision-record { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.4; }
 .mlbc-decision-gamestats { font-size: 10px; color: var(--text2); line-height: 1.4; }
 

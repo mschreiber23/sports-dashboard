@@ -175,10 +175,6 @@ function MlbPreCard({ game, sport, navigate, accentColor }) {
           </div>
         </>
       )}
-      <div className="mlbc-divider" />
-      <div className="mlbc-actions">
-        <span className="mlbc-action-btn">Preview</span>
-      </div>
     </div>
   );
 }
