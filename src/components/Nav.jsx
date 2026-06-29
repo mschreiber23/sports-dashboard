@@ -104,19 +104,19 @@ function HamburgerIcon({ active }) {
   );
 }
 
-// Nav order: Home - Scores - Standings - Players - More
+// Nav order: Home - Standings - Scores - Players - Leaders - More
 const MORE_ITEMS = [
   { path: '/me',       label: 'My Profile', Icon: MeIcon },
-  { path: '/leaders',  label: 'Leaders',    Icon: LeadersIcon },
   { path: '/rankings', label: 'Rankings',   Icon: LeadersIcon },
   { path: '/dfs',      label: 'ShribeIQ',   Icon: DFSIcon },
 ];
 
 const NAV_ITEMS = [
   { path: '/',          label: 'Home',      Icon: HomeIcon },
-  { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
   { path: '/standings', label: 'Standings', Icon: StandingsIcon },
+  { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
   { path: '/players',   label: 'Players',   Icon: PlayersIcon },
+  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
   { path: 'more',       label: 'More',      more: true },
 ];
 

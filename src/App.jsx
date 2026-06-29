@@ -33,12 +33,6 @@ function Dashboard() {
     <main className="main">
       <MyTeams editMode={editMode} setEditMode={setEditMode} />
       <PlayerRoster editMode={editMode} setEditMode={setEditMode} />
-      {/* Me page link at the bottom */}
-      <Link to="/me" className="dashboard-me-link">
-        <span className="dashboard-me-avatar">{user?.email?.[0]?.toUpperCase() || '?'}</span>
-        <span>My Profile</span>
-        <span className="dashboard-me-arrow">›</span>
-      </Link>
     </main>
   );
 }
