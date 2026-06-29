@@ -172,7 +172,7 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
 }
 
 /* ── Individual player card ───────────────────────────── */
-function PlayerGameCard({ player, onRemove, dateStr }) {
+function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer }) {
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
   const [loading, setLoading] = useState(true);
@@ -182,7 +182,23 @@ function PlayerGameCard({ player, onRemove, dateStr }) {
 
   const load = useCallback(async () => {
     try {
-      const game = await findGame(player.sport, player.team?.id, dateStr);
+      let teamId = player.team?.id;
+
+      // If team.id is missing (old stored player), re-fetch athlete data to get it
+      if (!teamId) {
+        const { sport: s, league: l } = SPORT_CFG[player.sport] || {};
+        try {
+          const ar = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/${s}/${l}/athletes/${player.id}`);
+          const ad = await ar.json();
+          teamId = ad.athlete?.team?.id;
+          // Patch the stored player so future loads work
+          if (teamId) {
+            onUpdatePlayer?.(player.id, { team: { ...player.team, id: teamId } });
+          }
+        } catch {}
+      }
+
+      const game = await findGame(player.sport, teamId, dateStr);
       if (!game) { setGameData({ game: null }); setLoading(false); return; }
       const comp = game.competitions?.[0];
       const state = comp?.status?.type?.state;
@@ -286,7 +302,7 @@ function PlayerGameCard({ player, onRemove, dateStr }) {
           </div>
           {gameData?.seasonStats && statCfg.length > 0 && (
             <>
-              <div className="pc-season-label">2026 Season</div>
+              <div className="pc-season-label">2026 Season Stats</div>
               <div className="pc-stats-grid">
                 {statCfg.map(({ s, l }) => {
                   const val = gameData.seasonStats[s];
@@ -423,6 +439,7 @@ export default function PlayerCardsPage() {
   };
 
   const removeCard = (id) => setCards(prev => prev.filter(c => c.id !== id));
+  const updateCard = (id, patch) => setCards(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
 
   return (
     <div className="page-content">
@@ -502,7 +519,7 @@ export default function PlayerCardsPage() {
 
       <div className="pc-grid">
         {cards.map(player => (
-          <PlayerGameCard key={`${player.id}-${dateStr}`} player={player} onRemove={removeCard} dateStr={dateStr} />
+          <PlayerGameCard key={`${player.id}-${dateStr}`} player={player} onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard} />
         ))}
       </div>
     </div>
