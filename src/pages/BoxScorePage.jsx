@@ -1978,13 +1978,16 @@ export default function BoxScorePage() {
   useEffect(() => {
     if (!loading && !location.state?.tab) {
       if (isPre) setActiveTab('Preview');
+      else if (sport === 'nhl') setActiveTab('Gamecast'); // NHL always defaults to Gamecast
       else if (isFinal) setActiveTab('Box Score');
       else setActiveTab('Gamecast');
     }
-  }, [loading, isLive, isPre]);
+  }, [loading, isLive, isPre, sport]);
 
   const tabs = isPre
     ? ['Preview']
+    : sport === 'nhl'
+    ? ['Gamecast', 'Box Score', 'Play-by-Play']  // NHL always has Gamecast
     : isLive
     ? ['Gamecast', 'Box Score', 'Play-by-Play']
     : ['Box Score', 'Play-by-Play', 'Scoring Summary'];
@@ -2025,7 +2028,7 @@ export default function BoxScorePage() {
               sport === 'mlb'
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
                 : sport === 'nhl'
-                ? <NhlGamecast espnGame={data} sport={sport} />
+                ? <NhlGamecast espnGame={{ competitions: [comp], date: comp?.date || data?.header?.competitions?.[0]?.date }} sport={sport} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 

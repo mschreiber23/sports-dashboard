@@ -1108,7 +1108,7 @@ function SportPreCard({ game, sport, navigate, accentColor }) {
   const timeStr = shortDetail.includes(' - ') ? shortDetail.split(' - ').slice(1).join(' - ') : shortDetail;
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: sport === 'nhl' ? 'Gamecast' : undefined } })}>
         <div className="mlbc-header">
           <span className="mlbc-time">{timeStr}</span>
           {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
@@ -1157,7 +1157,7 @@ function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
   );
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
         <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel}
           awayScoreOverride={awayOverride} homeScoreOverride={homeOverride} />
       </div>
@@ -1205,7 +1205,7 @@ function SportFinalCard({ game, sport, navigate, accentColor }) {
 
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: sport === 'nhl' ? 'Gamecast' : undefined } })}>
         <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel="FINAL" />
       </div>
       {topLeaders.length > 0 && (
