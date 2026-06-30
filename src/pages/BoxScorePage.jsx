@@ -1130,18 +1130,6 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
         <div className="preview-card">
           <div className="preview-leaders-cat-label">Pitcher Matchup</div>
 
-          {/* Logo header: [WSH abbr][WSH logo]  ·  [PHI logo][PHI abbr] */}
-          <div className="preview-leaders-team-header">
-            <div className="preview-leaders-th-side">
-              <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
-              <LogoImg team={away?.team} className="preview-team-logo" />
-            </div>
-            <div className="preview-leaders-th-side preview-leaders-th-right">
-              <LogoImg team={home?.team} className="preview-team-logo" />
-              <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
-            </div>
-          </div>
-
           {/* Pitcher content: IDENTICAL to batting leaders — [stat-col][avatar] / [avatar][stat-col] */}
           <div className="preview-leaders-matchup">
             {[away, home].filter(Boolean).map((c, idx) => {
