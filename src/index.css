@@ -2029,7 +2029,7 @@ body {
 }
 
 .ab-tracker-count-stat {
-  background: var(--bg3);
+  background: #0f0f13;
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 12px 8px;
@@ -2053,16 +2053,18 @@ body {
 
 .ab-tracker-mode-tabs {
   display: flex;
-  background: var(--bg3);
+  background: none;
   border-radius: 0;
-  padding: 3px;
+  padding: 0;
   gap: 0;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
 }
 
 .ab-tracker-mode-tab {
   background: none;
   border: none;
+  border-bottom: 2px solid transparent;
   color: var(--text2);
   padding: 7px 12px;
   border-radius: 0;
@@ -2070,10 +2072,11 @@ body {
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
 }
 .ab-tracker-mode-tab:hover { color: var(--text); }
-.ab-tracker-mode-active { background: var(--accent); color: #fff; }
+.ab-tracker-mode-active { background: none; color: var(--text); border-bottom-color: var(--accent2); }
 
 .ab-tracker-input-wrap { flex: 1; }
 
@@ -2135,11 +2138,11 @@ body {
 
 .pp-career-tabs {
   display: flex;
-  background: rgba(34,34,45,0.31);
+  background: none;
   border-radius: 0;
-  padding: 1px;
+  padding: 0;
   gap: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--border);
   margin-bottom: 2px;
 }
 
@@ -2147,6 +2150,7 @@ body {
   flex: 1;
   background: none;
   border: none;
+  border-bottom: 2px solid transparent;
   border-radius: 0;
   color: var(--text2);
   padding: 7px 6px;
@@ -2154,16 +2158,17 @@ body {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
 }
 .pp-career-tab:hover { color: var(--text); }
-.pp-career-tab-active { background: var(--accent); color: #fff; }
+.pp-career-tab-active { color: var(--text); border-bottom-color: var(--accent2); background: none; }
 
 /* ── Player Page ── */
 .pp-page { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 
 .pp-header {
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
   border-radius: 0;
   overflow: hidden;
@@ -2271,7 +2276,7 @@ body {
 .pp-table-wrap { overflow-x: auto; }
 .pp-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
 .pp-th {
-  background: var(--bg3); color: var(--text2);
+  background: #0f0f13; color: var(--text2);
   font-size: 9px; font-weight: 700; text-transform: uppercase;
   padding: 5px 8px; text-align: right;
   border-bottom: 1px solid var(--border);
@@ -2281,7 +2286,7 @@ body {
 .pp-tr:last-child { border-bottom: none; }
 .pp-tr:hover { background: rgba(255,255,255,0.03); }
 .pp-tr-current { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-.pp-tr-career { background: var(--bg3); font-weight: 700; }
+.pp-tr-career { background: #0f0f13; font-weight: 700; }
 .pp-td { padding: 6px 8px; text-align: right; color: #fff; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 300; letter-spacing: -1px; }
 .pp-td-season { text-align: left; padding-left: 12px; color: var(--text); font-weight: 600; }
 .pp-td-hl { font-weight: 300; color: var(--text); letter-spacing: -1px; }
