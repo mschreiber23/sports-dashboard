@@ -1013,31 +1013,25 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
 
   return (
     <div className="preview-card">
-      {/* Team headers */}
-      <div className="preview-leaders-team-header" style={{marginBottom:4}}>
-        <div className="preview-leaders-th-side" style={{gap:5,flexWrap:'wrap'}}>
-          <LogoImg team={away?.team} className="preview-team-logo" />
-          <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+      {/* Lineup header: [badge][abbr vs pitcher][logo][logo][abbr vs pitcher][badge] */}
+      <div className="preview-center-header" style={{alignItems:'flex-start',flexWrap:'wrap',gap:6}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:2}}>
           {badge(awayLu, lineupLoading.away)}
+          <span className="preview-lineup-vs-label" style={{padding:0,whiteSpace:'nowrap'}}>
+            {away?.team?.abbreviation}{awayOppName ? ` vs ${awayOppName}` : ''}
+          </span>
         </div>
-        <div className="preview-leaders-th-side preview-leaders-th-right" style={{gap:5,flexWrap:'wrap'}}>
-          {badge(homeLu, lineupLoading.home)}
-          <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
+        <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
+          <LogoImg team={away?.team} className="preview-team-logo" />
           <LogoImg team={home?.team} className="preview-team-logo" />
         </div>
-      </div>
-
-      {/* BvP label */}
-      {(awayOppName || homeOppName) && (
-        <div className="preview-leaders-team-header" style={{marginBottom:4}}>
-          <div className="preview-leaders-th-side">
-            {awayOppName && <span className="preview-lineup-vs-label" style={{padding:0}}>vs {awayOppName}</span>}
-          </div>
-          <div className="preview-leaders-th-side preview-leaders-th-right">
-            {homeOppName && <span className="preview-lineup-vs-label" style={{padding:0}}>vs {homeOppName}</span>}
-          </div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+          {badge(homeLu, lineupLoading.home)}
+          <span className="preview-lineup-vs-label" style={{padding:0,whiteSpace:'nowrap',textAlign:'right'}}>
+            {home?.team?.abbreviation}{homeOppName ? ` vs ${homeOppName}` : ''}
+          </span>
         </div>
-      )}
+      </div>
 
       {/* Per-row: away batter ↔ home batter, headshots centered */}
       {Array.from({length: maxLen}).map((_, i) => {
@@ -1124,16 +1118,14 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
         <div className="preview-card">
-          {/* Team header: [WSH abbr][WSH logo]  ·  [PHI logo][PHI abbr] */}
-          <div className="preview-leaders-team-header" style={{marginBottom:8}}>
-            <div className="preview-leaders-th-side">
-              <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+          {/* Pitcher header: [abbr] [logo][logo] [abbr] */}
+          <div className="preview-center-header">
+            <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+            <div style={{display:'flex',gap:4,alignItems:'center'}}>
               <LogoImg team={away?.team} className="preview-team-logo" />
-            </div>
-            <div className="preview-leaders-th-side preview-leaders-th-right">
               <LogoImg team={home?.team} className="preview-team-logo" />
-              <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
             </div>
+            <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
           </div>
 
           {/* Pitcher matchup — same layout as batting leaders */}
@@ -1200,12 +1192,11 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* Matchup predictor — own section between leaders and lineups */}
       {predictor?.homeTeam && (
         <div className="preview-card" style={{alignItems:'center'}}>
+          {/* [abbr][%][logo][donut][logo][abbr][%] */}
           <div className="preview-prob-circle-wrap">
-            <div className="preview-prob-side">
-              <LogoImg team={away?.team} className="preview-team-logo" />
-              <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
-              <span className="preview-prob-pct">{awayPct}%</span>
-            </div>
+            <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
+            <span className="preview-prob-pct">{awayPct}%</span>
+            <LogoImg team={away?.team} className="preview-team-logo" />
             <svg width="52" height="52" viewBox="0 0 52 52" className="preview-prob-donut">
               <circle cx="26" cy="26" r="20" fill="none" stroke="var(--bg3)" strokeWidth="7" />
               <circle cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" strokeWidth="7"
@@ -1216,11 +1207,9 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
                 strokeDashoffset={`${-(awayPct * 1.257) + 31.4}`}
                 strokeLinecap="butt" transform="rotate(-90 26 26)" />
             </svg>
-            <div className="preview-prob-side preview-prob-side-right">
-              <span className="preview-prob-pct">{homePct}%</span>
-              <span className="preview-prob-abbr">{home?.team?.abbreviation}</span>
-              <LogoImg team={home?.team} className="preview-team-logo" />
-            </div>
+            <LogoImg team={home?.team} className="preview-team-logo" />
+            <span className="preview-prob-pct">{homePct}%</span>
+            <span className="preview-prob-abbr">{home?.team?.abbreviation}</span>
           </div>
         </div>
       )}

@@ -2350,7 +2350,6 @@ body {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  padding-top: 4px !important; /* override preview-card padding-top */
 }
 .preview-info-meta {
   display: flex;
@@ -2374,12 +2373,22 @@ body {
   padding: 0 5px;
 }
 
+/* Centered header row used by pitchers + lineup */
+.preview-center-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* Win probability circle */
 .preview-prob-circle-wrap {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  flex-shrink: 0;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 .preview-prob-side {
   display: flex;
