@@ -6456,7 +6456,7 @@ thead .dfs-sticky-player {
 }
 .mlbc-pstat-lbl {
   font-size: 7px;
-  font-weight: 100;
+  font-weight: 300;
   color: var(--text2);
   letter-spacing: 0.3px;
   text-transform: uppercase;

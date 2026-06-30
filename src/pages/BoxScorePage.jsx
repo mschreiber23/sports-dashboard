@@ -1061,34 +1061,43 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading }
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
         <div className="preview-card">
-          <div className="preview-card-title">Starting Pitchers</div>
           <div className="preview-pitchers">
             {[away, home].filter(Boolean).map((c) => {
               const probable = c.probables?.[0];
               if (!probable) return null;
               const ath = probable.athlete;
-              const stats = probable.statistics?.splits?.categories || [];
+              // Stats come as flat array OR splits.categories depending on endpoint
+              const statsArr = Array.isArray(probable.statistics) ? probable.statistics : [];
+              const statCats = probable.statistics?.splits?.categories || [];
               const statMap = {};
-              stats.forEach((s) => { statMap[s.abbreviation] = s.displayValue; });
+              statsArr.forEach((s) => { statMap[s.abbreviation] = s.displayValue; });
+              statCats.forEach((s) => { statMap[s.abbreviation] = s.displayValue; });
+              const wl = statMap['W'] && statMap['L'] ? `${statMap['W']}-${statMap['L']}` : null;
+              const era = statMap['ERA'] || null;
+              const ip  = statMap['IP'] || (statMap['FI'] !== undefined ? `${statMap['FI']}.${statMap['PI'] || 0}` : null);
+              const so  = statMap['SO'] || statMap['K'] || null;
+              const statGrid = [wl && {v:wl,l:'W-L'}, era && {v:era,l:'ERA'}, ip && {v:ip,l:'IP'}, so && {v:so,l:'SO'}].filter(Boolean);
               return (
                 <div key={c.team?.id} className="preview-pitcher">
                   <div className="preview-pitcher-header">
                     <LogoImg team={c.team} className="preview-pitcher-team" />
                     <span className="preview-pitcher-team-abbr">{c.team?.abbreviation}</span>
-                    <span className="preview-pitcher-ha">{c.homeAway === 'home' ? 'Home' : 'Away'}</span>
                   </div>
                   <div className="preview-pitcher-row">
                     {ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-pitcher-avatar" />}
                     <div className="preview-pitcher-info">
-                      <div className="preview-pitcher-name">{ath?.fullName}</div>
-                      <div className="preview-pitcher-sub">#{ath?.jersey} · {ath?.throws?.displayValue}-HP</div>
-                      <div className="preview-pitcher-stats">
-                        {statMap['W'] && statMap['L'] && <span className="preview-stat-pill">{statMap['W']}-{statMap['L']}</span>}
-                        {(statMap['FI'] || statMap['PI']) && <span className="preview-stat-pill">{statMap['FI'] || 0}.{statMap['PI'] || 0} IP</span>}
-                        {statMap['ERA'] && <span className="preview-stat-pill">{statMap['ERA']} ERA</span>}
-                        {statMap['WHIP'] && <span className="preview-stat-pill">{statMap['WHIP']} WHIP</span>}
-                        {statMap['K'] && <span className="preview-stat-pill">{statMap['K']} K</span>}
-                      </div>
+                      <div className="preview-pitcher-name">{ath?.shortName || ath?.fullName}</div>
+                      {ath?.throws?.abbreviation && <div className="preview-pitcher-sub">{ath.throws.abbreviation}HP</div>}
+                      {statGrid.length > 0 && (
+                        <div className="mlbc-pitcher-statrow" style={{marginTop:3}}>
+                          {statGrid.map(s => (
+                            <div key={s.l} className="mlbc-pstat">
+                              <span className="mlbc-pstat-val">{s.v}</span>
+                              <span className="mlbc-pstat-lbl">{s.l}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
