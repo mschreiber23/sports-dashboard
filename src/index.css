@@ -2106,7 +2106,7 @@ body {
 .pp-career-header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .pp-career-tabs {
@@ -2122,9 +2122,9 @@ body {
   background: transparent;
   border: none;
   color: var(--text2);
-  padding: 7px 8px;
-  border-radius: 8px;
-  font-size: 12px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -2134,7 +2134,7 @@ body {
 .pp-career-tab-active { background: var(--accent); color: #fff; }
 
 /* ── Player Page ── */
-.pp-page { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.pp-page { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 
 .pp-header {
   background: var(--bg2);
@@ -2143,19 +2143,12 @@ body {
   overflow: hidden;
 }
 
-.pp-team-stripe {
-  height: 4px;
-  width: 100%;
-}
+.pp-team-stripe { height: 3px; width: 100%; }
 
-.pp-hero {
-  display: flex;
-  gap: 0;
-  align-items: stretch;
-}
+.pp-hero { display: flex; gap: 0; align-items: stretch; }
 
 .pp-headshot {
-  width: 140px;
+  width: 100px;
   flex-shrink: 0;
   object-fit: cover;
   object-position: top center;
@@ -2163,50 +2156,41 @@ body {
 }
 
 .pp-bio {
-  padding: 20px;
+  padding: 10px 14px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.pp-name { font-size: 22px; line-height: 1.1; }
+.pp-name { font-size: 17px; line-height: 1.15; }
 .pp-firstname { font-weight: 400; color: var(--text2); }
 .pp-lastname { font-weight: 900; color: var(--text); text-transform: uppercase; }
 
-.pp-team-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.pp-team-logo { width: 20px; height: 20px; object-fit: contain; }
-.pp-team-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.pp-meta { font-size: 13px; color: var(--text2); }
+.pp-team-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.pp-team-logo { width: 16px; height: 16px; object-fit: contain; }
+.pp-team-name { font-size: 11px; font-weight: 600; color: var(--text); }
+.pp-meta { font-size: 11px; color: var(--text2); }
 
-.pp-details { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.pp-detail-row { display: flex; gap: 10px; font-size: 12px; }
-.pp-detail-label { color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; min-width: 60px; }
+.pp-details { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.pp-detail-row { display: flex; gap: 8px; font-size: 11px; }
+.pp-detail-label { color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; min-width: 52px; font-size: 10px; }
 
 /* Stat highlights */
 .pp-stat-highlights {
   border-top: 1px solid var(--border);
-  padding: 14px 20px;
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
+  padding: 8px 12px 10px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg2));
 }
 .pp-highlights-label {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   color: var(--accent);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
-.pp-highlights-grid {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0;
-}
+.pp-highlights-grid { display: flex; flex-wrap: nowrap; gap: 0; }
 .pp-highlight-pill {
   text-align: center;
   flex: 1;
@@ -2215,18 +2199,18 @@ body {
   border-right: 1px solid var(--border);
 }
 .pp-highlight-pill:last-child { border-right: none; }
-.pp-hl-value { font-size: 22px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
-.pp-hl-label { font-size: 11px; color: var(--text2); text-transform: uppercase; font-weight: 700; letter-spacing: 0.3px; margin-top: 2px; }
+.pp-hl-value { font-size: 16px; font-weight: 900; color: var(--text); font-variant-numeric: tabular-nums; }
+.pp-hl-label { font-size: 9px; color: var(--text2); text-transform: uppercase; font-weight: 700; letter-spacing: 0.3px; margin-top: 2px; }
 .pp-hl-rank-pill {
   display: inline-block;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--accent2);
-  background: color-mix(in srgb, var(--accent) 15%, var(--bg2));
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-  padding: 2px 6px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  padding: 1px 5px;
   border-radius: 20px;
-  margin-top: 3px;
+  margin-top: 2px;
   white-space: nowrap;
 }
 
@@ -2238,31 +2222,31 @@ body {
   overflow: hidden;
 }
 .pp-stats-title {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 14px 16px 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
 }
 .pp-table-wrap { overflow-x: auto; }
-.pp-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+.pp-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
 .pp-th {
   background: var(--bg3); color: var(--text2);
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  padding: 8px 10px; text-align: right;
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  padding: 5px 8px; text-align: right;
   border-bottom: 1px solid var(--border);
 }
-.pp-th-season { text-align: left; padding-left: 16px; min-width: 70px; }
+.pp-th-season { text-align: left; padding-left: 12px; min-width: 60px; }
 .pp-tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
 .pp-tr:last-child { border-bottom: none; }
 .pp-tr:hover { background: rgba(255,255,255,0.03); }
 .pp-tr-current { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .pp-tr-career { background: var(--bg3); font-weight: 700; }
-.pp-td { padding: 9px 10px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; }
-.pp-td-season { text-align: left; padding-left: 16px; color: var(--text); font-weight: 600; }
+.pp-td { padding: 6px 8px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; font-size: 11px; }
+.pp-td-season { text-align: left; padding-left: 12px; color: var(--text); font-weight: 600; }
 .pp-td-hl { font-weight: 700; color: var(--text); }
 .pp-career-label { font-weight: 800; color: var(--text); }
-.pp-gl-atVs { font-size: 10px; color: var(--text2); text-transform: uppercase; }
-.pp-gl-result { font-weight: 800; font-size: 12px; }
+.pp-gl-atVs { font-size: 9px; color: var(--text2); text-transform: uppercase; }
+.pp-gl-result { font-weight: 800; font-size: 11px; }
 .pp-gl-win { color: var(--live); }
 .pp-gl-loss { color: var(--danger); }
 
@@ -2271,12 +2255,10 @@ body {
 .player-card-link:hover .player-name { color: var(--accent2); }
 
 @media (max-width: 640px) {
-  .pp-headshot { width: 110px; }
-  .pp-name { font-size: 18px; }
-  .pp-hl-value { font-size: 16px; }
-  .pp-hl-label { font-size: 9px; }
-  .pp-stat-highlights { padding: 10px 14px; }
-  .pp-bio { padding: 14px; }
+  .pp-headshot { width: 80px; }
+  .pp-name { font-size: 15px; }
+  .pp-hl-value { font-size: 14px; }
+  .pp-bio { padding: 8px 10px; }
 }
 
 /* ── Box Score Page Tabs ── */
