@@ -1831,9 +1831,12 @@ body {
   gap: 0;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 .sl-cat-tabs::-webkit-scrollbar { display: none; }
 
