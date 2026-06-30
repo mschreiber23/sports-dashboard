@@ -4111,9 +4111,9 @@ body {
 
 /* Header */
 .sc-header {
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 0;
   overflow: hidden;
   padding: 16px;
 }
@@ -4139,12 +4139,12 @@ body {
   flex-shrink: 0;
 }
 .sc-player-name { font-size: 22px; line-height: 1.1; margin-bottom: 4px; }
-.sc-firstname { font-weight: 400; color: var(--text2); }
+.sc-firstname { font-weight: 400; color: #fff; }
 .sc-lastname  { font-weight: 900; text-transform: uppercase; }
 .sc-meta-row  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .sc-team-logo { width: 18px; height: 18px; object-fit: contain; }
 .sc-team-name { font-size: 13px; font-weight: 700; }
-.sc-pos       { font-size: 12px; color: var(--text2); }
+.sc-pos       { font-size: 12px; color: #fff; }
 .sc-savant-link {
   font-size: 12px;
   font-weight: 600;
@@ -4158,14 +4158,14 @@ body {
 }
 .sc-savant-link:hover { border-color: var(--accent2); }
 .sc-powered-row { margin-top: 10px; }
-.sc-powered-label { font-size: 11px; color: var(--text2); }
+.sc-powered-label { font-size: 11px; color: #fff; }
 .sc-powered-label a { color: var(--accent2); text-decoration: none; }
 
 /* Sections */
 .sc-section {
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 0;
   overflow: hidden;
 }
 .sc-section-title {
@@ -4174,7 +4174,7 @@ body {
   padding: 14px 16px 12px;
   border-bottom: 1px solid var(--border);
 }
-.sc-section-sub { font-size: 12px; font-weight: 400; color: var(--text2); }
+.sc-section-sub { font-size: 12px; font-weight: 400; color: #fff; }
 
 /* Percentile circles grid */
 .sc-pct-grid {
@@ -4245,19 +4245,21 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--text2);
-  background: var(--bg3);
+  background: #0f0f13;
   border-bottom: 1px solid var(--border);
 }
-.sc-th-hl { color: var(--text); }
+.sc-th-hl { color: #9898a8; }
 .sc-tr { border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .sc-tr-total { border-top: 2px solid var(--border); font-weight: 700; background: var(--bg3); }
 .sc-td {
   padding: 9px 10px;
   text-align: right;
-  color: var(--text2);
+  color: #fff;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+  font-weight: 300;
 }
-.sc-td-hl { font-weight: 700; color: var(--text); }
+.sc-td-hl { font-weight: 300; color: var(--text); }
 .sc-td-left { text-align: left; font-weight: 700; color: var(--text); padding-left: 16px; }
 
 /* Loading */
