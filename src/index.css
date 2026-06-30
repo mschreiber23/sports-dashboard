@@ -2614,10 +2614,10 @@ body {
 .preview-lineup-row {
   display: flex;
   align-items: flex-start;
-  gap: 5px;
+  gap: 3px;
   padding: 4px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 10px;
 }
 .preview-lineup-player {
   display: flex;
@@ -2679,9 +2679,6 @@ body {
   color: var(--text2);
   font-style: italic;
   padding: 8px 0;
-}
-@media (max-width: 480px) {
-  .preview-lineups-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Gamecast ── */
