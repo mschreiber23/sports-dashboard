@@ -1753,8 +1753,16 @@ body {
 .ticker-collapsed-label { letter-spacing: 0.3px; text-transform: uppercase; }
 
 .ts-expanded {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 99;
   background: var(--bg2); border: 1px solid var(--border); border-top: none;
   border-radius: 0 0 12px 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .ts-expanded-header { display: flex; align-items: center; justify-content: space-between; }
 .ts-expanded-title { font-size: 13px; font-weight: 700; color: var(--text); display: flex; align-items: center; }
@@ -3644,6 +3652,8 @@ body {
   padding-top: env(safe-area-inset-top, 0px); /* clear Dynamic Island / notch */
   z-index: 100;
   background: var(--bg2);
+  /* Allow absolutely-positioned expanded scores to overflow below */
+  overflow: visible;
 }
 /* Compact ticker inside the sticky header */
 .app-sticky-header .ts-section {
@@ -3651,6 +3661,7 @@ body {
   margin: 0;
   background: var(--bg);
   border-top: 1px solid var(--border);
+  position: relative; /* anchor for ts-expanded absolute positioning */
 }
 .app-sticky-header .ts-ticker-bar {
   border-radius: 0;
