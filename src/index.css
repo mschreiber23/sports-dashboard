@@ -2326,24 +2326,24 @@ body {
   margin-bottom: 14px;
 }
 
-/* ── Preview ── */
-.preview-wrap { display: flex; flex-direction: column; gap: 14px; }
+/* ── Preview — flat divider style matching player profile ── */
+.preview-wrap { display: flex; flex-direction: column; gap: 0; }
 
+/* Each section: just a top divider, no box */
 .preview-card {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
+  border-top: 1px solid var(--border);
+  padding: 10px 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
+.preview-card:first-child { border-top: none; }
 
 .preview-card-title {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: var(--text2);
   margin-bottom: 2px;
 }
@@ -2352,86 +2352,80 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text);
 }
-.preview-label { color: var(--text2); font-weight: 600; }
+.preview-label { color: var(--text2); font-weight: 600; font-size: 11px; }
 
 /* Win probability */
-.preview-prob-row { display: flex; align-items: center; gap: 10px; }
-.preview-prob-team { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.preview-prob-row { display: flex; align-items: center; gap: 8px; }
+.preview-prob-team { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .preview-prob-team-right { flex-direction: row-reverse; }
-.preview-team-logo { width: 22px; height: 22px; object-fit: contain; }
-.preview-prob-pct { font-size: 14px; font-weight: 800; color: var(--accent2); }
+.preview-team-logo { width: 18px; height: 18px; object-fit: contain; }
+.preview-prob-pct { font-size: 12px; font-weight: 800; color: var(--accent2); }
 .preview-prob-bar {
-  flex: 1;
-  height: 8px;
-  border-radius: 4px;
-  overflow: hidden;
-  display: flex;
-  background: var(--bg2);
+  flex: 1; height: 6px; border-radius: 3px; overflow: hidden; display: flex; background: var(--bg3);
 }
-.preview-prob-fill-away { height: 100%; background: var(--accent); border-radius: 4px 0 0 4px; }
-.preview-prob-fill-home { height: 100%; background: #60a5fa; border-radius: 0 4px 4px 0; }
+.preview-prob-fill-away { height: 100%; background: var(--accent); border-radius: 3px 0 0 3px; }
+.preview-prob-fill-home { height: 100%; background: #60a5fa; border-radius: 0 3px 3px 0; }
 
-/* Starting pitchers */
-.preview-pitchers { display: flex; flex-direction: column; gap: 16px; }
-.preview-pitcher { display: flex; flex-direction: column; gap: 8px; }
-.preview-pitcher-header { display: flex; align-items: center; gap: 6px; }
-.preview-pitcher-team { width: 18px; height: 18px; object-fit: contain; }
-.preview-pitcher-team-abbr { font-size: 12px; font-weight: 800; color: var(--text); }
-.preview-pitcher-ha { font-size: 11px; color: var(--text2); margin-left: auto; }
-.preview-pitcher-row { display: flex; align-items: center; gap: 12px; }
+/* Starting pitchers — two side-by-side rows */
+.preview-pitchers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.preview-pitcher { display: flex; flex-direction: column; gap: 5px; }
+.preview-pitcher-header { display: flex; align-items: center; gap: 5px; }
+.preview-pitcher-team { width: 16px; height: 16px; object-fit: contain; }
+.preview-pitcher-team-abbr { font-size: 11px; font-weight: 800; color: var(--text); }
+.preview-pitcher-ha { font-size: 10px; color: var(--text2); margin-left: auto; }
+.preview-pitcher-row { display: flex; align-items: center; gap: 8px; }
 .preview-pitcher-avatar {
-  width: 52px; height: 52px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   object-fit: cover; object-position: top;
-  background: var(--bg2);
+  background: var(--bg3);
   flex-shrink: 0;
-  border: 2px solid var(--border);
 }
-.preview-pitcher-info { display: flex; flex-direction: column; gap: 4px; }
-.preview-pitcher-name { font-size: 15px; font-weight: 800; color: var(--text); }
-.preview-pitcher-sub { font-size: 11px; color: var(--text2); }
+.preview-pitcher-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.preview-pitcher-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview-pitcher-sub { font-size: 10px; color: var(--text2); }
 .preview-pitcher-stats { display: flex; gap: 6px; flex-wrap: wrap; }
 .preview-stat-pill {
-  background: var(--bg2);
+  background: var(--bg3);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
 }
 
 /* Last 5 games */
-.preview-last5 { display: flex; flex-direction: column; gap: 10px; }
-.preview-last5-team { display: flex; align-items: center; gap: 12px; }
-.preview-last5-header { display: flex; align-items: center; gap: 6px; min-width: 64px; }
-.preview-last5-abbr { font-size: 13px; font-weight: 800; }
-.preview-last5-games { display: flex; gap: 5px; flex: 1; }
+.preview-last5 { display: flex; flex-direction: column; gap: 6px; }
+.preview-last5-team { display: flex; align-items: center; gap: 10px; }
+.preview-last5-header { display: flex; align-items: center; gap: 5px; min-width: 52px; }
+.preview-last5-abbr { font-size: 11px; font-weight: 800; }
+.preview-last5-games { display: flex; gap: 4px; flex: 1; }
 .preview-last5-dot {
-  width: 30px; height: 30px;
-  border-radius: 50%;
+  width: 22px; height: 22px;
+  border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 800;
+  font-size: 10px; font-weight: 800;
   flex-shrink: 0;
 }
-.preview-dot-w { background: rgba(34,197,94,0.2); color: var(--live); border: 1.5px solid var(--live); }
-.preview-dot-l { background: rgba(239,68,68,0.15); color: var(--danger); border: 1.5px solid var(--danger); }
+.preview-dot-w { background: rgba(34,197,94,0.15); color: var(--live); }
+.preview-dot-l { background: rgba(239,68,68,0.12); color: var(--danger); }
 
 /* ── Game Leaders ─────────────────────────────────────── */
 .preview-leaders-tabs {
   display: flex;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .preview-leaders-tab {
   flex: 1;
   background: none;
   border: none;
-  padding: 8px 4px;
-  font-size: 13px;
+  padding: 6px 4px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text2);
   cursor: pointer;
@@ -2457,14 +2451,14 @@ body {
 
 .preview-leaders-cat {
   border-top: 1px solid var(--border);
-  padding-top: 10px;
+  padding-top: 7px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 .preview-leaders-cat-label {
   text-align: center;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2487,18 +2481,16 @@ body {
 /* home side: avatar naturally first in DOM = left edge (center of matchup) */
 
 .preview-leaders-avatar {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   object-position: top;
-  background: var(--bg2);
+  background: var(--bg3);
   flex-shrink: 0;
-  border: 2px solid var(--border);
 }
 .preview-leaders-avatar-empty {
-  background: var(--bg2);
-  border: 2px solid var(--border);
+  background: var(--bg3);
 }
 
 .preview-leaders-stat-col {
@@ -2512,7 +2504,7 @@ body {
 .preview-leaders-stat-col-right { align-items: flex-start; text-align: left; }
 
 .preview-leaders-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
@@ -2529,7 +2521,7 @@ body {
 .preview-leaders-stats { justify-content: flex-end; }
 .preview-leaders-stats-right { justify-content: flex-start; }
 .preview-leaders-val {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--accent);
 }
@@ -2548,7 +2540,7 @@ body {
 .preview-lineups-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 }
 .preview-lineup-side {
   display: flex;
@@ -2567,7 +2559,7 @@ body {
   gap: 2px;
 }
 .preview-lineup-team-abbr {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
   color: var(--text);
   line-height: 1;
@@ -2598,10 +2590,10 @@ body {
 .preview-lineup-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 0;
+  gap: 5px;
+  padding: 4px 0;
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 11px;
 }
 .preview-lineup-row:last-child { border-bottom: none; }
 .preview-lineup-row-link { cursor: pointer; }
