@@ -392,9 +392,12 @@ export default function PlayerCardsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
+  // Guard: skip saving on the initial render so a parse error can't overwrite stored data
+  const didMountRef = useRef(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); } catch {}
   }, [cards]);
 
   useEffect(() => {
