@@ -2287,8 +2287,7 @@ body {
 .bsp-tabs-row {
   display: flex;
   background: var(--bg2);
-  border: 1px solid var(--border);
-  border-top: none;
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
 }
 
@@ -2310,12 +2309,8 @@ body {
 .bsp-tab-btn-active { color: var(--text); border-bottom-color: var(--accent); }
 
 .bsp-tab-content {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius);
   min-height: 200px;
-  padding: 16px;
+  padding: 12px 0;
 }
 
 .bsp-team-toggle {
