@@ -724,6 +724,12 @@ export default function PlayerPage() {
                     <div className="pp-detail-row"><span className="pp-detail-label">DRAFT</span><span>{athlete.displayDraft}</span></div>
                   )}
                 </div>
+                {/* Statcast inline button — MLB batters only */}
+                {sport === 'mlb' && sportKey === 'mlb_batting' && (
+                  <Link to={`/statcast/mlb/${playerId}`} className="pp-statcast-inline">
+                    ⚡ Statcast
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -745,14 +751,6 @@ export default function PlayerPage() {
             )}
           </div>
 
-          {/* Statcast button — MLB batters only */}
-          {sport === 'mlb' && sportKey === 'mlb_batting' && (
-            <Link to={`/statcast/mlb/${playerId}`} className="pp-statcast-btn">
-              <span className="pp-statcast-icon">⚡</span>
-              View Statcast Data
-              <span className="pp-statcast-badge">Powered by Baseball Savant</span>
-            </Link>
-          )}
 
 
           {/* Career stats table */}

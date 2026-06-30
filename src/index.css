@@ -3923,6 +3923,25 @@ body {
 }
 
 /* ── Favorite star button (top-right of player header) ── */
+/* Statcast inline button (inside bio) */
+.pp-statcast-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg3));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 6px;
+  color: var(--accent2);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s;
+  align-self: flex-start;
+}
+.pp-statcast-inline:hover { background: color-mix(in srgb, var(--accent) 20%, var(--bg3)); }
+
 .pp-star-btn {
   position: absolute;
   top: 12px;
