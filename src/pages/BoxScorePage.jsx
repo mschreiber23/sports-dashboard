@@ -999,72 +999,88 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
     return parts.join(' · ');
   };
 
-  const renderSide = (side) => {
-    const isHome = side === 'home';
-    const team = isHome ? home : away;
-    const lu = isHome ? lineups.home : lineups.away;
-    const loading = isHome ? lineupLoading.home : lineupLoading.away;
-    const h2h = isHome ? homeH2H : awayH2H;
-    const oppPitcherName = isHome ? homeOppName : awayOppName;
+  const awayLu = lineups.away;
+  const homeLu = lineups.home;
+  const maxLen = Math.max(awayLu?.players?.length || 0, homeLu?.players?.length || 0);
 
-    return (
-      <div className="preview-lineup-side">
-        <div className="preview-lineup-side-header">
-          <LogoImg team={team?.team} className="preview-team-logo" />
-          <span className="preview-lineup-team-abbr">{team?.team?.abbreviation}</span>
-          {(loading || lu === null)
-            ? <span className="preview-lineup-badge preview-lineup-badge-loading">Loading…</span>
-            : lu.confirmed
-              ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓ Confirmed</span>
-              : lu.fromDate
-                ? <span className="preview-lineup-badge preview-lineup-badge-projected">⟳ Projected</span>
-                : null
-          }
-        </div>
-
-        {/* Career vs pitcher label */}
-        {oppPitcherName && lu?.players?.length > 0 && (
-          <div className="preview-lineup-vs-label">Career vs {oppPitcherName}</div>
-        )}
-
-        {(loading || lu === null)
-          ? null
-          : (!lu.players?.length)
-            ? <div className="preview-lineup-empty">Lineup not available</div>
-            : lu.players.map((p, i) => {
-                const pos = p.primaryPosition?.abbreviation || p.primaryPosition?.name?.charAt(0) || '';
-                const name = p.useName && p.lastName ? `${p.useName} ${p.lastName}` : p.fullName || '';
-                const matchup = h2h[p.id];
-                return (
-                  <div
-                    key={p.id || i}
-                    className={`preview-lineup-row${name ? ' preview-lineup-row-link' : ''}`}
-                    onClick={() => name && goToPlayerByName(name, 'mlb', navigate)}
-                  >
-                    <span className="preview-lineup-num">{i + 1}</span>
-                    <div className="preview-lineup-player">
-                      <span className="preview-lineup-name">{name}</span>
-                      {p.id && (
-                        <span className={`preview-lineup-h2h${matchup && matchup.atBats ? '' : ' preview-lineup-h2h-none'}`}>
-                          {formatH2H(matchup)}
-                        </span>
-                      )}
-                    </div>
-                    <span className="preview-lineup-pos">{pos}</span>
-                  </div>
-                );
-              })
-        }
-      </div>
-    );
-  };
+  const badge = (lu, loading) => (loading || lu === null)
+    ? <span className="preview-lineup-badge preview-lineup-badge-loading">Loading…</span>
+    : lu?.confirmed
+      ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓ Confirmed</span>
+      : lu?.fromDate
+        ? <span className="preview-lineup-badge preview-lineup-badge-projected">⟳ Projected</span>
+        : null;
 
   return (
     <div className="preview-card">
-      <div className="preview-lineups-grid">
-        {renderSide('away')}
-        {renderSide('home')}
+      {/* Team headers */}
+      <div className="preview-leaders-team-header" style={{marginBottom:4}}>
+        <div className="preview-leaders-th-side" style={{gap:5,flexWrap:'wrap'}}>
+          <LogoImg team={away?.team} className="preview-team-logo" />
+          <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+          {badge(awayLu, lineupLoading.away)}
+        </div>
+        <div className="preview-leaders-th-side preview-leaders-th-right" style={{gap:5,flexWrap:'wrap'}}>
+          {badge(homeLu, lineupLoading.home)}
+          <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
+          <LogoImg team={home?.team} className="preview-team-logo" />
+        </div>
       </div>
+
+      {/* BvP label */}
+      {(awayOppName || homeOppName) && (
+        <div className="preview-leaders-team-header" style={{marginBottom:4}}>
+          <div className="preview-leaders-th-side">
+            {awayOppName && <span className="preview-lineup-vs-label" style={{padding:0}}>vs {awayOppName}</span>}
+          </div>
+          <div className="preview-leaders-th-side preview-leaders-th-right">
+            {homeOppName && <span className="preview-lineup-vs-label" style={{padding:0}}>vs {homeOppName}</span>}
+          </div>
+        </div>
+      )}
+
+      {/* Per-row: away batter ↔ home batter, headshots centered */}
+      {Array.from({length: maxLen}).map((_, i) => {
+        const ap = awayLu?.players?.[i];
+        const hp = homeLu?.players?.[i];
+        const aName = ap ? (ap.useName && ap.lastName ? `${ap.useName} ${ap.lastName}` : ap.fullName || '') : '';
+        const hName = hp ? (hp.useName && hp.lastName ? `${hp.useName} ${hp.lastName}` : hp.fullName || '') : '';
+        const aPos = ap?.primaryPosition?.abbreviation || ap?.primaryPosition?.name?.charAt(0) || '';
+        const hPos = hp?.primaryPosition?.abbreviation || hp?.primaryPosition?.name?.charAt(0) || '';
+        const aH2H = ap ? awayH2H[ap.id] : null;
+        const hH2H = hp ? homeH2H[hp.id] : null;
+        const aPhoto = ap?.id ? mlbHeadshot(ap.id) : null;
+        const hPhoto = hp?.id ? mlbHeadshot(hp.id) : null;
+
+        return (
+          <div key={i} className="preview-leaders-cat" style={{paddingTop:6,gap:4}}>
+            <div className="preview-leaders-matchup">
+              {/* Away batter */}
+              <div className={`preview-leaders-player${aName ? ' preview-leaders-player-link' : ''}`}
+                onClick={() => aName && goToPlayerByName(aName, 'mlb', navigate)}>
+                <div className="preview-leaders-stat-col preview-leaders-stat-col-left">
+                  <span className="preview-leaders-name">{i+1}. {aName || '—'} <span className="preview-lineup-pos">{aPos}</span></span>
+                  {ap?.id && <span className={`preview-lineup-h2h${aH2H?.atBats ? '' : ' preview-lineup-h2h-none'}`}>{formatH2H(aH2H)}</span>}
+                </div>
+                {aPhoto
+                  ? <img src={aPhoto} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
+                  : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+              </div>
+              {/* Home batter */}
+              <div className={`preview-leaders-player preview-leaders-player-right${hName ? ' preview-leaders-player-link' : ''}`}
+                onClick={() => hName && goToPlayerByName(hName, 'mlb', navigate)}>
+                {hPhoto
+                  ? <img src={hPhoto} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
+                  : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+                <div className="preview-leaders-stat-col preview-leaders-stat-col-right">
+                  <span className="preview-leaders-name">{i+1}. {hName || '—'} <span className="preview-lineup-pos">{hPos}</span></span>
+                  {hp?.id && <span className={`preview-lineup-h2h${hH2H?.atBats ? '' : ' preview-lineup-h2h-none'}`}>{formatH2H(hH2H)}</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1183,8 +1199,7 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
 
       {/* Matchup predictor — own section between leaders and lineups */}
       {predictor?.homeTeam && (
-        <div className="preview-card preview-predictor-card">
-          <div className="preview-card-title">Win Probability</div>
+        <div className="preview-card" style={{alignItems:'center'}}>
           <div className="preview-prob-circle-wrap">
             <div className="preview-prob-side">
               <LogoImg team={away?.team} className="preview-team-logo" />
