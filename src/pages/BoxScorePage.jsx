@@ -1108,22 +1108,6 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
 
   return (
     <div className="preview-wrap">
-      {/* Combined info bar: venue · weather · win probability */}
-      {(venue || wx || predictor?.homeTeam) && (
-        <div className="preview-card preview-info-bar">
-          {/* Venue + Weather — same row, no emojis */}
-          {(venue || wx?.temperature) && (
-            <div className="preview-info-meta">
-              {venue && <span className="preview-info-chip">{venue}</span>}
-              {venue && wx?.temperature && <span className="preview-info-chip-sep">·</span>}
-              {wx?.temperature && (
-                <span className="preview-info-chip">{wx.temperature}°{wx.gust ? `, ${wx.gust}mph` : ''}</span>
-              )}
-            </div>
-          )}
-
-        </div>
-      )}
 
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
