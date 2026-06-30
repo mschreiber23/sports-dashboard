@@ -850,7 +850,6 @@ export default function PlayerPage() {
           {/* Game Log */}
           {gamelog.length > 0 && (
             <div className="pp-flat-section">
-              <div className="pp-flat-title">Last 25 Games</div>
               <div className="pp-table-wrap">
                 <table className="pp-table">
                   <thead>
