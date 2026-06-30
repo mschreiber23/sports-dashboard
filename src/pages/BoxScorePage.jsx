@@ -1013,8 +1013,8 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
 
   return (
     <div className="preview-card">
-      {/* BvP header: [badge][abbr vs pitcher][logo]   [logo][abbr vs pitcher][badge] */}
-      {/* logos are positioned identically to the headshots in the rows below */}
+      {/* BvP header */}
+      <div className="preview-leaders-cat-label" style={{marginBottom:4}}>BvP Matchups</div>
       <div className="preview-leaders-matchup" style={{marginBottom:4}}>
         {/* Away side */}
         <div className="preview-leaders-player">
@@ -1127,6 +1127,7 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
         <div className="preview-card">
+          <div className="preview-leaders-cat-label">Pitcher Matchup</div>
           {/* Pitcher matchup: [stats] [abbr][logo/photo stacked] [logo/photo stacked][abbr] [stats] */}
           <div className="preview-leaders-matchup">
             {[away, home].filter(Boolean).map((c, idx) => {
@@ -1191,7 +1192,8 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
 
       {/* Matchup predictor — own section between leaders and lineups */}
       {predictor?.homeTeam && (
-        <div className="preview-card" style={{alignItems:'center'}}>
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">Matchup Predictor</div>
           {/* [abbr][%][logo][donut][logo][abbr][%] */}
           <div className="preview-prob-circle-wrap">
             <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
