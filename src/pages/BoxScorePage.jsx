@@ -719,13 +719,7 @@ async function getMlbGameForDate(dateStr, awayName, homeName) {
     return 0;
   };
   allMatching.sort((a, b) => stateScore(b) - stateScore(a));
-  const game = allMatching[0];
-  // Attach probable pitcher MLB IDs directly
-  if (game) {
-    game._awayPitcherMlbId = game.teams?.away?.probablePitcher?.id ?? null;
-    game._homePitcherMlbId = game.teams?.home?.probablePitcher?.id ?? null;
-  }
-  return game;
+  return allMatching[0];
 }
 
 async function getProjectedLineup(teamId, signal) {
@@ -2027,19 +2021,38 @@ export default function BoxScorePage() {
     setLineups({ away: null, home: null });
     setLineupLoading({ away: true, home: true });
 
+    // Look up TODAY's probable pitchers separately — prefer Scheduled/Preview over Final
+    // so we get the correct game's pitcher, not yesterday's
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
+    const findScheduledGame = async (dateStr) => {
+      const data = await mlbFetch(`${STATSAPI}/schedule?sportId=1&date=${dateStr}&hydrate=probablePitcher,teams`);
+      const games = data.dates?.[0]?.games || [];
+      return games.find(g => {
+        const a = norm(g.teams?.away?.team?.name);
+        const h = norm(g.teams?.home?.team?.name);
+        return (norm(awayTeam.displayName).includes(a.split(' ').pop()) && norm(homeTeam.displayName).includes(h.split(' ').pop())) ||
+               (a === norm(awayTeam.displayName) && h === norm(homeTeam.displayName));
+      }) || null;
+    };
+
+    // Try the ESPN game date; if not found try tomorrow (some games listed differently)
+    const scheduledGame = await findScheduledGame(gameDate).catch(() => null);
+    if (scheduledGame && !cancelled) {
+      setPitcherMlbIds({
+        away: scheduledGame.teams?.away?.probablePitcher?.id ?? null,
+        home: scheduledGame.teams?.home?.probablePitcher?.id ?? null,
+        awayName: scheduledGame.teams?.away?.probablePitcher?.fullName || '',
+        homeName: scheduledGame.teams?.home?.probablePitcher?.fullName || '',
+      });
+    }
+
     getMlbGameForDate(gameDate, awayTeam.displayName, homeTeam.displayName).then(async (mlbGame) => {
       if (cancelled || !mlbGame) {
         setLineupLoading({ away: false, home: false });
         return;
       }
 
-      // Store pitcher MLB IDs + names for H2H stats
-      setPitcherMlbIds({
-        away: mlbGame._awayPitcherMlbId,
-        home: mlbGame._homePitcherMlbId,
-        awayName: mlbGame.teams?.away?.probablePitcher?.fullName || '',
-        homeName: mlbGame.teams?.home?.probablePitcher?.fullName || '',
-      });
+      // (pitcher IDs already set above from the scheduled game)
 
       const awayId = mlbGame.teams?.away?.team?.id;
       const homeId = mlbGame.teams?.home?.team?.id;
