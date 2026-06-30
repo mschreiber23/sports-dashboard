@@ -392,17 +392,28 @@ export default function TodaysScores({ compact = false, onCollapse }) {
   };
 
   useEffect(() => {
-    setLoading(true);
-    setRawGames([]);
+    // Show cached games instantly — eliminates ticker blink on load
+    const dateStr = toDateStr(selectedDate);
+    const ck = `sb_${activeSport}_${dateStr}`;
+    try {
+      const cached = JSON.parse(localStorage.getItem(ck) || 'null');
+      if (cached?.ts && Date.now() - cached.ts < 120000 && cached.data?.length) {
+        setRawGames(cached.data);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setRawGames([]);
+      }
+    } catch { setLoading(true); setRawGames([]); }
+
     setMlbScores({});
     clearInterval(pollRef.current);
-
-    const dateStr = toDateStr(selectedDate);
 
     const load = () =>
       getScoreboard(activeSport, dateStr)
         .then((evts) => {
           setRawGames(evts);
+          try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data: evts })); } catch {}
           refreshMlbScores.current(evts);
           refreshNhlScores.current(evts);
           return evts;
