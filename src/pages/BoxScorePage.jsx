@@ -1843,44 +1843,66 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay })
   const isPre   = status?.type?.state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
 
-  const awayScore = mlbTotals?.away?.runs ?? getScore(away) ?? '—';
-  const homeScore = mlbTotals?.home?.runs ?? getScore(home) ?? '—';
-  // ESPN state always wins for Final/Pre; only use MLB inning string when live
+  const awayScore = mlbTotals?.away?.runs ?? getScore(away);
+  const homeScore = mlbTotals?.home?.runs ?? getScore(home);
+
   const centerLabel = isFinal ? 'Final'
-    : isPre   ? shortDetail
+    : isPre   ? null
     : mlbInningDisplay || shortDetail;
 
+  // For pre-game, extract date + time from shortDetail e.g. "Tue, June 30 · 7:10 PM EDT"
+  // or from status directly
+  const gameDate = (() => {
+    if (!isPre) return null;
+    // ESPN shortDetail for pre-game: "7:10 PM EDT" or "Sat, Jul 5 · 1:05 PM EDT"
+    if (shortDetail.includes('·')) {
+      const [datePart, timePart] = shortDetail.split('·').map(s => s.trim());
+      return { date: datePart, time: timePart };
+    }
+    return { date: null, time: shortDetail };
+  })();
+
+  const rec = (c) => c?.records?.[0]?.displayValue || c?.record?.[0]?.displayValue || '';
+  const standing = (c) => c?.records?.find(r => r.type === 'vsconf' || r.name === 'vs. Conf.')?.summary || null;
+
   return (
-    <div className="bsp-compact-header">
-      {/* Away: logo + info (outer) */}
-      <Link to={`/team/${sport}/${away?.team?.id}`} className="bsp-compact-team tr-team-link">
-        <LogoImg team={away?.team} className="bsp-compact-logo" />
-        <div className="bsp-compact-info">
-          <span className="bsp-compact-abbr">{away?.team?.abbreviation}</span>
-          <span className="bsp-compact-rec">{away?.record?.[0]?.displayValue}</span>
+    <div className="bsp-gh">
+      {/* Away */}
+      <div className="bsp-gh-team bsp-gh-away">
+        <div className="bsp-gh-text">
+          <span className="bsp-gh-name bsp-gh-name-full">{away?.team?.displayName}</span>
+          <span className="bsp-gh-name bsp-gh-name-abbr">{away?.team?.abbreviation}</span>
+          <span className="bsp-gh-rec">{rec(away)}</span>
         </div>
-      </Link>
-
-      {/* Away score — sits right next to center */}
-      <span className="bsp-compact-score">{awayScore}</span>
-
-      {/* Center: inning */}
-      <div className="bsp-compact-center">
-        {isLive && <span className="live-dot bsp-compact-live-dot" />}
-        <span className="bsp-compact-inning">{centerLabel}</span>
+        <LogoImg team={away?.team} className="bsp-gh-logo" />
+        {(!isPre) && <span className={`bsp-gh-score${away?.winner ? ' bsp-gh-winner' : ''}`}>{awayScore ?? '—'}</span>}
       </div>
 
-      {/* Home score — sits right next to center */}
-      <span className="bsp-compact-score">{homeScore}</span>
+      {/* Center */}
+      <div className="bsp-gh-center">
+        {isPre ? (
+          <>
+            {gameDate?.date && <span className="bsp-gh-date">{gameDate.date}</span>}
+            <span className="bsp-gh-time">{gameDate?.time || shortDetail}</span>
+          </>
+        ) : (
+          <>
+            {isLive && <span className="live-dot" style={{marginBottom:4}}/>}
+            <span className={`bsp-gh-status${isLive ? ' bsp-gh-live' : ''}`}>{centerLabel}</span>
+          </>
+        )}
+      </div>
 
-      {/* Home: info + logo (outer) */}
-      <Link to={`/team/${sport}/${home?.team?.id}`} className="bsp-compact-team bsp-compact-team-right tr-team-link">
-        <div className="bsp-compact-info bsp-compact-info-right">
-          <span className="bsp-compact-abbr">{home?.team?.abbreviation}</span>
-          <span className="bsp-compact-rec">{home?.record?.[0]?.displayValue}</span>
+      {/* Home */}
+      <div className="bsp-gh-team bsp-gh-home">
+        {(!isPre) && <span className={`bsp-gh-score${home?.winner ? ' bsp-gh-winner' : ''}`}>{homeScore ?? '—'}</span>}
+        <LogoImg team={home?.team} className="bsp-gh-logo" />
+        <div className="bsp-gh-text bsp-gh-text-right">
+          <span className="bsp-gh-name bsp-gh-name-full">{home?.team?.displayName}</span>
+          <span className="bsp-gh-name bsp-gh-name-abbr">{home?.team?.abbreviation}</span>
+          <span className="bsp-gh-rec">{rec(home)}</span>
         </div>
-        <LogoImg team={home?.team} className="bsp-compact-logo" />
-      </Link>
+      </div>
     </div>
   );
 }

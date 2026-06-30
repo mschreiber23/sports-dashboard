@@ -5569,58 +5569,76 @@ thead .dfs-sticky-player {
 .dashboard-me-arrow { margin-left: auto; color: var(--text2); font-size: 18px; }
 
 /* ── Compact MLB-style game header ───────────────────── */
-.bsp-compact-header {
+/* ── Game Header (BoxScore page top) ── */
+.bsp-gh {
   display: flex;
   align-items: center;
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
-  padding: 10px 16px;
-  gap: 8px;
+  padding: 12px 16px;
+  gap: 6px;
 }
-/* Team info block (logo + abbr/record) — sits at outer edge */
-.bsp-compact-team {
+
+/* Team side */
+.bsp-gh-team {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
-  text-decoration: none;
-  color: inherit;
-  transition: opacity 0.15s;
+  min-width: 0;
 }
-.bsp-compact-team:hover { opacity: 0.8; }
-.bsp-compact-team-right { justify-content: flex-end; }
-.bsp-compact-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
-.bsp-compact-info { display: flex; flex-direction: column; line-height: 1.2; }
-.bsp-compact-info-right { align-items: flex-end; }
-.bsp-compact-abbr { font-size: 14px; font-weight: 800; color: var(--text); }
-.bsp-compact-rec  { font-size: 11px; color: var(--text2); }
-.bsp-compact-score {
-  font-size: 34px;
+.bsp-gh-away { justify-content: flex-start; }
+.bsp-gh-home { justify-content: flex-end; }
+
+.bsp-gh-logo { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+
+/* Text block */
+.bsp-gh-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bsp-gh-text-right { text-align: right; align-items: flex-end; }
+
+/* Full name (desktop) / abbr (mobile) */
+.bsp-gh-name-full { display: none; font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bsp-gh-name-abbr { display: block; font-size: 13px; font-weight: 800; color: var(--text); }
+@media (min-width: 480px) {
+  .bsp-gh-name-full { display: block; }
+  .bsp-gh-name-abbr { display: none; }
+}
+.bsp-gh-rec { font-size: 11px; color: var(--text2); font-weight: 400; }
+
+/* Score (live/final) */
+.bsp-gh-score {
+  font-size: 28px;
   font-weight: 900;
-  color: var(--text);
+  color: var(--text2);
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  flex-shrink: 0;
+  letter-spacing: -1px;
 }
-.bsp-compact-center {
+.bsp-gh-winner { color: var(--text); }
+
+/* Center */
+.bsp-gh-center {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 64px;
+  flex-shrink: 0;
+  min-width: 80px;
+  padding: 0 4px;
 }
-.bsp-compact-live-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--live);
-  display: inline-block;
-}
-.bsp-compact-inning {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  text-align: center;
-  white-space: nowrap;
-}
+.bsp-gh-date { font-size: 12px; font-weight: 600; color: var(--text); text-align: center; white-space: nowrap; }
+.bsp-gh-time { font-size: 11px; color: var(--text2); text-align: center; white-space: nowrap; }
+.bsp-gh-status { font-size: 12px; font-weight: 700; color: var(--text); text-align: center; white-space: nowrap; }
+.bsp-gh-live { color: var(--live); }
+
+/* Legacy compact classes kept for any remaining references */
+.bsp-compact-header { display: none; }
 
 /* ── Pitcher | Diamond | Batter row ──────────────────── */
 .gc-matchup-row {
