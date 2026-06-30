@@ -1212,38 +1212,6 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
         <BattingLineups lineups={lineups} lineupLoading={lineupLoading} away={away} home={home} pitcherMlbIds={pitcherMlbIds} />
       )}
 
-      {/* Last 5 games */}
-      {lastFiveGames.length > 0 && (
-        <div className="preview-card">
-          <div className="preview-card-title">Recent Form</div>
-          <div className="preview-last5">
-            {lastFiveGames.map((teamData) => {
-              const teamInfo = teamData.team;
-              const events = (teamData.events || []).slice(-5);
-              return (
-                <div key={teamInfo?.id} className="preview-last5-team">
-                  <div className="preview-last5-header">
-                    {teamInfo?.id === away?.team?.id
-                      ? <LogoImg team={away?.team} className="preview-team-logo" />
-                      : <LogoImg team={home?.team} className="preview-team-logo" />}
-                    <span className="preview-last5-abbr">{teamInfo?.abbreviation}</span>
-                  </div>
-                  <div className="preview-last5-games">
-                    {events.map((e, i) => {
-                      const won = e.gameResult === 'W';
-                      return (
-                        <div key={i} className={`preview-last5-dot ${won ? 'preview-dot-w' : 'preview-dot-l'}`} title={`${e.atVs} ${e.opponent?.abbreviation}: ${e.score}`}>
-                          {won ? 'W' : 'L'}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
