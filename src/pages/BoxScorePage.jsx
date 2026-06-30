@@ -867,15 +867,6 @@ function GameLeaders({ leaders, away, home }) {
         </button>
       </div>
 
-      {/* Team abbr header — no logos */}
-      <div className="preview-leaders-team-header">
-        <div className="preview-leaders-th-side">
-          <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
-        </div>
-        <div className="preview-leaders-th-side preview-leaders-th-right">
-          <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
-        </div>
-      </div>
 
       {cats.map((catName) => {
         const awayL = getLeader(awayLeaders, catName);
