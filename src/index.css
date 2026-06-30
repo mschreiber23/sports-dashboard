@@ -1976,6 +1976,8 @@ body {
   border: 1px solid var(--border);
   padding: 3px 12px;
   border-radius: 20px;
+  margin-bottom: -3px;
+  margin-top: 1px;
 }
 
 /* Rate stats — featured top card */
@@ -1985,7 +1987,7 @@ body {
   gap: 0;
   background: color-mix(in srgb, var(--accent) 7%, var(--bg3));
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  border-radius: 14px;
+  border-radius: 3px;
   padding: 20px 16px;
 }
 
@@ -2010,7 +2012,7 @@ body {
 .ab-tracker-count-stat {
   background: var(--bg3);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 3px;
   padding: 12px 8px;
   text-align: center;
 }
@@ -2033,7 +2035,7 @@ body {
 .ab-tracker-mode-tabs {
   display: flex;
   background: var(--bg3);
-  border-radius: 10px;
+  border-radius: 0;
   padding: 3px;
   gap: 0;
   flex-shrink: 0;
@@ -2044,7 +2046,7 @@ body {
   border: none;
   color: var(--text2);
   padding: 7px 12px;
-  border-radius: 7px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -2062,7 +2064,7 @@ body {
   border: 1.5px solid var(--border);
   color: var(--text);
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 0;
   font-size: 12px;
   font-weight: 700;
   outline: none;
@@ -2093,13 +2095,14 @@ body {
   background: color-mix(in srgb, var(--accent) 8%, var(--bg3));
   border: 1.5px solid color-mix(in srgb, var(--accent) 40%, var(--border));
   color: var(--text);
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 12px;
+  padding: 5px 7px;
+  border-radius: 0;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
+  margin-top: -3px;
 }
 .vs-team-picker-select:focus { border-color: var(--accent2); }
 .vs-team-picker-select option { background: var(--bg2); color: var(--text); }
@@ -2115,9 +2118,10 @@ body {
   display: flex;
   background: rgba(34,34,45,0.31);
   border-radius: 0;
-  padding: 0;
+  padding: 1px;
   gap: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.21);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  margin-bottom: 2px;
 }
 
 .pp-career-tab {
@@ -2127,7 +2131,7 @@ body {
   border-radius: 0;
   color: var(--text2);
   padding: 7px 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -2142,7 +2146,7 @@ body {
 .pp-header {
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -2163,7 +2167,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
 }
 
 .pp-name { font-size: 17px; line-height: 1.15; }
