@@ -182,7 +182,7 @@ function StandingsGroup({ group, cols, sortKey, sortDir, onSort, wcSpots = 0, sp
                 const isActive = sortKey === c.k;
                 return (
                   <th key={c.k} className={`standings-th standings-th-sortable ${c.hl ? 'standings-th-hl' : ''} ${isActive ? 'standings-th-sorted' : ''}`} onClick={() => onSort(c.k, c.rev)}>
-                    {c.label}<span className="standings-sort-icon">{isActive ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ' ↕'}</span>
+                    {c.label}
                   </th>
                 );
               })}
@@ -289,7 +289,7 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
             {cols.map((c) => (
               <th key={c.k} className={`standings-th standings-th-sortable ${c.hl ? 'standings-th-hl' : ''} ${sortKey === c.k ? 'standings-th-sorted' : ''}`}
                 onClick={() => onSort(c.k, c.rev)}>
-                {c.label}<span className="standings-sort-icon">{sortKey === c.k ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ' ↕'}</span>
+                {c.label}
               </th>
             ))}
           </tr>

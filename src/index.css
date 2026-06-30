@@ -453,7 +453,7 @@ body {
 }
 
 .sports-card-stats {
-  background: var(--bg2);
+  background: #0f0f13;
   padding: 8px 10px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
@@ -1768,12 +1768,12 @@ body {
 }
 
 .ts-tab {
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
   color: var(--text2);
   padding: 7px 16px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
@@ -1828,30 +1828,34 @@ body {
 /* ── Stat Leaders ── */
 .sl-cat-tabs {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 0;
+  flex-wrap: nowrap;
   overflow-x: auto;
-  padding-bottom: 2px;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
 }
+.sl-cat-tabs::-webkit-scrollbar { display: none; }
 
 .sl-cat-tab {
-  background: var(--bg2);
-  border: 1px solid var(--border);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
   color: var(--text2);
-  padding: 6px 14px;
-  border-radius: 20px;
+  padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: color 0.15s, border-color 0.15s;
   flex-shrink: 0;
+  margin-bottom: -1px;
 }
-.sl-cat-tab:hover { border-color: var(--accent2); color: var(--text); }
-.sl-cat-tab-active { background: var(--bg3); border-color: var(--accent2); color: var(--text); }
+.sl-cat-tab:hover { color: var(--text); }
+.sl-cat-tab-active { color: var(--text); border-bottom-color: var(--accent2); }
 
 .sl-list {
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
@@ -1860,8 +1864,8 @@ body {
 .sl-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
+  gap: 3px;
+  padding: 9px 15px;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
@@ -1870,9 +1874,11 @@ body {
 .sl-row-clickable:hover { background: var(--bg3); }
 
 .sl-rank {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text2);
+  text-align: left;
+  min-width: 20px;
   min-width: 20px;
   text-align: center;
 }
@@ -1917,7 +1923,7 @@ body {
 }
 
 .sl-value {
-  font-size: 18px;
+  font-size: 13px;
   font-weight: 900;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -3495,7 +3501,7 @@ body {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: -0.4px;
+  letter-spacing: 0.8px;
   background: #0f0f13;
   letter-spacing: 0.8px;
   color: var(--text2);
@@ -3731,7 +3737,7 @@ body {
 .sp-date-btn:hover { color: var(--text); }
 .sp-date-label {
   position: relative;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   cursor: pointer;
@@ -4288,12 +4294,12 @@ body {
 .dfs-page { display: flex; flex-direction: column; gap: 14px; width: 100%; }
 
 /* Game selector */
-.dfs-game-selector { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.dfs-game-selector { background: #0f0f13; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
 .dfs-selector-label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 .dfs-games-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .dfs-no-games { font-size: 13px; color: var(--text2); }
 .dfs-game-pill {
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 20px;
+  background: #0f0f13; border: 1px solid var(--border); border-radius: 20px;
   padding: 5px 12px; font-size: 12px; font-weight: 700; color: var(--text2);
   cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s;
 }
@@ -4307,7 +4313,7 @@ body {
 .dfs-team-tabs { display: flex; gap: 8px; }
 .dfs-team-tab {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  background: #0f0f13; border: 1px solid var(--border); border-radius: var(--radius);
   padding: 9px 14px; font-size: 13px; font-weight: 700; color: var(--text2);
   cursor: pointer; transition: all 0.15s;
 }
@@ -4320,7 +4326,7 @@ body {
 @media (max-width: 900px) { .dfs-panels { grid-template-columns: 1fr; } }
 
 /* Panel */
-.dfs-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.dfs-panel { background: #0f0f13; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .dfs-panel-header {
   padding: 12px 14px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
@@ -4346,7 +4352,7 @@ body {
 .dfs-th {
   padding: 8px 8px; text-align: right; font-size: 10px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.3px; color: var(--text2);
-  background: var(--bg3); border-bottom: 1px solid var(--border);
+  background: #0f0f13; border-bottom: 1px solid var(--border);
 }
 .dfs-th-sortable { cursor: pointer; user-select: none; }
 .dfs-th-sortable:hover { color: var(--text); }
@@ -4380,7 +4386,7 @@ thead .dfs-sticky-player {
 .bvp-wrap thead .dfs-sticky-player { background-color: var(--bg3); }
 .dfs-th-num { width: 44px; min-width: 44px; text-align: center; padding: 0; }
 .dfs-th-player { text-align: left; padding-left: 14px; min-width: 130px; }
-.dfs-td { padding: 8px 8px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.dfs-td { padding: 8px 8px; text-align: right; font-variant-numeric: tabular-nums; color: #ffffff; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); background: #0f0f13; letter-spacing: -0.4px; }
 .dfs-td-num { text-align: center; padding: 8px 0; color: var(--text2); font-size: 11px; width: 44px; min-width: 44px; }
 .dfs-td-player { text-align: left; padding-left: 14px; }
 .dfs-td-stat { }
@@ -4467,7 +4473,7 @@ thead .dfs-sticky-player {
 .dfs-page-tabs {
   display: flex;
   gap: 0;
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 4px;
@@ -4533,7 +4539,7 @@ thead .dfs-sticky-player {
 .teams-team-name { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.2; }
 .teams-viewed-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .teams-viewed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.teams-viewed-title { font-size: 13px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+.teams-viewed-title { font-size: 11px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: -0.4px; }
 .teams-viewed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
 .teams-viewed-card { display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px; cursor: pointer; transition: all 0.15s; text-align: center; }
 .teams-viewed-card:hover { border-color: var(--accent); }
@@ -4550,7 +4556,7 @@ thead .dfs-sticky-player {
 .players-search-wrap { display: flex; flex-direction: column; gap: 10px; }
 .players-search-box {
   display: flex; align-items: center; gap: 10px;
-  background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+  background: #0f0f13; border: 1px solid var(--border); border-radius: 14px;
   padding: 12px 16px; transition: border-color 0.15s;
 }
 .players-search-box:focus-within { border-color: var(--accent); }
@@ -4570,7 +4576,7 @@ thead .dfs-sticky-player {
 .players-sport-filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .players-filter-pill {
   padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
-  background: var(--bg2); border: 1px solid var(--border); color: var(--text2);
+  background: #0f0f13; border: 1px solid var(--border); color: var(--text2);
   cursor: pointer; transition: all 0.15s;
 }
 .players-filter-pill:hover { color: var(--text); border-color: var(--accent); }
@@ -4613,7 +4619,7 @@ thead .dfs-sticky-player {
 .player-viewed-remove:hover { background: #f87171; border-color: #f87171; color: #fff; }
 
 /* Recently viewed section */
-.player-viewed-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.player-viewed-section { background: #0f0f13; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
 .player-viewed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .player-viewed-title { font-size: 13px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
 .player-viewed-clear { background: none; border: none; color: var(--text2); font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
@@ -4622,7 +4628,7 @@ thead .dfs-sticky-player {
 .player-viewed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
 .player-viewed-card {
   position: relative; display: flex; flex-direction: column; align-items: center;
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+  background: #0f0f13; border: 1px solid var(--border); border-radius: 12px;
   overflow: hidden; cursor: pointer; transition: all 0.15s; text-align: center;
 }
 .player-viewed-card:hover { border-color: var(--accent); transform: translateY(-1px); }
@@ -5518,7 +5524,7 @@ thead .dfs-sticky-player {
   align-items: center;
   gap: 8px;
   padding: 16px 8px;
-  background: var(--bg3);
+  background: #0f0f13;
   border: 1px solid var(--border);
   border-radius: 12px;
   text-decoration: none;
@@ -5561,7 +5567,7 @@ thead .dfs-sticky-player {
   height: 68px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--bg3);
+  background: #0f0f13;
   border: 2px solid var(--border);
   flex-shrink: 0;
 }
@@ -6366,7 +6372,7 @@ thead .dfs-sticky-player {
 
 /* Base card */
 .mlbc-card {
-  background: var(--bg2);
+  background: #0f0f13;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
