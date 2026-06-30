@@ -2638,6 +2638,14 @@ body {
   color: var(--text2);
   font-weight: 400;
 }
+.preview-lineup-vs-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 0 2px;
+}
 .preview-lineup-row:last-child { border-bottom: none; }
 .preview-lineup-row-link { cursor: pointer; }
 .preview-lineup-row-link:hover .preview-lineup-name { color: var(--accent); }

@@ -936,19 +936,22 @@ function GameLeaders({ leaders, away, home }) {
   );
 }
 
-/* ─── H2H hook: batter career stats vs a pitcher (uses MLB IDs directly) ─── */
+/* ─── H2H hook: career batter vs pitcher totals (matches ShribeIQ BvP tab) ─── */
 function useH2HStats(batterIds, pitcherMlbId) {
   const [h2h, setH2h] = useState({});
 
   useEffect(() => {
-    if (!pitcherMlbId || !batterIds?.length) return;
+    if (!pitcherMlbId || !batterIds?.length) { setH2h({}); return; }
     let cancelled = false;
 
     Promise.allSettled(
       batterIds.map(id =>
-        fetch(`https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherMlbId}`)
+        fetch(`https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=vsPlayerTotal&opposingPlayerId=${pitcherMlbId}&group=hitting&sportId=1`)
           .then(r => r.json())
-          .then(d => ({ id, stat: d.stats?.[0]?.splits?.[0]?.stat ?? null }))
+          .then(d => {
+            const splits = d.stats?.find(s => s.type?.displayName === 'vsPlayerTotal')?.splits || [];
+            return { id, stat: splits[0]?.stat ?? null };
+          })
           .catch(() => ({ id, stat: null }))
       )
     ).then(results => {
@@ -972,9 +975,13 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
   const awayBatterIds = lineups.away?.players?.map(p => p.id).filter(Boolean) || [];
   const homeBatterIds = lineups.home?.players?.map(p => p.id).filter(Boolean) || [];
 
-  // H2H: away batters vs home pitcher MLB ID, home batters vs away pitcher MLB ID
+  // H2H: away batters vs home pitcher, home batters vs away pitcher
   const awayH2H = useH2HStats(awayBatterIds, pitcherMlbIds?.home);
   const homeH2H = useH2HStats(homeBatterIds, pitcherMlbIds?.away);
+
+  // Pitcher names for the header label
+  const awayOppName = pitcherMlbIds?.homeName || '';  // pitcher away batters face
+  const homeOppName = pitcherMlbIds?.awayName || '';  // pitcher home batters face
 
   const formatH2H = (stat) => {
     if (!stat || !stat.atBats) return 'No past matchups';
@@ -990,6 +997,7 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
     const lu = isHome ? lineups.home : lineups.away;
     const loading = isHome ? lineupLoading.home : lineupLoading.away;
     const h2h = isHome ? homeH2H : awayH2H;
+    const oppPitcherName = isHome ? homeOppName : awayOppName;
 
     return (
       <div className="preview-lineup-side">
@@ -1005,6 +1013,11 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
                 : null
           }
         </div>
+
+        {/* Career vs pitcher label */}
+        {oppPitcherName && lu?.players?.length > 0 && (
+          <div className="preview-lineup-vs-label">Career vs {oppPitcherName}</div>
+        )}
 
         {(loading || lu === null)
           ? null
@@ -1962,7 +1975,7 @@ export default function BoxScorePage() {
   // Lineup state (MLB pre-game only)
   const [lineups, setLineups] = useState({ away: null, home: null });
   const [lineupLoading, setLineupLoading] = useState({ away: false, home: false });
-  const [pitcherMlbIds, setPitcherMlbIds] = useState({ away: null, home: null }); // MLB IDs for probable pitchers
+  const [pitcherMlbIds, setPitcherMlbIds] = useState({ away: null, home: null, awayName: '', homeName: '' });
 
   // MLB live game PK (for pitch tracker + live scoring)
   const [mlbGamePk, setMlbGamePk] = useState(null);
@@ -2020,8 +2033,13 @@ export default function BoxScorePage() {
         return;
       }
 
-      // Store pitcher MLB IDs for H2H stats
-      setPitcherMlbIds({ away: mlbGame._awayPitcherMlbId, home: mlbGame._homePitcherMlbId });
+      // Store pitcher MLB IDs + names for H2H stats
+      setPitcherMlbIds({
+        away: mlbGame._awayPitcherMlbId,
+        home: mlbGame._homePitcherMlbId,
+        awayName: mlbGame.teams?.away?.probablePitcher?.fullName || '',
+        homeName: mlbGame.teams?.home?.probablePitcher?.fullName || '',
+      });
 
       const awayId = mlbGame.teams?.away?.team?.id;
       const homeId = mlbGame.teams?.home?.team?.id;
