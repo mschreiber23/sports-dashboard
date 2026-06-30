@@ -1688,7 +1688,7 @@ body {
 .ticker-team-left { display: flex; align-items: center; gap: 4px; }
 .ticker-logo { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
 .ticker-abbr { font-size: 11px; font-weight: 300; color: #fff; }
-.ticker-my-team .ticker-abbr, .ticker-winner .ticker-abbr { color: #0092ff; font-weight: 1000; }
+.ticker-my-team .ticker-abbr, .ticker-winner .ticker-abbr { color: #fff; font-weight: 1000; }
 .ticker-record { font-size: 9px; color: var(--text2); }
 .ticker-score { font-size: 12px; font-weight: 100; color: #f1f1f3; font-variant-numeric: tabular-nums; min-width: 16px; text-align: right; }
 .ticker-score-win { color: var(--live); }
@@ -1740,8 +1740,9 @@ body {
   justify-content: center;
   gap: 6px;
   padding: 5px 16px;
-  background: var(--bg2);
-  border-top: 1px solid var(--border);
+  background: #0f0f13;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(0,146,255,0.25);
   cursor: pointer;
   color: var(--text2);
   font-size: 11px;
@@ -1750,7 +1751,7 @@ body {
   user-select: none;
 }
 .ticker-collapsed-bar:hover { background: var(--bg3); color: var(--text); }
-.ticker-collapsed-label { letter-spacing: 0.3px; text-transform: uppercase; }
+.ticker-collapsed-label { letter-spacing: -0.4px; text-transform: uppercase; color: #9898a8; font-weight: 800; }
 
 .ts-expanded {
   position: absolute;
@@ -3512,7 +3513,7 @@ body {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: -0.4px;
   color: var(--text2);
   background: #0f0f13;
   border-bottom: 1px solid var(--border);
