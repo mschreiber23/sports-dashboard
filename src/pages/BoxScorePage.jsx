@@ -1003,31 +1003,42 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
   const homeLu = lineups.home;
   const maxLen = Math.max(awayLu?.players?.length || 0, homeLu?.players?.length || 0);
 
-  const badge = (lu, loading) => (loading || lu === null)
-    ? <span className="preview-lineup-badge preview-lineup-badge-loading">Loading…</span>
+  // Icon-only badges: ✓ for confirmed, P for probable
+  const badge = (lu, loading) => (loading || lu === null) ? null
     : lu?.confirmed
-      ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓ Confirmed</span>
+      ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓</span>
       : lu?.fromDate
-        ? <span className="preview-lineup-badge preview-lineup-badge-projected">⟳ Projected</span>
+        ? <span className="preview-lineup-badge preview-lineup-badge-projected">P</span>
         : null;
 
   return (
     <div className="preview-card">
-      {/* Lineup header: 2 centered columns, logo above, text centered */}
-      <div className="preview-pitcher-cols" style={{marginBottom:4}}>
-        <div className="preview-pitcher-col-center">
-          <LogoImg team={away?.team} className="preview-team-logo" />
-          {badge(awayLu, lineupLoading.away)}
-          <span className="preview-lineup-vs-label" style={{padding:0,textAlign:'center'}}>
-            {away?.team?.abbreviation}{awayOppName ? ` vs ${awayOppName}` : ''}
-          </span>
+      {/* BvP header: [badge][abbr vs pitcher][logo]   [logo][abbr vs pitcher][badge] */}
+      {/* logos are positioned identically to the headshots in the rows below */}
+      <div className="preview-leaders-matchup" style={{marginBottom:4}}>
+        {/* Away side */}
+        <div className="preview-leaders-player">
+          <div className="preview-leaders-stat-col preview-leaders-stat-col-left" style={{gap:3}}>
+            <div style={{display:'flex',alignItems:'center',gap:4,justifyContent:'flex-end'}}>
+              {badge(awayLu, lineupLoading.away)}
+              <span className="preview-leaders-name" style={{whiteSpace:'normal',textAlign:'right'}}>
+                {away?.team?.abbreviation}{awayOppName ? ` vs ${awayOppName}` : ''}
+              </span>
+            </div>
+          </div>
+          <LogoImg team={away?.team} className="preview-leaders-avatar" style={{borderRadius:0,background:'transparent'}} />
         </div>
-        <div className="preview-pitcher-col-center">
-          <LogoImg team={home?.team} className="preview-team-logo" />
-          {badge(homeLu, lineupLoading.home)}
-          <span className="preview-lineup-vs-label" style={{padding:0,textAlign:'center'}}>
-            {home?.team?.abbreviation}{homeOppName ? ` vs ${homeOppName}` : ''}
-          </span>
+        {/* Home side */}
+        <div className="preview-leaders-player preview-leaders-player-right">
+          <LogoImg team={home?.team} className="preview-leaders-avatar" style={{borderRadius:0,background:'transparent'}} />
+          <div className="preview-leaders-stat-col preview-leaders-stat-col-right" style={{gap:3}}>
+            <div style={{display:'flex',alignItems:'center',gap:4,justifyContent:'flex-start'}}>
+              <span className="preview-leaders-name" style={{whiteSpace:'normal',textAlign:'left'}}>
+                {home?.team?.abbreviation}{homeOppName ? ` vs ${homeOppName}` : ''}
+              </span>
+              {badge(homeLu, lineupLoading.home)}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1116,9 +1127,10 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
         <div className="preview-card">
-          {/* Pitcher matchup — 2 centered columns: logo above headshot above stats */}
-          <div className="preview-pitcher-cols">
-            {[away, home].filter(Boolean).map((c) => {
+          {/* Pitcher matchup: [stats] [abbr][logo/photo stacked] [logo/photo stacked][abbr] [stats] */}
+          <div className="preview-leaders-matchup">
+            {[away, home].filter(Boolean).map((c, idx) => {
+              const isHome = idx === 1;
               const probable = c.probables?.[0];
               const ath = probable?.athlete;
               const statsArr = Array.isArray(probable?.statistics) ? probable.statistics : [];
@@ -1133,24 +1145,38 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
               const statGrid = [wl&&{v:wl,l:'W-L'},era&&{v:era,l:'ERA'},ip&&{v:ip,l:'IP'},so&&{v:so,l:'SO'}].filter(Boolean);
               const name = ath?.shortName || ath?.fullName || 'TBD';
               const hand = ath?.throws?.abbreviation;
+
+              // Logo+photo stacked vertically, abbr beside logo
+              const logoPhotoStack = (
+                <div style={{display:'flex', alignItems:'flex-start', gap:3}}>
+                  {!isHome && <span className="preview-leaders-th-abbr" style={{marginTop:1}}>{c.team?.abbreviation}</span>}
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                    <LogoImg team={c.team} className="preview-team-logo" />
+                    {ath?.headshot?.href
+                      ? <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
+                      : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+                  </div>
+                  {isHome && <span className="preview-leaders-th-abbr" style={{marginTop:1}}>{c.team?.abbreviation}</span>}
+                </div>
+              );
+
               return (
-                <div key={c.team?.id} className="preview-pitcher-col-center">
-                  <span className="preview-leaders-th-abbr">{c.team?.abbreviation}</span>
-                  <LogoImg team={c.team} className="preview-team-logo" />
-                  {ath?.headshot?.href
-                    ? <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
-                    : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
-                  <span className="preview-leaders-name" style={{textAlign:'center'}}>{name}{hand ? <span className="preview-pitcher-sub" style={{marginLeft:3}}>{hand}HP</span> : null}</span>
-                  {statGrid.length > 0 && (
-                    <div className="preview-leaders-stats" style={{justifyContent:'center'}}>
-                      {statGrid.map(s => (
-                        <span key={s.l} style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0 4px'}}>
-                          <span className="mlbc-pstat-val">{s.v}</span>
-                          <span className="mlbc-pstat-lbl">{s.l}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                <div key={c.team?.id} className={`preview-leaders-player${isHome ? ' preview-leaders-player-right' : ''}`}>
+                  {isHome && logoPhotoStack}
+                  <div className={`preview-leaders-stat-col preview-leaders-stat-col-${isHome ? 'right' : 'left'}`}>
+                    <span className="preview-leaders-name">{name}{hand ? <span className="preview-pitcher-sub" style={{marginLeft:3}}>{hand}HP</span> : null}</span>
+                    {statGrid.length > 0 && (
+                      <div className={`preview-leaders-stats${isHome ? ' preview-leaders-stats-right' : ''}`}>
+                        {statGrid.map(s => (
+                          <span key={s.l} style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0 4px'}}>
+                            <span className="mlbc-pstat-val">{s.v}</span>
+                            <span className="mlbc-pstat-lbl">{s.l}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {!isHome && logoPhotoStack}
                 </div>
               );
             })}
