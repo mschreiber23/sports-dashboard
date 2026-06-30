@@ -3421,7 +3421,7 @@ body {
   min-width: fit-content;
 }
 .standings-view-tab:hover { color: var(--text); }
-.standings-view-tab-active { background: var(--accent); color: #fff; }
+.standings-view-tab-active { background: var(--accent); color: #fff; font-size: 12px; }
 
 .standings-skeleton { display: flex; flex-direction: column; gap: 16px; }
 
@@ -3463,12 +3463,10 @@ body {
 }
 
 .standings-tr-out { opacity: 0.55; }
-.standings-groups { display: flex; flex-direction: column; gap: 20px; }
+.standings-groups { display: flex; flex-direction: column; gap: 15px; }
 
+/* No box — flat divider style */
 .standings-group {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
   overflow: hidden;
 }
 
@@ -3476,6 +3474,8 @@ body {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: -0.4px;
+  background: #0f0f13;
   letter-spacing: 0.8px;
   color: var(--text2);
   padding: 10px 14px;
@@ -3502,7 +3502,7 @@ body {
   text-align: right;
   border-bottom: 1px solid var(--border);
 }
-.standings-th-team { text-align: left; min-width: 100px; padding-left: 14px; }
+.standings-th-team { text-align: left; min-width: 100px; padding-left: 14px; letter-spacing: -0.4px; }
 .standings-th-hl { color: var(--text); }
 .standings-th-sortable { cursor: pointer; user-select: none; transition: color 0.1s; }
 .standings-th-sortable:hover { color: var(--text); }
@@ -3521,9 +3521,11 @@ body {
 .standings-td {
   padding: 9px 10px;
   text-align: right;
-  color: var(--text2);
+  color: #ffffff;
   font-variant-numeric: tabular-nums;
   font-size: 12px;
+  letter-spacing: -1px;
+  font-weight: 300;
 }
 .standings-td-team { text-align: left; padding-left: 14px; }
 .standings-td-hl { color: var(--text); font-weight: 700; }
@@ -3533,7 +3535,7 @@ body {
 .standings-td-team { display: flex; align-items: center; gap: 8px; }
 .standings-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
 .standings-team-info { display: flex; align-items: center; gap: 5px; }
-.standings-abbr { font-size: 13px; font-weight: 700; color: var(--text); }
+.standings-abbr { font-size: 12px; font-weight: 600; color: var(--text); }
 .standings-clinch {
   font-size: 9px;
   color: var(--live);
