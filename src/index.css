@@ -2373,12 +2373,26 @@ body {
   padding: 0 5px;
 }
 
-/* Centered header row used by pitchers + lineup */
+/* Centered header row */
 .preview-center-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* Two-column centered pitcher/lineup layout */
+.preview-pitcher-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.preview-pitcher-col-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
 }
 
 /* Win probability circle */

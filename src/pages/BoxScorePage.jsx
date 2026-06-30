@@ -1013,21 +1013,19 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
 
   return (
     <div className="preview-card">
-      {/* Lineup header: [badge][abbr vs pitcher][logo][logo][abbr vs pitcher][badge] */}
-      <div className="preview-center-header" style={{alignItems:'flex-start',flexWrap:'wrap',gap:6}}>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:2}}>
+      {/* Lineup header: 2 centered columns, logo above, text centered */}
+      <div className="preview-pitcher-cols" style={{marginBottom:4}}>
+        <div className="preview-pitcher-col-center">
+          <LogoImg team={away?.team} className="preview-team-logo" />
           {badge(awayLu, lineupLoading.away)}
-          <span className="preview-lineup-vs-label" style={{padding:0,whiteSpace:'nowrap'}}>
+          <span className="preview-lineup-vs-label" style={{padding:0,textAlign:'center'}}>
             {away?.team?.abbreviation}{awayOppName ? ` vs ${awayOppName}` : ''}
           </span>
         </div>
-        <div style={{display:'flex',gap:4,alignItems:'center',flexShrink:0}}>
-          <LogoImg team={away?.team} className="preview-team-logo" />
+        <div className="preview-pitcher-col-center">
           <LogoImg team={home?.team} className="preview-team-logo" />
-        </div>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
           {badge(homeLu, lineupLoading.home)}
-          <span className="preview-lineup-vs-label" style={{padding:0,whiteSpace:'nowrap',textAlign:'right'}}>
+          <span className="preview-lineup-vs-label" style={{padding:0,textAlign:'center'}}>
             {home?.team?.abbreviation}{homeOppName ? ` vs ${homeOppName}` : ''}
           </span>
         </div>
@@ -1118,33 +1116,13 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
         <div className="preview-card">
-          {/* Pitcher header: [abbr] [logo][logo] [abbr] */}
-          <div className="preview-center-header">
-            <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
-            <div style={{display:'flex',gap:4,alignItems:'center'}}>
-              <LogoImg team={away?.team} className="preview-team-logo" />
-              <LogoImg team={home?.team} className="preview-team-logo" />
-            </div>
-            <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
-          </div>
-
-          {/* Pitcher matchup — same layout as batting leaders */}
-          <div className="preview-leaders-matchup">
-            {[away, home].filter(Boolean).map((c, idx) => {
-              const isHome = idx === 1;
+          {/* Pitcher matchup — 2 centered columns: logo above headshot above stats */}
+          <div className="preview-pitcher-cols">
+            {[away, home].filter(Boolean).map((c) => {
               const probable = c.probables?.[0];
-              if (!probable) return (
-                <div key={c.team?.id} className={`preview-leaders-player${isHome ? ' preview-leaders-player-right' : ''}`}>
-                  {isHome && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
-                  <div className={`preview-leaders-stat-col preview-leaders-stat-col-${isHome ? 'right' : 'left'}`}>
-                    <span className="preview-leaders-name">TBD</span>
-                  </div>
-                  {!isHome && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
-                </div>
-              );
-              const ath = probable.athlete;
-              const statsArr = Array.isArray(probable.statistics) ? probable.statistics : [];
-              const statCats = probable.statistics?.splits?.categories || [];
+              const ath = probable?.athlete;
+              const statsArr = Array.isArray(probable?.statistics) ? probable.statistics : [];
+              const statCats = probable?.statistics?.splits?.categories || [];
               const statMap = {};
               statsArr.forEach(s => { statMap[s.abbreviation] = s.displayValue; });
               statCats.forEach(s => { statMap[s.abbreviation] = s.displayValue; });
@@ -1156,27 +1134,23 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
               const name = ath?.shortName || ath?.fullName || 'TBD';
               const hand = ath?.throws?.abbreviation;
               return (
-                <div key={c.team?.id} className={`preview-leaders-player${isHome ? ' preview-leaders-player-right' : ''}`}>
-                  {/* Avatar always in center (dom order: away=[stats][photo], home=[photo][stats]) */}
-                  {isHome && ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />}
-                  {isHome && !ath?.headshot?.href && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
-
-                  <div className={`preview-leaders-stat-col preview-leaders-stat-col-${isHome ? 'right' : 'left'}`}>
-                    <span className="preview-leaders-name">{name}{hand ? <span className="preview-pitcher-sub" style={{marginLeft:4}}>{hand}HP</span> : null}</span>
-                    {statGrid.length > 0 && (
-                      <div className={`preview-leaders-stats${isHome ? ' preview-leaders-stats-right' : ''}`}>
-                        {statGrid.map((s,i) => (
-                          <span key={s.l} style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0 4px'}}>
-                            <span className="mlbc-pstat-val">{s.v}</span>
-                            <span className="mlbc-pstat-lbl">{s.l}</span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {!isHome && ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />}
-                  {!isHome && !ath?.headshot?.href && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+                <div key={c.team?.id} className="preview-pitcher-col-center">
+                  <span className="preview-leaders-th-abbr">{c.team?.abbreviation}</span>
+                  <LogoImg team={c.team} className="preview-team-logo" />
+                  {ath?.headshot?.href
+                    ? <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
+                    : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+                  <span className="preview-leaders-name" style={{textAlign:'center'}}>{name}{hand ? <span className="preview-pitcher-sub" style={{marginLeft:3}}>{hand}HP</span> : null}</span>
+                  {statGrid.length > 0 && (
+                    <div className="preview-leaders-stats" style={{justifyContent:'center'}}>
+                      {statGrid.map(s => (
+                        <span key={s.l} style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0 4px'}}>
+                          <span className="mlbc-pstat-val">{s.v}</span>
+                          <span className="mlbc-pstat-lbl">{s.l}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
