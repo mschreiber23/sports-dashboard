@@ -807,6 +807,20 @@ function BaseDiamond({ onFirst, onSecond, onThird, size = 44 }) {
 }
 
 /* ─── GAME LEADERS ─────────────────────────────────── */
+/** Search ESPN by name and navigate to player profile (handles MLB ID → ESPN ID mismatch) */
+async function goToPlayerByName(fullName, sport, navigate) {
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/search/v2?query=${encodeURIComponent(fullName)}&limit=5`);
+    const d = await r.json();
+    const pr = (d.results || []).find(res => res.type === 'player');
+    const hit = pr?.contents?.[0];
+    if (!hit) return;
+    const m = hit.uid?.match(/a:(\d+)/);
+    const espnId = m ? m[1] : null;
+    if (espnId) navigate(`/player/${sport}/${espnId}`);
+  } catch {}
+}
+
 const BATTING_CATS  = ['Batting Average', 'Home Runs', 'Runs Batted In'];
 const PITCHING_CATS = ['Earned Run Average', 'Wins', 'Strikeouts'];
 
@@ -1024,8 +1038,8 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
                 return (
                   <div
                     key={p.id || i}
-                    className={`preview-lineup-row${p.id ? ' preview-lineup-row-link' : ''}`}
-                    onClick={() => p.id && navigate(`/player/mlb/${p.id}`)}
+                    className={`preview-lineup-row${name ? ' preview-lineup-row-link' : ''}`}
+                    onClick={() => name && goToPlayerByName(name, 'mlb', navigate)}
                   >
                     <span className="preview-lineup-num">{i + 1}</span>
                     <div className="preview-lineup-player">
