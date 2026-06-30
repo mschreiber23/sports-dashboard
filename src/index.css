@@ -1707,6 +1707,40 @@ body {
 }
 .ts-all-scores-btn:hover { border-color: var(--accent2); color: var(--text); }
 
+/* Ticker collapse / expand controls */
+.ts-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 5px 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.ts-collapse-btn:hover { color: var(--text); background: var(--bg3); }
+
+/* Collapsed ticker bar — thin tap target to re-open */
+.ticker-collapsed-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 16px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 700;
+  transition: background 0.15s;
+  user-select: none;
+}
+.ticker-collapsed-bar:hover { background: var(--bg3); color: var(--text); }
+.ticker-collapsed-label { letter-spacing: 0.3px; text-transform: uppercase; }
+
 .ts-expanded {
   background: var(--bg2); border: 1px solid var(--border); border-top: none;
   border-radius: 0 0 12px 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px;

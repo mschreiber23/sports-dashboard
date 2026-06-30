@@ -347,7 +347,7 @@ async function fetchMlbLiveScores(dateStr, espnGames) {
 }
 
 /* ── Main Component ──────────────────────────────────── */
-export default function TodaysScores({ compact = false }) {
+export default function TodaysScores({ compact = false, onCollapse }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
   const [activeSport, setActiveSport] = useState(sportOrder[0] || 'mlb');
   const [rawGames, setRawGames] = useState([]);
@@ -448,6 +448,13 @@ export default function TodaysScores({ compact = false }) {
           <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
             {expanded ? '✕ Close' : 'All Scores'}
           </button>
+          {onCollapse && (
+            <button className="ts-collapse-btn" onClick={onCollapse} title="Hide ticker">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="18 15 12 9 6 15"/>
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Row 2: horizontal scrolling ticker */}

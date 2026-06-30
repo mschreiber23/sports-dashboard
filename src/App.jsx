@@ -43,17 +43,36 @@ function Dashboard() {
 function AppShell({ userId }) {
   const { pathname } = useLocation();
   const isSubPage = ['/player/', '/boxscore/', '/team/'].some((p) => pathname.startsWith(p));
-  // Show compact sticky ticker on all pages except home and player/boxscore/team sub-pages
   const showStickyTicker = !isSubPage;
+
+  // Ticker visibility — persisted across sessions
+  const [tickerVisible, setTickerVisible] = useState(() =>
+    localStorage.getItem('tickerVisible') !== 'false'
+  );
+  const toggleTicker = () => {
+    const next = !tickerVisible;
+    setTickerVisible(next);
+    localStorage.setItem('tickerVisible', String(next));
+  };
 
   return (
     <FavoritesProvider userId={userId}>
       <div className="app">
-        {/* Nav + ticker wrapped together so they form one seamless sticky block */}
         <div className="app-sticky-header">
           <TopNav />
           <InstallBanner />
-          {showStickyTicker && <TodaysScores compact />}
+          {showStickyTicker && (
+            tickerVisible
+              ? <TodaysScores compact onCollapse={toggleTicker} />
+              : (
+                <div className="ticker-collapsed-bar" onClick={toggleTicker}>
+                  <span className="ticker-collapsed-label">Scores</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              )
+          )}
         </div>
         <div className="app-body">
           <Routes>
