@@ -1129,7 +1129,20 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {sport === 'mlb' && (
         <div className="preview-card">
           <div className="preview-leaders-cat-label">Pitcher Matchup</div>
-          {/* Pitcher matchup: [stats] [abbr][logo/photo stacked] [logo/photo stacked][abbr] [stats] */}
+
+          {/* Logo header: [WSH abbr][WSH logo]  ·  [PHI logo][PHI abbr] */}
+          <div className="preview-leaders-team-header">
+            <div className="preview-leaders-th-side">
+              <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+              <LogoImg team={away?.team} className="preview-team-logo" />
+            </div>
+            <div className="preview-leaders-th-side preview-leaders-th-right">
+              <LogoImg team={home?.team} className="preview-team-logo" />
+              <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
+            </div>
+          </div>
+
+          {/* Pitcher content: IDENTICAL to batting leaders — [stat-col][avatar] / [avatar][stat-col] */}
           <div className="preview-leaders-matchup">
             {[away, home].filter(Boolean).map((c, idx) => {
               const isHome = idx === 1;
@@ -1147,24 +1160,13 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
               const statGrid = [wl&&{v:wl,l:'W-L'},era&&{v:era,l:'ERA'},ip&&{v:ip,l:'IP'},so&&{v:so,l:'SO'}].filter(Boolean);
               const name = ath?.shortName || ath?.fullName || 'TBD';
               const hand = ath?.throws?.abbreviation;
-
-              // Logo+photo stacked vertically, abbr beside logo
-              const logoPhotoStack = (
-                <div style={{display:'flex', alignItems:'flex-start', gap:3}}>
-                  {!isHome && <span className="preview-leaders-th-abbr" style={{marginTop:1}}>{c.team?.abbreviation}</span>}
-                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                    <LogoImg team={c.team} className="preview-team-logo" />
-                    {ath?.headshot?.href
-                      ? <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
-                      : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
-                  </div>
-                  {isHome && <span className="preview-leaders-th-abbr" style={{marginTop:1}}>{c.team?.abbreviation}</span>}
-                </div>
-              );
+              const avatar = ath?.headshot?.href
+                ? <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />
+                : <div className="preview-leaders-avatar preview-leaders-avatar-empty" />;
 
               return (
                 <div key={c.team?.id} className={`preview-leaders-player${isHome ? ' preview-leaders-player-right' : ''}`}>
-                  {isHome && logoPhotoStack}
+                  {isHome && avatar}
                   <div className={`preview-leaders-stat-col preview-leaders-stat-col-${isHome ? 'right' : 'left'}`}>
                     <span className="preview-leaders-name">{name}{hand ? <span className="preview-pitcher-sub" style={{marginLeft:3}}>{hand}HP</span> : null}</span>
                     {statGrid.length > 0 && (
@@ -1178,7 +1180,7 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
                       </div>
                     )}
                   </div>
-                  {!isHome && logoPhotoStack}
+                  {!isHome && avatar}
                 </div>
               );
             })}
