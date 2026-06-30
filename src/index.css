@@ -2907,7 +2907,7 @@ body {
 }
 .bsp-team-stats { display: flex; flex-direction: column; gap: 4px; }
 .bsp-stats-heading { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-.bsp-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 4px; }
+.bsp-table-wrap { overflow-x: auto; border-radius: 0; border: none; margin-bottom: 4px; }
 .bsp-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
 .bsp-th { background: #0f0f13; color: var(--text2); font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--border); }
 .bsp-th-player { text-align: left; min-width: 130px; }
@@ -2919,7 +2919,7 @@ body {
 .bsp-tr-clickable:hover { background: color-mix(in srgb, var(--accent) 8%, var(--bg3)); }
 .bsp-tr-clickable:hover .bsp-player-name { color: var(--accent2); }
 /* Substitute players indented */
-.bsp-tr-sub { background: color-mix(in srgb, var(--bg3) 30%, transparent); }
+.bsp-tr-sub { background: #0f0f13; opacity: 1; }
 .bsp-player-sub { padding-left: 20px !important; }
 .bsp-player-sub .bsp-player-name { color: var(--text2); font-size: 12px; }
 /* Batting / Fielding notes section */
@@ -6291,14 +6291,14 @@ thead .dfs-sticky-player {
   white-space: nowrap;
 }
 
-/* Zero stat — dimmed so non-zero values stand out */
-.bsp-zero { color: var(--text2) !important; opacity: 0.5; }
+/* Zero stat */
+.bsp-zero { color: #ffffff !important; opacity: 1; }
 
 /* Stat highlight cells — white, no bold */
 .bsp-hl  { color: var(--text) !important; font-weight: 400; opacity: 1 !important; }
 
-/* Substitute rows — indented + slightly dimmer */
-.bsp-tr-sub { opacity: 0.75; }
+/* Substitute rows */
+.bsp-tr-sub { opacity: 1; background: #0f0f13; }
 .bsp-tr-sub .bsp-td-player { padding-left: 18px; }
 
 /* Table header row */
@@ -6366,8 +6366,8 @@ thead .dfs-sticky-player {
 .bsp-totals .bsp-td { color: var(--text); font-size: 11px; padding: 10px 10px; }
 .bsp-totals-label { color: var(--text2); font-weight: 700; font-size: 12px; }
 
-/* Wrap the table in no card — just floating clean */
-.bsp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0; }
+/* Wrap the table — no border, blends into page */
+.bsp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0; border: none; border-radius: 0; }
 
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
