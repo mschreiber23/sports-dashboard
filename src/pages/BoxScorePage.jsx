@@ -696,7 +696,7 @@ async function getMlbGameForDate(dateStr, awayName, homeName) {
   };
 
   const tryDate = async (d) => {
-    const data = await mlbFetch(`${STATSAPI}/schedule?sportId=1&date=${d}&hydrate=lineups,teams`);
+    const data = await mlbFetch(`${STATSAPI}/schedule?sportId=1&date=${d}&hydrate=lineups,teams,probablePitcher`);
     return data.dates?.[0]?.games || [];
   };
 
@@ -719,7 +719,13 @@ async function getMlbGameForDate(dateStr, awayName, homeName) {
     return 0;
   };
   allMatching.sort((a, b) => stateScore(b) - stateScore(a));
-  return allMatching[0];
+  const game = allMatching[0];
+  // Attach probable pitcher MLB IDs directly
+  if (game) {
+    game._awayPitcherMlbId = game.teams?.away?.probablePitcher?.id ?? null;
+    game._homePitcherMlbId = game.teams?.home?.probablePitcher?.id ?? null;
+  }
+  return game;
 }
 
 async function getProjectedLineup(teamId, signal) {
@@ -939,58 +945,45 @@ function GameLeaders({ leaders, away, home }) {
   );
 }
 
-/* ─── H2H hook: batter career stats vs a pitcher ─────── */
-function useH2HStats(batterIds, pitcherEspnId) {
+/* ─── H2H hook: batter career stats vs a pitcher (uses MLB IDs directly) ─── */
+function useH2HStats(batterIds, pitcherMlbId) {
   const [h2h, setH2h] = useState({});
 
   useEffect(() => {
-    if (!pitcherEspnId || !batterIds?.length) return;
+    if (!pitcherMlbId || !batterIds?.length) return;
     let cancelled = false;
 
-    // Step 1: resolve pitcher ESPN ID → MLB ID
-    fetch(`https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/athletes/${pitcherEspnId}?lang=en&region=us`)
-      .then(r => r.json())
-      .then(async d => {
-        const pitcherMlbId = d.alternateIds?.mlb;
-        if (!pitcherMlbId || cancelled) return;
-
-        // Step 2: fetch H2H stats for each batter in parallel
-        const results = await Promise.allSettled(
-          batterIds.map(id =>
-            fetch(`https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherMlbId}`)
-              .then(r => r.json())
-              .then(d => ({ id, stat: d.stats?.[0]?.splits?.[0]?.stat ?? null }))
-              .catch(() => ({ id, stat: null }))
-          )
-        );
-        if (cancelled) return;
-        const map = {};
-        results.forEach(r => { if (r.status === 'fulfilled') map[r.value.id] = r.value.stat; });
-        setH2h(map);
-      })
-      .catch(() => {});
+    Promise.allSettled(
+      batterIds.map(id =>
+        fetch(`https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherMlbId}`)
+          .then(r => r.json())
+          .then(d => ({ id, stat: d.stats?.[0]?.splits?.[0]?.stat ?? null }))
+          .catch(() => ({ id, stat: null }))
+      )
+    ).then(results => {
+      if (cancelled) return;
+      const map = {};
+      results.forEach(r => { if (r.status === 'fulfilled') map[r.value.id] = r.value.stat; });
+      setH2h(map);
+    });
 
     return () => { cancelled = true; };
-  }, [pitcherEspnId, batterIds?.join(',')]);
+  }, [pitcherMlbId, batterIds?.join(',')]);
 
   return h2h;
 }
 
 /* ─── BATTING LINEUPS ────────────────────────────────── */
-function BattingLineups({ lineups, lineupLoading, away, home }) {
+function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
   const navigate = useNavigate();
-
-  // Opposing probable pitchers (ESPN IDs) for each side
-  const awayPitcherEspnId = away?.probables?.[0]?.athlete?.id;  // pitcher facing away batters = home pitcher
-  const homePitcherEspnId = home?.probables?.[0]?.athlete?.id;  // pitcher facing home batters = away pitcher
 
   // Batter MLB IDs for each side
   const awayBatterIds = lineups.away?.players?.map(p => p.id).filter(Boolean) || [];
   const homeBatterIds = lineups.home?.players?.map(p => p.id).filter(Boolean) || [];
 
-  // Fetch H2H: away batters vs home pitcher, home batters vs away pitcher
-  const awayH2H = useH2HStats(awayBatterIds, homePitcherEspnId);
-  const homeH2H = useH2HStats(homeBatterIds, awayPitcherEspnId);
+  // H2H: away batters vs home pitcher MLB ID, home batters vs away pitcher MLB ID
+  const awayH2H = useH2HStats(awayBatterIds, pitcherMlbIds?.home);
+  const homeH2H = useH2HStats(homeBatterIds, pitcherMlbIds?.away);
 
   const formatH2H = (stat) => {
     if (!stat || !stat.atBats) return 'No past matchups';
@@ -1067,7 +1060,7 @@ function BattingLineups({ lineups, lineupLoading, away, home }) {
 /* ─── PREVIEW TAB ──────────────────────────────────── */
 const WEATHER_ICONS = { '1':'☀️','2':'⛅','3':'🌥','4':'☁️','5':'🌧','6':'🌦','7':'🌩','8':'❄️','11':'🌫','12':'🌧','13':'🌨','14':'⛈','15':'⛈','16':'❄️','17':'⛈','18':'🌧','19':'🌨','20':'🌨','21':'🌨','22':'❄️','23':'🌬','25':'🌧','26':'🌧','29':'🌧','30':'🌡️','31':'🧊','32':'☀️','33':'🌙','34':'⛅','35':'⛅','36':'🌥','37':'🌧','38':'⛈','39':'🌧','40':'🌧','41':'❄️','42':'❄️','43':'❄️','44':'⛅' };
 
-function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading }) {
+function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, pitcherMlbIds }) {
   const gameInfo = data?.gameInfo || {};
   const venue = gameInfo.venue?.fullName;
   const wx = gameInfo.weather;
@@ -1185,7 +1178,7 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading }
 
       {/* MLB: Batting lineups */}
       {sport === 'mlb' && (
-        <BattingLineups lineups={lineups} lineupLoading={lineupLoading} away={away} home={home} />
+        <BattingLineups lineups={lineups} lineupLoading={lineupLoading} away={away} home={home} pitcherMlbIds={pitcherMlbIds} />
       )}
 
       {/* Last 5 games */}
@@ -1978,6 +1971,7 @@ export default function BoxScorePage() {
   // Lineup state (MLB pre-game only)
   const [lineups, setLineups] = useState({ away: null, home: null });
   const [lineupLoading, setLineupLoading] = useState({ away: false, home: false });
+  const [pitcherMlbIds, setPitcherMlbIds] = useState({ away: null, home: null }); // MLB IDs for probable pitchers
 
   // MLB live game PK (for pitch tracker + live scoring)
   const [mlbGamePk, setMlbGamePk] = useState(null);
@@ -2034,6 +2028,9 @@ export default function BoxScorePage() {
         setLineupLoading({ away: false, home: false });
         return;
       }
+
+      // Store pitcher MLB IDs for H2H stats
+      setPitcherMlbIds({ away: mlbGame._awayPitcherMlbId, home: mlbGame._homePitcherMlbId });
 
       const awayId = mlbGame.teams?.away?.team?.id;
       const homeId = mlbGame.teams?.home?.team?.id;
@@ -2125,7 +2122,7 @@ export default function BoxScorePage() {
           <div className="bsp-tab-content">
             {activeTab === 'Preview' && (
               <PreviewTab data={data} competitors={comps} status={status} sport={sport}
-                lineups={lineups} lineupLoading={lineupLoading} />
+                lineups={lineups} lineupLoading={lineupLoading} pitcherMlbIds={pitcherMlbIds} />
             )}
 
             {activeTab === 'Gamecast' && (
