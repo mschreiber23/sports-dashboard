@@ -101,10 +101,8 @@ function RecentABTracker({ gamelog }) {
   ];
 
   return (
-    <div className="pp-stats-section">
+    <div className="pp-flat-section">
       <div className="ab-tracker-inner">
-        <div className="pp-stats-title">Recent AB Tracker</div>
-
         {/* Mode tabs + search input */}
         <div className="ab-tracker-search-row">
           <div className="ab-tracker-mode-tabs">
@@ -112,13 +110,13 @@ function RecentABTracker({ gamelog }) {
               className={`ab-tracker-mode-tab ${searchMode === 'games' ? 'ab-tracker-mode-active' : ''}`}
               onClick={() => setSearchMode('games')}
             >
-              🔍 Games
+              🔍 Recent Games
             </button>
             <button
               className={`ab-tracker-mode-tab ${searchMode === 'ab' ? 'ab-tracker-mode-active' : ''}`}
               onClick={() => setSearchMode('ab')}
             >
-              🔍 ABs
+              🔍 Recent ABs
             </button>
           </div>
           <div className="ab-tracker-input-wrap">
@@ -754,9 +752,9 @@ export default function PlayerPage() {
 
 
           {/* Career stats table */}
-          <div className="pp-stats-section">
+          <div className="pp-flat-section">
             <div className="pp-career-header">
-              <div className="pp-stats-title">{careerTitle}</div>
+              <div className="pp-flat-title">{careerTitle}</div>
               {/* RHP/LHP tabs — MLB batters only */}
               {sport === 'mlb' && sportKey === 'mlb_batting' && Object.keys(splitsBySeason).length > 0 && (
                 <div className="pp-career-tabs">
@@ -852,8 +850,8 @@ export default function PlayerPage() {
 
           {/* Game Log */}
           {gamelog.length > 0 && (
-            <div className="pp-stats-section">
-              <div className="pp-stats-title">Last 25 Games</div>
+            <div className="pp-flat-section">
+              <div className="pp-flat-title">Last 25 Games</div>
               <div className="pp-table-wrap">
                 <table className="pp-table">
                   <thead>

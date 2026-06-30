@@ -1937,8 +1937,8 @@ body {
 .ab-tracker-inner {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 10px 0 4px;
 }
 
 .pp-stats-title-row {
@@ -2216,7 +2216,7 @@ body {
   white-space: nowrap;
 }
 
-/* Stats table */
+/* Stats table — boxed (legacy, kept for any remaining uses) */
 .pp-stats-section {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -2228,6 +2228,21 @@ body {
   font-weight: 700;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
+}
+
+/* Flat section — no box, just divider on top */
+.pp-flat-section {
+  border-top: 1px solid var(--border);
+  padding-top: 0;
+  overflow: hidden;
+}
+.pp-flat-title {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 0 8px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .pp-table-wrap { overflow-x: auto; }
 .pp-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
