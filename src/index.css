@@ -3651,6 +3651,31 @@ body {
 .bottom-nav .nav-item svg { width: 22px; height: 22px; }
 
 /* Top nav (desktop — hidden on mobile) */
+/* ── Back button (fixed, all non-home pages) ── */
+.app-back-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 6px;
+  z-index: 201;
+  background: none;
+  border: none;
+  color: var(--text2);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.app-back-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+@media (min-width: 768px) {
+  .app-back-btn { display: none; } /* desktop has browser nav, not needed */
+}
+
 /* ── Global sticky ticker (shows on non-home pages) ── */
 /* Single sticky block: nav + ticker always flush together at the top */
 .app-sticky-header {
