@@ -861,15 +861,13 @@ function GameLeaders({ leaders, away, home }) {
         </button>
       </div>
 
-      {/* Team logo header */}
+      {/* Team abbr header — no logos */}
       <div className="preview-leaders-team-header">
         <div className="preview-leaders-th-side">
-          <LogoImg team={away?.team} className="preview-team-logo" />
           <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
         </div>
         <div className="preview-leaders-th-side preview-leaders-th-right">
           <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
-          <LogoImg team={home?.team} className="preview-team-logo" />
         </div>
       </div>
 
@@ -941,15 +939,73 @@ function GameLeaders({ leaders, away, home }) {
   );
 }
 
+/* ─── H2H hook: batter career stats vs a pitcher ─────── */
+function useH2HStats(batterIds, pitcherEspnId) {
+  const [h2h, setH2h] = useState({});
+
+  useEffect(() => {
+    if (!pitcherEspnId || !batterIds?.length) return;
+    let cancelled = false;
+
+    // Step 1: resolve pitcher ESPN ID → MLB ID
+    fetch(`https://sports.core.api.espn.com/v2/sports/baseball/leagues/mlb/athletes/${pitcherEspnId}?lang=en&region=us`)
+      .then(r => r.json())
+      .then(async d => {
+        const pitcherMlbId = d.alternateIds?.mlb;
+        if (!pitcherMlbId || cancelled) return;
+
+        // Step 2: fetch H2H stats for each batter in parallel
+        const results = await Promise.allSettled(
+          batterIds.map(id =>
+            fetch(`https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=vsPlayer&group=hitting&opposingPlayerId=${pitcherMlbId}`)
+              .then(r => r.json())
+              .then(d => ({ id, stat: d.stats?.[0]?.splits?.[0]?.stat ?? null }))
+              .catch(() => ({ id, stat: null }))
+          )
+        );
+        if (cancelled) return;
+        const map = {};
+        results.forEach(r => { if (r.status === 'fulfilled') map[r.value.id] = r.value.stat; });
+        setH2h(map);
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [pitcherEspnId, batterIds?.join(',')]);
+
+  return h2h;
+}
+
 /* ─── BATTING LINEUPS ────────────────────────────────── */
 function BattingLineups({ lineups, lineupLoading, away, home }) {
   const navigate = useNavigate();
+
+  // Opposing probable pitchers (ESPN IDs) for each side
+  const awayPitcherEspnId = away?.probables?.[0]?.athlete?.id;  // pitcher facing away batters = home pitcher
+  const homePitcherEspnId = home?.probables?.[0]?.athlete?.id;  // pitcher facing home batters = away pitcher
+
+  // Batter MLB IDs for each side
+  const awayBatterIds = lineups.away?.players?.map(p => p.id).filter(Boolean) || [];
+  const homeBatterIds = lineups.home?.players?.map(p => p.id).filter(Boolean) || [];
+
+  // Fetch H2H: away batters vs home pitcher, home batters vs away pitcher
+  const awayH2H = useH2HStats(awayBatterIds, homePitcherEspnId);
+  const homeH2H = useH2HStats(homeBatterIds, awayPitcherEspnId);
+
+  const formatH2H = (stat) => {
+    if (!stat || !stat.atBats) return 'No past matchups';
+    const parts = [`${stat.hits}-${stat.atBats}`];
+    if (stat.homeRuns > 0) parts.push(`${stat.homeRuns} HR`);
+    if (stat.rbi > 0) parts.push(`${stat.rbi} RBI`);
+    return parts.join(' · ');
+  };
 
   const renderSide = (side) => {
     const isHome = side === 'home';
     const team = isHome ? home : away;
     const lu = isHome ? lineups.home : lineups.away;
     const loading = isHome ? lineupLoading.home : lineupLoading.away;
+    const h2h = isHome ? homeH2H : awayH2H;
 
     return (
       <div className="preview-lineup-side">
@@ -966,28 +1022,33 @@ function BattingLineups({ lineups, lineupLoading, away, home }) {
           }
         </div>
 
-        {/* null = not yet fetched, treat same as loading */}
         {(loading || lu === null)
           ? null
           : (!lu.players?.length)
             ? <div className="preview-lineup-empty">Lineup not available</div>
             : lu.players.map((p, i) => {
-            const pos = p.primaryPosition?.abbreviation || p.primaryPosition?.name?.charAt(0) || '';
-            const name = p.useName && p.lastName
-              ? `${p.useName} ${p.lastName}`
-              : p.fullName || '';
-            return (
-              <div
-                key={p.id || i}
-                className={`preview-lineup-row${p.id ? ' preview-lineup-row-link' : ''}`}
-                onClick={() => p.id && navigate(`/player/mlb/${p.id}`)}
-              >
-                <span className="preview-lineup-num">{i + 1}</span>
-                <span className="preview-lineup-name">{name}</span>
-                <span className="preview-lineup-pos">{pos}</span>
-              </div>
-            );
-          })
+                const pos = p.primaryPosition?.abbreviation || p.primaryPosition?.name?.charAt(0) || '';
+                const name = p.useName && p.lastName ? `${p.useName} ${p.lastName}` : p.fullName || '';
+                const matchup = h2h[p.id];
+                return (
+                  <div
+                    key={p.id || i}
+                    className={`preview-lineup-row${p.id ? ' preview-lineup-row-link' : ''}`}
+                    onClick={() => p.id && navigate(`/player/mlb/${p.id}`)}
+                  >
+                    <span className="preview-lineup-num">{i + 1}</span>
+                    <div className="preview-lineup-player">
+                      <span className="preview-lineup-name">{name}</span>
+                      {p.id && (
+                        <span className={`preview-lineup-h2h${matchup && matchup.atBats ? '' : ' preview-lineup-h2h-none'}`}>
+                          {formatH2H(matchup)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="preview-lineup-pos">{pos}</span>
+                  </div>
+                );
+              })
         }
       </div>
     );
@@ -995,7 +1056,6 @@ function BattingLineups({ lineups, lineupLoading, away, home }) {
 
   return (
     <div className="preview-card">
-      <div className="preview-card-title">Batting Lineups</div>
       <div className="preview-lineups-grid">
         {renderSide('away')}
         {renderSide('home')}
