@@ -2348,26 +2348,47 @@ body {
   margin-bottom: 2px;
 }
 
-.preview-info-row {
+/* Info bar: venue + weather + win probability on one row */
+.preview-info-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
-  color: var(--text);
+  gap: 10px;
+  flex-wrap: wrap;
 }
-.preview-label { color: var(--text2); font-weight: 600; font-size: 11px; }
+.preview-info-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.preview-info-chip {
+  font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-/* Win probability */
-.preview-prob-row { display: flex; align-items: center; gap: 8px; }
-.preview-prob-team { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-.preview-prob-team-right { flex-direction: row-reverse; }
-.preview-team-logo { width: 18px; height: 18px; object-fit: contain; }
-.preview-prob-pct { font-size: 12px; font-weight: 800; color: var(--accent2); }
-.preview-prob-bar {
-  flex: 1; height: 6px; border-radius: 3px; overflow: hidden; display: flex; background: var(--bg3);
+/* Win probability circle */
+.preview-prob-circle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
-.preview-prob-fill-away { height: 100%; background: var(--accent); border-radius: 3px 0 0 3px; }
-.preview-prob-fill-home { height: 100%; background: #60a5fa; border-radius: 0 3px 3px 0; }
+.preview-prob-side {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.preview-prob-side-right { flex-direction: row-reverse; }
+.preview-team-logo { width: 18px; height: 18px; object-fit: contain; }
+.preview-prob-abbr { font-size: 10px; font-weight: 700; color: var(--text2); }
+.preview-prob-pct { font-size: 12px; font-weight: 800; color: var(--text); }
+.preview-prob-donut { flex-shrink: 0; }
 
 /* Starting pitchers — two side-by-side rows */
 .preview-pitchers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

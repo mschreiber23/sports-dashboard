@@ -1020,41 +1020,53 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading }
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
 
+  const awayPct = parseFloat(predictor?.awayTeam?.gameProjection) || 0;
+  const homePct = parseFloat(predictor?.homeTeam?.gameProjection) || 0;
+
   return (
     <div className="preview-wrap">
-      {/* Game info */}
-      {(venue || wx) && (
-        <div className="preview-card">
-          {venue && <div className="preview-info-row"><span className="preview-label">🏟 Venue</span><span>{venue}</span></div>}
-          {wx?.temperature && (
-            <div className="preview-info-row">
-              <span className="preview-label">{WEATHER_ICONS[wx.conditionId] || '🌤'} Weather</span>
-              <span>{wx.temperature}°F{wx.gust ? `, ${wx.gust}mph wind` : ''}</span>
+      {/* Combined info bar: venue · weather · win probability */}
+      {(venue || wx || predictor?.homeTeam) && (
+        <div className="preview-card preview-info-bar">
+          {/* Venue + Weather */}
+          <div className="preview-info-meta">
+            {venue && <span className="preview-info-chip">🏟 {venue}</span>}
+            {wx?.temperature && (
+              <span className="preview-info-chip">
+                {WEATHER_ICONS[wx.conditionId] || '🌤'} {wx.temperature}°{wx.gust ? ` · ${wx.gust}mph` : ''}
+              </span>
+            )}
+          </div>
+
+          {/* Win probability circle */}
+          {predictor?.homeTeam && (
+            <div className="preview-prob-circle-wrap">
+              <div className="preview-prob-side">
+                <LogoImg team={away?.team} className="preview-team-logo" />
+                <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
+                <span className="preview-prob-pct">{awayPct}%</span>
+              </div>
+              {/* SVG donut */}
+              <svg width="52" height="52" viewBox="0 0 52 52" className="preview-prob-donut">
+                <circle cx="26" cy="26" r="20" fill="none" stroke="var(--bg3)" strokeWidth="7" />
+                <circle cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" strokeWidth="7"
+                  strokeDasharray={`${awayPct * 1.257} 125.7`}
+                  strokeDashoffset="31.4"
+                  strokeLinecap="butt"
+                  transform="rotate(-90 26 26)" />
+                <circle cx="26" cy="26" r="20" fill="none" stroke="#60a5fa" strokeWidth="7"
+                  strokeDasharray={`${homePct * 1.257} 125.7`}
+                  strokeDashoffset={`${-(awayPct * 1.257) + 31.4}`}
+                  strokeLinecap="butt"
+                  transform="rotate(-90 26 26)" />
+              </svg>
+              <div className="preview-prob-side preview-prob-side-right">
+                <span className="preview-prob-pct">{homePct}%</span>
+                <span className="preview-prob-abbr">{home?.team?.abbreviation}</span>
+                <LogoImg team={home?.team} className="preview-team-logo" />
+              </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Win probability */}
-      {predictor?.homeTeam && (
-        <div className="preview-card">
-          <div className="preview-card-title">Win Probability</div>
-          <div className="preview-prob-row">
-            <div className="preview-prob-team">
-              <LogoImg team={away?.team} className="preview-team-logo" />
-              <span>{away?.team?.abbreviation}</span>
-              <span className="preview-prob-pct">{predictor.awayTeam?.gameProjection}%</span>
-            </div>
-            <div className="preview-prob-bar">
-              <div className="preview-prob-fill-away" style={{ width: `${predictor.awayTeam?.gameProjection}%` }} />
-              <div className="preview-prob-fill-home" style={{ width: `${predictor.homeTeam?.gameProjection}%` }} />
-            </div>
-            <div className="preview-prob-team preview-prob-team-right">
-              <span className="preview-prob-pct">{predictor.homeTeam?.gameProjection}%</span>
-              <span>{home?.team?.abbreviation}</span>
-              <LogoImg team={home?.team} className="preview-team-logo" />
-            </div>
-          </div>
         </div>
       )}
 
@@ -2013,18 +2025,20 @@ export default function BoxScorePage() {
             mlbTotals={mlbInnings.length > 0 ? mlbTotals : null}
             mlbInningDisplay={mlbInningDisplay} />
 
-          {/* Tabs */}
-          <div className="bsp-tabs-row">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                className={`bsp-tab-btn ${activeTab === tab ? 'bsp-tab-btn-active' : ''}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {/* Tabs — hidden when only one tab (pre-game Preview) */}
+          {tabs.length > 1 && (
+            <div className="bsp-tabs-row">
+              {tabs.map((tab) => (
+                <button
+                  key={tab}
+                  className={`bsp-tab-btn ${activeTab === tab ? 'bsp-tab-btn-active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Tab content */}
           <div className="bsp-tab-content">
