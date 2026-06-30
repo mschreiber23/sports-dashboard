@@ -1137,45 +1137,67 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Starting pitchers */}
       {sport === 'mlb' && (
         <div className="preview-card">
-          <div className="preview-pitchers">
-            {[away, home].filter(Boolean).map((c) => {
+          {/* Team header: [WSH abbr][WSH logo]  ·  [PHI logo][PHI abbr] */}
+          <div className="preview-leaders-team-header" style={{marginBottom:8}}>
+            <div className="preview-leaders-th-side">
+              <span className="preview-leaders-th-abbr">{away?.team?.abbreviation}</span>
+              <LogoImg team={away?.team} className="preview-team-logo" />
+            </div>
+            <div className="preview-leaders-th-side preview-leaders-th-right">
+              <LogoImg team={home?.team} className="preview-team-logo" />
+              <span className="preview-leaders-th-abbr">{home?.team?.abbreviation}</span>
+            </div>
+          </div>
+
+          {/* Pitcher matchup — same layout as batting leaders */}
+          <div className="preview-leaders-matchup">
+            {[away, home].filter(Boolean).map((c, idx) => {
+              const isHome = idx === 1;
               const probable = c.probables?.[0];
-              if (!probable) return null;
+              if (!probable) return (
+                <div key={c.team?.id} className={`preview-leaders-player${isHome ? ' preview-leaders-player-right' : ''}`}>
+                  {isHome && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+                  <div className={`preview-leaders-stat-col preview-leaders-stat-col-${isHome ? 'right' : 'left'}`}>
+                    <span className="preview-leaders-name">TBD</span>
+                  </div>
+                  {!isHome && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+                </div>
+              );
               const ath = probable.athlete;
-              // Stats come as flat array OR splits.categories depending on endpoint
               const statsArr = Array.isArray(probable.statistics) ? probable.statistics : [];
               const statCats = probable.statistics?.splits?.categories || [];
               const statMap = {};
-              statsArr.forEach((s) => { statMap[s.abbreviation] = s.displayValue; });
-              statCats.forEach((s) => { statMap[s.abbreviation] = s.displayValue; });
-              const wl = statMap['W'] && statMap['L'] ? `${statMap['W']}-${statMap['L']}` : null;
+              statsArr.forEach(s => { statMap[s.abbreviation] = s.displayValue; });
+              statCats.forEach(s => { statMap[s.abbreviation] = s.displayValue; });
+              const wl  = statMap['W'] && statMap['L'] ? `${statMap['W']}-${statMap['L']}` : null;
               const era = statMap['ERA'] || null;
-              const ip  = statMap['IP'] || (statMap['FI'] !== undefined ? `${statMap['FI']}.${statMap['PI'] || 0}` : null);
+              const ip  = statMap['IP'] || (statMap['FI'] !== undefined ? `${statMap['FI']}.${statMap['PI']||0}` : null);
               const so  = statMap['SO'] || statMap['K'] || null;
-              const statGrid = [wl && {v:wl,l:'W-L'}, era && {v:era,l:'ERA'}, ip && {v:ip,l:'IP'}, so && {v:so,l:'SO'}].filter(Boolean);
+              const statGrid = [wl&&{v:wl,l:'W-L'},era&&{v:era,l:'ERA'},ip&&{v:ip,l:'IP'},so&&{v:so,l:'SO'}].filter(Boolean);
+              const name = ath?.shortName || ath?.fullName || 'TBD';
+              const hand = ath?.throws?.abbreviation;
               return (
-                <div key={c.team?.id} className="preview-pitcher">
-                  <div className="preview-pitcher-header">
-                    <LogoImg team={c.team} className="preview-pitcher-team" />
-                    <span className="preview-pitcher-team-abbr">{c.team?.abbreviation}</span>
+                <div key={c.team?.id} className={`preview-leaders-player${isHome ? ' preview-leaders-player-right' : ''}`}>
+                  {/* Avatar always in center (dom order: away=[stats][photo], home=[photo][stats]) */}
+                  {isHome && ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />}
+                  {isHome && !ath?.headshot?.href && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
+
+                  <div className={`preview-leaders-stat-col preview-leaders-stat-col-${isHome ? 'right' : 'left'}`}>
+                    <span className="preview-leaders-name">{name}{hand ? <span className="preview-pitcher-sub" style={{marginLeft:4}}>{hand}HP</span> : null}</span>
+                    {statGrid.length > 0 && (
+                      <div className={`preview-leaders-stats${isHome ? ' preview-leaders-stats-right' : ''}`}>
+                        {statGrid.map((s,i) => (
+                          <span key={s.l} style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'0 4px'}}>
+                            <span className="mlbc-pstat-val">{s.v}</span>
+                            <span className="mlbc-pstat-lbl">{s.l}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="preview-pitcher-row">
-                    {ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-pitcher-avatar" />}
-                    <div className="preview-pitcher-info">
-                      <div className="preview-pitcher-name">{ath?.shortName || ath?.fullName}</div>
-                      {ath?.throws?.abbreviation && <div className="preview-pitcher-sub">{ath.throws.abbreviation}HP</div>}
-                      {statGrid.length > 0 && (
-                        <div className="mlbc-pitcher-statrow" style={{marginTop:3}}>
-                          {statGrid.map(s => (
-                            <div key={s.l} className="mlbc-pstat">
-                              <span className="mlbc-pstat-val">{s.v}</span>
-                              <span className="mlbc-pstat-lbl">{s.l}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+
+                  {!isHome && ath?.headshot?.href && <img src={ath.headshot.href} alt="" className="preview-leaders-avatar" onError={e=>e.target.style.display='none'} />}
+                  {!isHome && !ath?.headshot?.href && <div className="preview-leaders-avatar preview-leaders-avatar-empty" />}
                 </div>
               );
             })}
