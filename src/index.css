@@ -2856,8 +2856,8 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .bsp-ls-team-col { text-align: left; padding-left: 14px; min-width: 80px; }
-.bsp-ls-rhe { border-left: 1px solid var(--border); color: var(--text); }
-.bsp-ls-td { padding: 9px 8px; text-align: center; color: var(--text2); font-variant-numeric: tabular-nums; }
+.bsp-ls-rhe { border-left: 1px solid var(--border); color: #9898a8; }
+.bsp-ls-td { padding: 9px 8px; text-align: center; color: #ffffff; font-variant-numeric: tabular-nums; }
 .bsp-ls-team-col.bsp-ls-td { text-align: left; padding-left: 14px; display: flex; align-items: center; gap: 7px; }
 .bsp-ls-logo { width: 18px; height: 18px; object-fit: contain; }
 .bsp-ls-abbr { font-weight: 700; font-size: 12px; color: var(--text); }
@@ -6227,14 +6227,14 @@ thead .dfs-sticky-player {
 
 /* Line score inside box score */
 .bsp-linescore-wrap {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  background: #0f0f13;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
 }
 .bsp-linescore { font-size: 12px; }
-.bsp-ls-th { padding: 7px 6px; font-size: 10px; }
-.bsp-ls-td { padding: 7px 6px; font-size: 12px; }
+.bsp-ls-th { padding: 7px 6px; font-size: 10px; background: #0f0f13; }
+.bsp-ls-td { padding: 7px 6px; font-size: 12px; color: #ffffff; }
 
 /* Game notes — inline pills */
 .bsp-mlb-notes { padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
