@@ -3660,7 +3660,7 @@ body {
   top: 0;
   padding-top: env(safe-area-inset-top, 0px); /* clear Dynamic Island / notch */
   z-index: 100;
-  background: var(--bg2);
+  background: #0f0f13; /* matches Dynamic Island area color */
   /* Allow absolutely-positioned expanded scores to overflow below */
   overflow: visible;
 }
