@@ -1102,35 +1102,6 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
             </div>
           )}
 
-          {/* Win probability circle */}
-          {predictor?.homeTeam && (
-            <div className="preview-prob-circle-wrap">
-              <div className="preview-prob-side">
-                <LogoImg team={away?.team} className="preview-team-logo" />
-                <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
-                <span className="preview-prob-pct">{awayPct}%</span>
-              </div>
-              {/* SVG donut */}
-              <svg width="52" height="52" viewBox="0 0 52 52" className="preview-prob-donut">
-                <circle cx="26" cy="26" r="20" fill="none" stroke="var(--bg3)" strokeWidth="7" />
-                <circle cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" strokeWidth="7"
-                  strokeDasharray={`${awayPct * 1.257} 125.7`}
-                  strokeDashoffset="31.4"
-                  strokeLinecap="butt"
-                  transform="rotate(-90 26 26)" />
-                <circle cx="26" cy="26" r="20" fill="none" stroke="#60a5fa" strokeWidth="7"
-                  strokeDasharray={`${homePct * 1.257} 125.7`}
-                  strokeDashoffset={`${-(awayPct * 1.257) + 31.4}`}
-                  strokeLinecap="butt"
-                  transform="rotate(-90 26 26)" />
-              </svg>
-              <div className="preview-prob-side preview-prob-side-right">
-                <span className="preview-prob-pct">{homePct}%</span>
-                <span className="preview-prob-abbr">{home?.team?.abbreviation}</span>
-                <LogoImg team={home?.team} className="preview-team-logo" />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -1208,6 +1179,35 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Season leaders */}
       {sport === 'mlb' && leaders.length > 0 && (
         <GameLeaders leaders={leaders} away={away} home={home} />
+      )}
+
+      {/* Matchup predictor — own section between leaders and lineups */}
+      {predictor?.homeTeam && (
+        <div className="preview-card preview-predictor-card">
+          <div className="preview-card-title">Win Probability</div>
+          <div className="preview-prob-circle-wrap">
+            <div className="preview-prob-side">
+              <LogoImg team={away?.team} className="preview-team-logo" />
+              <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
+              <span className="preview-prob-pct">{awayPct}%</span>
+            </div>
+            <svg width="52" height="52" viewBox="0 0 52 52" className="preview-prob-donut">
+              <circle cx="26" cy="26" r="20" fill="none" stroke="var(--bg3)" strokeWidth="7" />
+              <circle cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" strokeWidth="7"
+                strokeDasharray={`${awayPct * 1.257} 125.7`}
+                strokeDashoffset="31.4" strokeLinecap="butt" transform="rotate(-90 26 26)" />
+              <circle cx="26" cy="26" r="20" fill="none" stroke="#60a5fa" strokeWidth="7"
+                strokeDasharray={`${homePct * 1.257} 125.7`}
+                strokeDashoffset={`${-(awayPct * 1.257) + 31.4}`}
+                strokeLinecap="butt" transform="rotate(-90 26 26)" />
+            </svg>
+            <div className="preview-prob-side preview-prob-side-right">
+              <span className="preview-prob-pct">{homePct}%</span>
+              <span className="preview-prob-abbr">{home?.team?.abbreviation}</span>
+              <LogoImg team={home?.team} className="preview-team-logo" />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* MLB: Batting lineups */}
