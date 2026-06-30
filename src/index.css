@@ -984,7 +984,7 @@ body {
 /* Mobile */
 @media (max-width: 640px) {
   .main { padding: 12px 12px 40px; gap: 24px; }
-  .section-title { font-size: 18px; }
+  .section-title { font-size: 13px; font-weight: 800; }
   .stat-value { font-size: 15px; }
   .tp-header-logo { width: 40px; height: 40px; }
   .tp-header-name { font-size: 18px; }
