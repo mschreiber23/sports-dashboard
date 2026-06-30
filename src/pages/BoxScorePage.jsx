@@ -988,8 +988,9 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
   const homeH2H = useH2HStats(homeBatterIds, pitcherMlbIds?.away);
 
   // Pitcher names for the header label
-  const awayOppName = pitcherMlbIds?.homeName || '';  // pitcher away batters face
-  const homeOppName = pitcherMlbIds?.awayName || '';  // pitcher home batters face
+  const lastName = (name) => name ? name.split(' ').slice(-1)[0] : '';
+  const awayOppName = lastName(pitcherMlbIds?.homeName);  // pitcher away batters face
+  const homeOppName = lastName(pitcherMlbIds?.awayName);  // pitcher home batters face
 
   const formatH2H = (stat) => {
     if (!stat || !stat.atBats) return 'No past matchups';
