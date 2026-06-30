@@ -2571,7 +2571,7 @@ body {
 .preview-lineup-side-header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   margin-bottom: 6px;
 }
 .preview-lineup-side-info {

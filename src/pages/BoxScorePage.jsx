@@ -955,17 +955,15 @@ function BattingLineups({ lineups, lineupLoading, away, home }) {
       <div className="preview-lineup-side">
         <div className="preview-lineup-side-header">
           <LogoImg team={team?.team} className="preview-team-logo" />
-          <div className="preview-lineup-side-info">
-            <span className="preview-lineup-team-abbr">{team?.team?.abbreviation}</span>
-            {(loading || lu === null)
-              ? <span className="preview-lineup-badge preview-lineup-badge-loading">Loading…</span>
-              : lu.confirmed
-                ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓ Confirmed</span>
-                : lu.fromDate
-                  ? <span className="preview-lineup-badge preview-lineup-badge-projected">⟳ Projected</span>
-                  : null
-            }
-          </div>
+          <span className="preview-lineup-team-abbr">{team?.team?.abbreviation}</span>
+          {(loading || lu === null)
+            ? <span className="preview-lineup-badge preview-lineup-badge-loading">Loading…</span>
+            : lu.confirmed
+              ? <span className="preview-lineup-badge preview-lineup-badge-confirmed">✓ Confirmed</span>
+              : lu.fromDate
+                ? <span className="preview-lineup-badge preview-lineup-badge-projected">⟳ Projected</span>
+                : null
+          }
         </div>
 
         {/* null = not yet fetched, treat same as loading */}
