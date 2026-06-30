@@ -347,13 +347,26 @@ async function fetchMlbLiveScores(dateStr, espnGames) {
 }
 
 /* ── Main Component ──────────────────────────────────── */
+function readSbCache(sport, dateStr) {
+  try {
+    const ck = `sb_${sport}_${dateStr}`;
+    const cached = JSON.parse(localStorage.getItem(ck) || 'null');
+    if (cached?.ts && Date.now() - cached.ts < 120000 && cached.data?.length) return cached.data;
+  } catch {}
+  return null;
+}
+
 export default function TodaysScores({ compact = false, onCollapse }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
-  const [activeSport, setActiveSport] = useState(sportOrder[0] || 'mlb');
-  const [rawGames, setRawGames] = useState([]);
+  const defaultSport = sportOrder[0] || 'mlb';
+  const todayDateStr = toDateStr(new Date());
+
+  const [activeSport, setActiveSport] = useState(defaultSport);
+  // Seed rawGames from cache immediately — zero flicker on remount
+  const [rawGames, setRawGames] = useState(() => readSbCache(defaultSport, todayDateStr) || []);
   const [mlbScores, setMlbScores] = useState({});
   const [nhlScores, setNhlScores] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !readSbCache(defaultSport, todayDateStr));
   const [expanded, setExpanded] = useState(false);
   const [editOrder, setEditOrder] = useState(false);
   const pollRef = useRef(null);
@@ -392,19 +405,12 @@ export default function TodaysScores({ compact = false, onCollapse }) {
   };
 
   useEffect(() => {
-    // Show cached games instantly — eliminates ticker blink on load
     const dateStr = toDateStr(selectedDate);
     const ck = `sb_${activeSport}_${dateStr}`;
-    try {
-      const cached = JSON.parse(localStorage.getItem(ck) || 'null');
-      if (cached?.ts && Date.now() - cached.ts < 120000 && cached.data?.length) {
-        setRawGames(cached.data);
-        setLoading(false);
-      } else {
-        setLoading(true);
-        setRawGames([]);
-      }
-    } catch { setLoading(true); setRawGames([]); }
+    // Seed from cache immediately if sport/date changed
+    const cached = readSbCache(activeSport, dateStr);
+    if (cached) { setRawGames(cached); setLoading(false); }
+    else { setLoading(true); /* keep existing rawGames visible until fresh data arrives */ }
 
     setMlbScores({});
     clearInterval(pollRef.current);
