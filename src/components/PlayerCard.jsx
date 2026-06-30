@@ -192,7 +192,6 @@ export default function PlayerCard({ player, sport }) {
         {!loading && (error || seasonStats.length === 0) && (
           <div className="sports-card-loading">No stats available</div>
         )}
-        <div className="sports-card-season">2025-26 Season</div>
       </div>
     </div>
   );

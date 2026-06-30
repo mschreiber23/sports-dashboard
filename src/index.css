@@ -438,7 +438,7 @@ body {
   font-weight: 900;
   color: #fff;
   line-height: 1.2;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 0px 0px rgba(0,0,0,0.5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -471,6 +471,7 @@ body {
   color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  letter-spacing: -0.8px;
 }
 .sports-card-stat-label {
   font-size: 9px;
