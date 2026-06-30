@@ -2243,9 +2243,9 @@ body {
 .pp-tr:hover { background: rgba(255,255,255,0.03); }
 .pp-tr-current { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .pp-tr-career { background: var(--bg3); font-weight: 700; }
-.pp-td { padding: 6px 8px; text-align: right; color: var(--text2); font-variant-numeric: tabular-nums; font-size: 11px; letter-spacing: -1.2px; }
+.pp-td { padding: 6px 8px; text-align: right; color: #ffffff; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 300; letter-spacing: -1px; }
 .pp-td-season { text-align: left; padding-left: 12px; color: var(--text); font-weight: 600; }
-.pp-td-hl { font-weight: 700; color: var(--text); letter-spacing: -1.2px; }
+.pp-td-hl { font-weight: 300; color: var(--text); letter-spacing: -1px; }
 .pp-career-label { font-weight: 800; color: var(--text); }
 .pp-gl-atVs { font-size: 9px; color: var(--text2); text-transform: uppercase; }
 .pp-gl-result { font-weight: 800; font-size: 11px; }
