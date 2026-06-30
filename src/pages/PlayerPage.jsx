@@ -754,7 +754,6 @@ export default function PlayerPage() {
           {/* Career stats table */}
           <div className="pp-flat-section">
             <div className="pp-career-header">
-              <div className="pp-flat-title">{careerTitle}</div>
               {/* RHP/LHP tabs — MLB batters only */}
               {sport === 'mlb' && sportKey === 'mlb_batting' && Object.keys(splitsBySeason).length > 0 && (
                 <div className="pp-career-tabs">
