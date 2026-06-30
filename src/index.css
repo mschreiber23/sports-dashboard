@@ -2355,13 +2355,16 @@ body {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  padding-top: 4px !important; /* override preview-card padding-top */
 }
 .preview-info-meta {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  flex-direction: row;
+  gap: 0;
   flex: 1;
   min-width: 0;
+  flex-wrap: wrap;
 }
 .preview-info-chip {
   font-size: 11px;
@@ -2369,6 +2372,11 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.preview-info-chip-sep {
+  font-size: 11px;
+  color: var(--text2);
+  padding: 0 5px;
 }
 
 /* Win probability circle */
