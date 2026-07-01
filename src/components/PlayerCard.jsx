@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
 import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* ── Stat extraction — exactly 4 stats per position ─── */
 function extractSeasonStats(statsData, sport) {
@@ -135,9 +136,13 @@ export default function PlayerCard({ player, sport }) {
   if (stats) stats._position = position;
   const seasonStats = extractSeasonStats(stats, sport);
 
-  // Team color: live from bio, then stored, then accent
-  const rawColor = liveBio.teamColor || player.teamColor;
-  const teamColor = rawColor ? `#${rawColor}` : '#7c3aed';
+  // Team color: live from bio > stored top-level > stored team object > accent
+  const rawColor    = liveBio.teamColor    || player.teamColor    || player.team?.color;
+  const rawAltColor = liveBio.teamAltColor || player.teamAltColor || player.team?.alternateColor;
+  const primaryHex  = rawColor    ? `#${rawColor}`    : null;
+  const altHex      = rawAltColor ? `#${rawAltColor}` : null;
+  // Adapt color so very dark team colors are visible on the dark background
+  const teamColor = adaptColorForDarkBg(primaryHex, altHex);
   const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
 
   return (

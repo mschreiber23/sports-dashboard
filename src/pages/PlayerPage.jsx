@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
 import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* Format a stat value:
    - Rate stats (.265, 0.923, 1.023, 48.4%) → keep 3 decimals for baseball rates, 1 decimal for % rates
@@ -548,8 +549,12 @@ export default function PlayerPage() {
   const athlete = bio?.athlete || {};
   const summary = athlete.statsSummary?.statistics || [];
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
-  const teamColor = athlete.team?.color ? `#${athlete.team.color}` : null;
-  const teamAltColor = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
+  const teamColorRaw = athlete.team?.color ? `#${athlete.team.color}` : null;
+  const teamAltColorRaw = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
+  // Adapt color so very dark team colors (e.g. Eagles, Tigers, Yankees) are visible on dark bg.
+  // Keeps null when the athlete has no team color so conditional guards below still work.
+  const teamColor = teamColorRaw ? adaptColorForDarkBg(teamColorRaw, teamAltColorRaw) : null;
+  const teamAltColor = teamAltColorRaw;
 
   const careerTotals = (() => {
     if (!seasons.length) return {};
