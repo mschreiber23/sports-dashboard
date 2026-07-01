@@ -219,6 +219,43 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
             );
           })}
         </div>
+
+        {/* Batted ball data — exit velocity, launch angle, distance */}
+        {(() => {
+          const hd = pitches.find((p) => p.hitData?.launchSpeed != null)?.hitData;
+          if (!hd) return null;
+          const traj = (hd.trajectory || '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          return (
+            <div className="ab-hit-data">
+              {hd.launchSpeed != null && (
+                <div className="ab-hit-stat">
+                  <div className="ab-hit-val">{Number(hd.launchSpeed).toFixed(1)}</div>
+                  <div className="ab-hit-lbl">EV mph</div>
+                </div>
+              )}
+              {hd.launchAngle != null && (
+                <div className="ab-hit-stat">
+                  <div className="ab-hit-val">{hd.launchAngle > 0 ? '+' : ''}{Number(hd.launchAngle).toFixed(0)}°</div>
+                  <div className="ab-hit-lbl">Angle</div>
+                </div>
+              )}
+              {hd.totalDistance != null && hd.totalDistance > 0 && (
+                <div className="ab-hit-stat">
+                  <div className="ab-hit-val">{Math.round(hd.totalDistance)}</div>
+                  <div className="ab-hit-lbl">Dist ft</div>
+                </div>
+              )}
+              {traj && (
+                <div className="ab-hit-stat ab-hit-stat-wide">
+                  <div className="ab-hit-val">{traj}</div>
+                  <div className="ab-hit-lbl">Type</div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -1721,10 +1758,11 @@ function PlayerAbsSheet({ playerName, atBats, venueId, teamColor, teamAltColor, 
         </div>
         <div className="ab-modal-pitches" style={{paddingTop:0}}>
           {atBats.map((ab, i) => {
-            const result = ab.result || {};
+            const result  = ab.result || {};
             const pitches = (ab.playEvents || []).filter((e) => e.type === 'pitch');
             const inning  = ab.about?.inning;
             const half    = ab.about?.halfInning === 'top' ? '▲' : '▼';
+            const ev      = pitches.find((e) => e.hitData?.launchSpeed != null)?.hitData?.launchSpeed;
             return (
               <div key={i}
                 className={`ab-modal-pitch-row${pitches.length ? ' abs-row-clickable' : ''}`}
@@ -1732,9 +1770,14 @@ function PlayerAbsSheet({ playerName, atBats, venueId, teamColor, teamAltColor, 
                 onClick={pitches.length ? () => setDetailAtBat(ab) : undefined}>
                 <div className="abs-inning-chip">{half}{inning}</div>
                 <div className="ab-modal-pitch-info">
-                  <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`} style={{marginBottom:3}}>
-                    {result.event}
-                  </span>
+                  <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:3}}>
+                    <span className={`ab-event-badge ab-event-${(result.event||'').toLowerCase().replace(/\s+/g,'')}`}>
+                      {result.event}
+                    </span>
+                    {ev != null && (
+                      <span className="abs-ev-chip">{Number(ev).toFixed(1)} mph</span>
+                    )}
+                  </div>
                   <span className="ab-modal-pitch-result" style={{fontSize:13}}>{result.description}</span>
                   <span className="ab-modal-pitch-detail" style={{fontSize:11}}>
                     {pitches.length} pitch{pitches.length!==1?'es':''}

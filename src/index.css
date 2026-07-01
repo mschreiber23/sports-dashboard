@@ -6032,6 +6032,52 @@ thead .dfs-sticky-player {
 .abs-row-clickable { cursor: pointer; transition: background 0.1s; border-radius: 8px; }
 .abs-row-clickable:hover { background: var(--bg3); }
 
+/* Exit velocity chip in AB list rows */
+.abs-ev-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  padding: 1px 5px;
+  letter-spacing: .2px;
+  white-space: nowrap;
+}
+
+/* Batted ball data section inside AtBatModal */
+.ab-hit-data {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.ab-hit-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 4px 8px;
+  border-right: 1px solid var(--border);
+}
+.ab-hit-stat:last-child { border-right: none; }
+.ab-hit-stat-wide { flex: 1.4; }
+.ab-hit-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: -.4px;
+}
+.ab-hit-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-top: 3px;
+}
+
 /* ── Clean Gamecast UI ────────────────────────────────── */
 /* Card wrapping pitcher | diamond | batter + on-deck */
 .gc-matchup-card {
