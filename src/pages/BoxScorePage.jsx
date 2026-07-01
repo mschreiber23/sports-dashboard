@@ -1627,20 +1627,23 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
   const BAT_LABELS = ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'];
   const PIT_LABELS = ['IP','H','R','ER','BB','K','ERA'];
 
-  const fmtBat = (b = {}) => [
-    String(b.atBats      ?? '—'), String(b.runs        ?? '—'),
-    String(b.hits        ?? '—'), String(b.rbi         ?? '—'),
-    String(b.homeRuns    ?? '—'), String(b.baseOnBalls ?? '—'),
-    String(b.strikeOuts  ?? '—'),
-    b.avg ?? '.---', b.obp ?? '.---', b.slg ?? '.---',
+  // game = current-game counting stats; season = season-to-date rate stats
+  const fmtBat = (game = {}, season = {}) => [
+    String(game.atBats      ?? '—'), String(game.runs        ?? '—'),
+    String(game.hits        ?? '—'), String(game.rbi         ?? '—'),
+    String(game.homeRuns    ?? '—'), String(game.baseOnBalls ?? '—'),
+    String(game.strikeOuts  ?? '—'),
+    season.avg ?? game.avg ?? '.---',
+    season.obp ?? game.obp ?? '.---',
+    season.slg ?? game.slg ?? '.---',
   ];
 
-  const fmtPit = (p = {}) => [
-    p.inningsPitched ?? '—',
-    String(p.hits        ?? '—'), String(p.runs        ?? '—'),
-    String(p.earnedRuns  ?? '—'), String(p.baseOnBalls ?? '—'),
-    String(p.strikeOuts  ?? '—'),
-    p.era ?? '-.--',
+  const fmtPit = (game = {}, season = {}) => [
+    game.inningsPitched ?? '—',
+    String(game.hits        ?? '—'), String(game.runs        ?? '—'),
+    String(game.earnedRuns  ?? '—'), String(game.baseOnBalls ?? '—'),
+    String(game.strikeOuts  ?? '—'),
+    season.era ?? game.era ?? '-.--',
   ];
 
   const sn = (full = '') => {
@@ -1682,11 +1685,11 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
           position: { abbreviation: p.position?.abbreviation || '' },
           starter: !isSub,
           didNotPlay: !p.stats?.batting,
-          stats: p.stats?.batting ? fmtBat(p.stats.batting) : [],
+          stats: p.stats?.batting ? fmtBat(p.stats.batting, p.seasonStats?.batting || {}) : [],
         };
       });
 
-    const batTotals = fmtBat(td.teamStats?.batting || {});
+    const batTotals = fmtBat(td.teamStats?.batting || {}, td.teamStats?.batting || {});
 
     // Pitchers in appearance order
     const pitcherIds = td.pitchers || [];
@@ -1703,11 +1706,11 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
           position: { abbreviation: p.position?.abbreviation || 'P' },
           starter: i === 0,
           didNotPlay: false,
-          stats: fmtPit(p.stats.pitching),
+          stats: fmtPit(p.stats.pitching, p.seasonStats?.pitching || {}),
         };
       });
 
-    const pitTotals = fmtPit(td.teamStats?.pitching || {});
+    const pitTotals = fmtPit(td.teamStats?.pitching || {}, td.teamStats?.pitching || {});
 
     return {
       team: espnComp?.team || {},
