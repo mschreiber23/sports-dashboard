@@ -1583,6 +1583,107 @@ const COLS = {
 };
 const HL = { mlb: ['H','HR','RBI','ERA'], nba: ['PTS','REB','AST'], nfl: ['YDS','TD'], nhl: ['G','A','PTS'] };
 
+/* ── Convert MLB live boxscore → ESPN-compatible shape for StatsTable ── */
+function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
+  if (!mlbBoxscore?.teams) return null;
+
+  const BAT_LABELS = ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'];
+  const PIT_LABELS = ['IP','H','R','ER','BB','K','ERA'];
+
+  const fmtBat = (b = {}) => [
+    String(b.atBats      ?? '—'), String(b.runs        ?? '—'),
+    String(b.hits        ?? '—'), String(b.rbi         ?? '—'),
+    String(b.homeRuns    ?? '—'), String(b.baseOnBalls ?? '—'),
+    String(b.strikeOuts  ?? '—'),
+    b.avg ?? '.---', b.obp ?? '.---', b.slg ?? '.---',
+  ];
+
+  const fmtPit = (p = {}) => [
+    p.inningsPitched ?? '—',
+    String(p.hits        ?? '—'), String(p.runs        ?? '—'),
+    String(p.earnedRuns  ?? '—'), String(p.baseOnBalls ?? '—'),
+    String(p.strikeOuts  ?? '—'),
+    p.era ?? '-.--',
+  ];
+
+  const sn = (full = '') => {
+    const parts = full.split(' ');
+    return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
+  };
+
+  // Build ESPN-id lookup from ESPN groups so player nav links stay correct
+  const normStr = (s) => (s || '').toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z]/g, '');
+  const espnIds = {};
+  for (const grp of (espnGroups || [])) {
+    for (const sg of (grp?.statistics || [])) {
+      for (const ath of (sg?.athletes || [])) {
+        const n = normStr(ath.athlete?.displayName || '');
+        if (n && ath.athlete?.id) espnIds[n] = ath.athlete.id;
+      }
+    }
+  }
+
+  const buildGroup = (side, espnComp) => {
+    const td = mlbBoxscore.teams[side] || {};
+    const pl = td.players || {};
+
+    // Batters in batting-order sequence (all who appeared)
+    const batterIds = td.batters || [];
+    const batters = batterIds
+      .map(id => pl[`ID${id}`]).filter(Boolean)
+      .map(p => {
+        const bo  = parseInt(p.battingOrder ?? '0', 10);
+        const isSub = bo > 0 && bo % 100 !== 0;
+        const full  = p.person?.fullName || '';
+        return {
+          athlete: {
+            id: espnIds[normStr(full)] || String(p.person?.id || ''),
+            displayName: full,
+            shortName: sn(full),
+          },
+          position: { abbreviation: p.position?.abbreviation || '' },
+          starter: !isSub,
+          didNotPlay: !p.stats?.batting,
+          stats: p.stats?.batting ? fmtBat(p.stats.batting) : [],
+        };
+      });
+
+    const batTotals = fmtBat(td.teamStats?.batting || {});
+
+    // Pitchers in appearance order
+    const pitcherIds = td.pitchers || [];
+    const pitchers = pitcherIds
+      .map(id => pl[`ID${id}`]).filter(p => p?.stats?.pitching)
+      .map((p, i) => {
+        const full = p.person?.fullName || '';
+        return {
+          athlete: {
+            id: espnIds[normStr(full)] || String(p.person?.id || ''),
+            displayName: full,
+            shortName: sn(full),
+          },
+          position: { abbreviation: p.position?.abbreviation || 'P' },
+          starter: i === 0,
+          didNotPlay: false,
+          stats: fmtPit(p.stats.pitching),
+        };
+      });
+
+    const pitTotals = fmtPit(td.teamStats?.pitching || {});
+
+    return {
+      team: espnComp?.team || {},
+      statistics: [
+        { type: 'batting',  name: 'batting',  labels: BAT_LABELS, athletes: batters,  totals: batTotals  },
+        { type: 'pitching', name: 'pitching', labels: PIT_LABELS, athletes: pitchers, totals: pitTotals  },
+      ],
+    };
+  };
+
+  return [buildGroup('away', awayComp), buildGroup('home', homeComp)];
+}
+
 function getColKey(sport, type) {
   if (sport === 'mlb') return type === 'pitching' ? 'mlb_pitching' : 'mlb_batting';
   if (sport === 'nba') return 'nba';
@@ -1987,6 +2088,12 @@ export default function BoxScorePage() {
   const homeDetails = bsTeams.find((t) => t.team?.id === home?.team?.id)?.details || [];
   const groupDetails = [awayDetails, homeDetails];
 
+  // For live MLB games, build groups from MLB live feed (real-time) instead of stale ESPN data
+  const mlbLiveGroups = isLive && sport === 'mlb' && mlbFeed.raw?.liveData?.boxscore
+    ? buildMlbLiveGroups(mlbFeed.raw.liveData.boxscore, away, home, groups)
+    : null;
+  const activeGroups = mlbLiveGroups || groups;
+
   const isPre = status?.type?.state === 'pre';
 
   // Fetch MLB batting lineups for pre-game pages
@@ -2157,7 +2264,7 @@ export default function BoxScorePage() {
                   mlbInnings={mlbInnings} mlbTotals={mlbTotals} />
 
                 {/* Team selector — clean segmented pill */}
-                {groups.length > 1 && (
+                {activeGroups.length > 1 && (
                   <div className="bs-team-seg">
                     {[0, 1].map((idx) => {
                       const team = idx === 0 ? away : home;
@@ -2186,9 +2293,9 @@ export default function BoxScorePage() {
                   />
                 )}
 
-                {groups[bsTeam] && (
+                {activeGroups[bsTeam] && (
                   <TeamStats
-                    group={groups[bsTeam]} sport={sport} teamDetails={groupDetails[bsTeam]}
+                    group={activeGroups[bsTeam]} sport={sport} teamDetails={groupDetails[bsTeam]}
                     allAtBats={mlbFeed.allAtBats || []}
                     onShowAbs={setPlayerAbsData}
                     venueId={home?.team?.id}
@@ -2196,7 +2303,7 @@ export default function BoxScorePage() {
                     teamAltColor={home?.team?.alternateColor}
                   />
                 )}
-                {!groups.length && <div className="empty-state"><div className="empty-icon">📋</div><p>Box score not available yet.</p></div>}
+                {!activeGroups.length && <div className="empty-state"><div className="empty-icon">📋</div><p>Box score not available yet.</p></div>}
               </div>
             )}
 
