@@ -95,13 +95,13 @@ function TeamsIcon({ active }) {
   );
 }
 
-// Nav order: ShribeIQ - Standings - Shribely Logo - Players - Leaders
+// Nav order: ShribeIQ - Standings - Shribely Logo - Leaders - Cards
 const NAV_ITEMS = [
   { path: '/dfs',       label: 'ShribeIQ',  Icon: DFSIcon },
   { path: '/standings', label: 'Standings', Icon: StandingsIcon },
   { path: '/',          label: '',          logo: true },
-  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
   { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
+  { path: '/players',   label: 'Cards',     Icon: PlayersIcon },
 ];
 
 function NavItem({ item, active }) {
