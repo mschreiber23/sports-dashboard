@@ -5977,7 +5977,7 @@ thead .dfs-sticky-player {
   min-width: 0;
 }
 .mlb-pbp-desc {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text);
   line-height: 1.4;
@@ -5995,7 +5995,7 @@ thead .dfs-sticky-player {
   gap: 6px;
 }
 .mlb-pbp-runners-text {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text2);
   font-style: italic;
 }

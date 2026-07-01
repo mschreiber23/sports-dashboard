@@ -2084,6 +2084,7 @@ export default function BoxScorePage() {
       if (isPre) setActiveTab('Preview');
       else if (sport === 'nhl') setActiveTab('Gamecast'); // NHL always defaults to Gamecast
       else if (isFinal) setActiveTab('Box Score');
+      else if (isLive && sport === 'mlb') setActiveTab('Live');
       else setActiveTab('Gamecast');
     }
   }, [loading, isLive, isPre, sport]);
@@ -2092,6 +2093,8 @@ export default function BoxScorePage() {
     ? ['Preview']
     : sport === 'nhl'
     ? ['Gamecast', 'Box Score', 'Play-by-Play']  // NHL always has Gamecast
+    : isLive && sport === 'mlb'
+    ? ['Live', 'Box Score', 'Play-by-Play', 'Scoring Plays']
     : isLive
     ? ['Gamecast', 'Box Score', 'Play-by-Play']
     : ['Box Score', 'Play-by-Play', 'Scoring Summary'];
@@ -2130,7 +2133,7 @@ export default function BoxScorePage() {
                 lineups={lineups} lineupLoading={lineupLoading} pitcherMlbIds={pitcherMlbIds} />
             )}
 
-            {activeTab === 'Gamecast' && (
+            {(activeTab === 'Gamecast' || activeTab === 'Live') && (
               sport === 'mlb'
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
                 : sport === 'nhl'
@@ -2138,7 +2141,7 @@ export default function BoxScorePage() {
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 
-            {activeTab === 'Scoring Summary' && (
+            {(activeTab === 'Scoring Summary' || activeTab === 'Scoring Plays') && (
               sport === 'mlb' && mlbGamePk
                 ? <MlbScoringSummary mlbGamePk={mlbGamePk}
                     venueId={home?.team?.id}

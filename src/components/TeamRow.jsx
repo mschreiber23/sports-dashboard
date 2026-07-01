@@ -243,7 +243,7 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
     <div className="mlbc-card" style={accentColor ? {background:`linear-gradient(135deg,color-mix(in srgb,${accentColor} 15%,var(--bg2)) 0%,var(--bg2) 55%)`,
       borderColor:`color-mix(in srgb,${accentColor} 55%,transparent)`,
       boxShadow:`0 0 12px color-mix(in srgb,${accentColor} 25%,transparent)`} : undefined}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Live' } })}>
       <div className="mlbc-live-body">
         <MlbTeamRows away={away} home={home} sport={sport} mlbTotals={mlbTotals} showRHE
           liveLabel={
@@ -333,7 +333,7 @@ function MlbLiveCard({ game, sport, navigate, accentColor }) {
       )}
       <div className="mlbc-divider" />
       <div className="mlbc-actions">
-        <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Gamecast'}});}}>Gamecast</span>
+        <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Live'}});}}>Live</span>
         <span className="mlbc-action-btn" onClick={(ev)=>{ev.stopPropagation();navigate(`/boxscore/${sport}/${game.id}`,{state:{tab:'Play-by-Play'}});}}>Play-by-Play</span>
       </div>
     </div>
@@ -916,7 +916,7 @@ function LiveBar({ game, teamId, sport, liveData, mlbFeed, onBoxScore }) {
           </div>
         </div>
         <div className="lv-actions">
-          <button className="lv-btn" onClick={() => goTo('Gamecast')}>Gamecast</button>
+          <button className="lv-btn" onClick={() => goTo('Live')}>Live</button>
           <button className="lv-btn" onClick={() => goTo('Box Score')}>Box Score</button>
         </div>
       </div>
@@ -1157,7 +1157,7 @@ function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
   );
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Gamecast' } })}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: sport === 'mlb' ? 'Live' : 'Gamecast' } })}>
         <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel}
           awayScoreOverride={awayOverride} homeScoreOverride={homeOverride} />
       </div>
