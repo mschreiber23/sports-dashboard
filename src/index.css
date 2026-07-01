@@ -6135,8 +6135,8 @@ thead .dfs-sticky-player {
 
 /* ── Due Up (between innings) ─────────────────────────── */
 .gc-due-up-card {
-  background: var(--bg3);
-  border: 1px solid var(--border);
+  background: #0f0f13;
+  border: none;
   border-radius: 12px;
   padding: 12px 14px;
   margin: 6px 0 8px;
