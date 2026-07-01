@@ -45,7 +45,7 @@ const nflGroup     = (pos) => {
 /* ── Stat display configs (ESPN label → display label) ── */
 const STAT_CFGS = {
   mlb_batter: [
-    {s:'AB',l:'AB'},{s:'R',l:'R'},{s:'H',l:'H'},{s:'RBI',l:'RBI'},
+    {s:'H_AB',l:'AB',combo:{h:'H',ab:'AB'}},{s:'R',l:'R'},{s:'RBI',l:'RBI'},
     {s:'HR',l:'HR'},{s:'BB',l:'BB'},{s:'K',l:'K'},
     {s:'AVG',l:'AVG'},{s:'OBP',l:'OBP'},{s:'SLG',l:'SLG'},
   ],
@@ -332,9 +332,18 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
             <>
               <div className="pc-season-label">2026 Season Stats</div>
               <div className="pc-stats-grid">
-                {statCfg.map(({ s, l }) => {
-                  const val = gameData.seasonStats[s];
-                  if (val === undefined) return null;
+                {statCfg.map((cfg) => {
+                  const { s, l, combo } = cfg;
+                  let val;
+                  if (combo) {
+                    const h  = gameData.seasonStats[combo.h];
+                    const ab = gameData.seasonStats[combo.ab];
+                    if (h === undefined && ab === undefined) return null;
+                    val = `${h ?? '0'}-${ab ?? '0'}`;
+                  } else {
+                    val = gameData.seasonStats[s];
+                    if (val === undefined) return null;
+                  }
                   return (
                     <div key={s} className="pc-stat-cell">
                       <div className="pc-stat-val">{val}</div>
@@ -351,9 +360,18 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
       {/* Live / final: game stats */}
       {(state === 'in' || state === 'post') && gameData?.statMap && statCfg.length > 0 && (
         <div className="pc-stats-grid">
-          {statCfg.map(({ s, l }) => {
-            const val = gameData.statMap[s];
-            if (val === undefined) return null;
+          {statCfg.map((cfg) => {
+            const { s, l, combo } = cfg;
+            let val;
+            if (combo) {
+              const h  = gameData.statMap[combo.h];
+              const ab = gameData.statMap[combo.ab];
+              if (h === undefined && ab === undefined) return null;
+              val = `${h ?? '0'}-${ab ?? '0'}`;
+            } else {
+              val = gameData.statMap[s];
+              if (val === undefined) return null;
+            }
             return (
               <div key={s} className="pc-stat-cell">
                 <div className="pc-stat-val">{val ?? '—'}</div>
