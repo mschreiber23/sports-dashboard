@@ -123,7 +123,7 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
         </div>
 
         {/* Pitch zone SVG — full at-bat pitches */}
-        <svg viewBox="0 120 360 310" className="ab-modal-svg">
+        <svg viewBox="0 110 360 345" className="ab-modal-svg">
           <defs>
             <linearGradient id="abBg" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#050c0a"/>
@@ -498,7 +498,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
     <div className="mlb-pitch-view">
 
       <div className="mlb-pv-batter">
-          <svg viewBox="0 120 360 310" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
+          <svg viewBox="0 110 360 345" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
             <defs>
               {/* Field background gradient */}
               <linearGradient id="pvBg" x1="0" y1="0" x2="0" y2="1">

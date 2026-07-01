@@ -5230,7 +5230,7 @@ thead .dfs-sticky-player {
 .mlb-pv-svg {
   width: 100%;
   height: auto;
-  aspect-ratio: 360/200;
+  aspect-ratio: 360/215; /* viewBox 360×345, slightly wider display ratio */
   display: block;
 }
 
