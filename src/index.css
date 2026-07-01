@@ -2932,9 +2932,9 @@ body {
 .bsp-mlb-notes { padding: 10px 14px; border-top: 1px solid var(--border); }
 .bsp-notes-section { margin-bottom: 10px; }
 .bsp-notes-section:last-child { margin-bottom: 0; }
-.bsp-notes-heading { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0px; color: #ffffff; margin-bottom: 6px; }
+.bsp-notes-heading { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0; color: #ffffff; margin-bottom: 6px; padding: 0px 8px 0px; }
 .bsp-notes-row { display: flex; gap: 6px; font-size: 11px; line-height: 1.5; margin-bottom: 2px; flex-wrap: wrap; }
-.bsp-notes-label { font-weight: 600; font-size: 11px; color: #ffffff; white-space: nowrap; }
+.bsp-notes-label { font-weight: 600; font-size: 11px; color: #ffffff; white-space: nowrap; padding: 0px 8px 0px; }
 .bsp-notes-value { color: var(--text); font-size: 11px; flex: 1; }
 .bsp-td { padding: 8px 10px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
 .bsp-td-player { text-align: left; }
@@ -6250,9 +6250,9 @@ thead .dfs-sticky-player {
 /* Game notes — inline pills */
 .bsp-mlb-notes { padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
 .bsp-notes-section { display: flex; flex-direction: column; gap: 3px; }
-.bsp-notes-heading { font-size: 9px; font-weight: 800; letter-spacing: 0px; color: #ffffff; text-transform: uppercase; }
+.bsp-notes-heading { font-size: 9px; font-weight: 800; letter-spacing: 0; color: #ffffff; text-transform: uppercase; padding: 0px 8px 0px; }
 .bsp-notes-row { display: flex; gap: 6px; font-size: 11px; color: var(--text2); flex-wrap: wrap; }
-.bsp-notes-label { color: #ffffff; font-weight: 600; font-size: 11px; }
+.bsp-notes-label { color: #ffffff; font-weight: 600; font-size: 11px; padding: 0px 8px 0px; }
 .bsp-notes-value { color: var(--text); font-size: 11px; }
 
 /* ── Box Score table — complete clean overhaul ────────── */
@@ -6374,7 +6374,7 @@ thead .dfs-sticky-player {
 
 /* Totals row */
 .bsp-totals { border-top: 1px solid var(--border); }
-.bsp-totals .bsp-td { color: var(--text); font-size: 11px; padding: 10px 10px; }
+.bsp-totals .bsp-td { color: var(--text); font-size: 11px; padding: 8px; letter-spacing: -.4px; }
 .bsp-totals-label { color: var(--text2); font-weight: 700; font-size: 12px; }
 
 /* Wrap the table — no border, blends into page */
