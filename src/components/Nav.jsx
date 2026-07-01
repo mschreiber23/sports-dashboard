@@ -115,19 +115,19 @@ function CardsIcon({ active }) {
 }
 
 const MORE_ITEMS = [
-  { path: '/me',           label: 'My Profile',   Icon: MeIcon },
-  { path: '/player-cards', label: 'Player Cards',  Icon: CardsIcon },
-  { path: '/rankings',     label: 'Rankings',      Icon: LeadersIcon },
-  { path: '/dfs',          label: 'ShribeIQ',      Icon: DFSIcon },
+  { path: '/me',       label: 'My Profile', Icon: MeIcon },
+  { path: '/leaders',  label: 'Leaders',    Icon: LeadersIcon },
+  { path: '/rankings', label: 'Rankings',   Icon: LeadersIcon },
+  { path: '/dfs',      label: 'ShribeIQ',   Icon: DFSIcon },
 ];
 
 const NAV_ITEMS = [
-  { path: '/',          label: 'Home',      Icon: HomeIcon },
-  { path: '/standings', label: 'Standings', Icon: StandingsIcon },
-  { path: '/scores',    label: 'Scores',    Icon: ScoresIcon },
-  { path: '/players',   label: 'Players',   Icon: PlayersIcon },
-  { path: '/leaders',   label: 'Leaders',   Icon: LeadersIcon },
-  { path: 'more',       label: 'More',      more: true },
+  { path: '/',             label: 'Home',      Icon: HomeIcon },
+  { path: '/standings',    label: 'Standings', Icon: StandingsIcon },
+  { path: '/scores',       label: 'Scores',    Icon: ScoresIcon },
+  { path: '/players',      label: 'Players',   Icon: PlayersIcon },
+  { path: '/player-cards', label: 'Cards',     Icon: CardsIcon },
+  { path: 'more',          label: 'More',      more: true },
 ];
 
 /* ── More dropdown ───────────────────────────────────── */
