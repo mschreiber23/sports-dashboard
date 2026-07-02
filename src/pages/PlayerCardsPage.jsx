@@ -206,7 +206,12 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
       }
 
       const game = await findGame(player.sport, teamId, dateStr);
-      if (!game) { setGameData({ game: null }); setLoading(false); return; }
+      if (!game) {
+        const seasonStats = await fetchSeasonStats(player.sport, player.id, posAbb);
+        setGameData({ game: null, seasonStats });
+        setLoading(false);
+        return;
+      }
       const comp = game.competitions?.[0];
       const state = comp?.status?.type?.state;
       const [summary, seasonStats] = await Promise.all([
@@ -308,6 +313,34 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
         </div>
       </div>
 
+      {/* No game today: season stats */}
+      {!gameData?.game && !loading && gameData?.seasonStats && statCfg.length > 0 && (
+        <>
+          <div className="pc-season-label">{new Date().getFullYear()} Season Stats</div>
+          <div className="pc-stats-grid">
+            {statCfg.map((cfg) => {
+              const { s, l, combo } = cfg;
+              let val;
+              if (combo) {
+                const h  = gameData.seasonStats[combo.h];
+                const ab = gameData.seasonStats[combo.ab];
+                if (h === undefined && ab === undefined) return null;
+                val = `${h ?? '0'}-${ab ?? '0'}`;
+              } else {
+                val = gameData.seasonStats[s];
+                if (val === undefined) return null;
+              }
+              return (
+                <div key={s} className="pc-stat-cell">
+                  <div className="pc-stat-val">{val}</div>
+                  <div className="pc-stat-lbl">{l}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {/* Pre-game: matchup + season stats */}
       {state === 'pre' && (
         <>
@@ -330,7 +363,7 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
           </div>
           {gameData?.seasonStats && statCfg.length > 0 && (
             <>
-              <div className="pc-season-label">2026 Season Stats</div>
+              <div className="pc-season-label">{new Date().getFullYear()} Season Stats</div>
               <div className="pc-stats-grid">
                 {statCfg.map((cfg) => {
                   const { s, l, combo } = cfg;
