@@ -452,26 +452,34 @@ export default function MiLBPage() {
         </div>
       )}
 
-      {!gamesLoading && games.length > 0 && (
+      {!gamesLoading && visibleGames.length > 0 && (
         <>
-          {levelIds.map(id => {
-            const levelGames = byLevel[id];
-            if (!levelGames.length) return null;
-            return (
-              <div key={id} className="milb-level-section">
-                <div className="milb-level-section-header">
-                  <span className="milb-level-badge">{MILB_LEVELS[id]}</span>
-                  <span className="milb-level-section-name">
-                    {id===11?'Triple-A':id===12?'Double-A':id===13?'High-A':'Single-A'}
-                  </span>
-                  <span className="milb-level-section-count">{levelGames.length} game{levelGames.length!==1?'s':''}</span>
+          {/* Favorites view: single flat grid */}
+          {hasFavTeams && !showAllGames ? (
+            <div className="teams-grid" style={{marginTop:8}}>
+              {visibleGames.map(g => <MiLBGameCard key={g.id} game={g} navigate={navigate} />)}
+            </div>
+          ) : (
+            /* All games view: grouped by level */
+            levelIds.map(id => {
+              const levelGames = byLevel[id];
+              if (!levelGames.length) return null;
+              return (
+                <div key={id} className="milb-level-section">
+                  <div className="milb-level-section-header">
+                    <span className="milb-level-badge">{MILB_LEVELS[id]}</span>
+                    <span className="milb-level-section-name">
+                      {id===11?'Triple-A':id===12?'Double-A':id===13?'High-A':'Single-A'}
+                    </span>
+                    <span className="milb-level-section-count">{levelGames.length} game{levelGames.length!==1?'s':''}</span>
+                  </div>
+                  <div className="teams-grid">
+                    {levelGames.map(g => <MiLBGameCard key={g.id} game={g} navigate={navigate} />)}
+                  </div>
                 </div>
-                <div className="teams-grid">
-                  {levelGames.map(g => <MiLBGameCard key={g.id} game={g} navigate={navigate} />)}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </>
       )}
 
