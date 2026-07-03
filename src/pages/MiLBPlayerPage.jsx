@@ -76,9 +76,10 @@ export default function MiLBPlayerPage() {
   const { playerId } = useParams();
   const navigate = useNavigate();
 
-  const [bio, setBio]           = useState(null);
-  const [allStats, setAllStats] = useState([]);   // yearByYear splits across all levels
-  const [gamelog, setGamelog]   = useState([]);
+  const [bio, setBio]               = useState(null);
+  const [allStats, setAllStats]     = useState([]);
+  const [gamelog, setGamelog]       = useState([]);
+  const [headshotFailed, setHeadshotFailed] = useState(false);
   const [loading, setLoading]   = useState(true);
   const [added, setAdded]       = useState(false);
   const [activeTab, setActiveTab] = useState('stats');
@@ -219,10 +220,13 @@ export default function MiLBPlayerPage() {
       {/* Player header */}
       <div className="mpp-header">
         <div className="mpp-headshot-wrap">
-          {headshot && (
-            <img src={headshot} alt="" className="mpp-headshot"
-              onError={e => { e.target.style.display = 'none'; }} />
-          )}
+          {(headshot && !headshotFailed)
+            ? <img src={headshot} alt="" className="mpp-headshot"
+                onError={() => setHeadshotFailed(true)} />
+            : <div style={{fontSize:28,fontWeight:800,color:'var(--text2)'}}>
+                {(bio?.fullName || '?')[0]}
+              </div>
+          }
         </div>
         <div className="mpp-info">
           <div className="mpp-name">{bio.fullName}</div>

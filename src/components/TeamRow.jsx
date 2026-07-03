@@ -1366,6 +1366,9 @@ export function MiLBGameCard({ game, navigate }) {
           </span>
         )}
         {isFinal && <span className="milb-card-final">Final</span>}
+        {!isLive && !isFinal && shortDetail && (
+          <span className="milb-card-time">{shortDetail}</span>
+        )}
       </div>
       <div className="milb-card-teams">
         {[{ c: away, side: 'away' }, { c: home, side: 'home' }].map(({ c, side }) => (

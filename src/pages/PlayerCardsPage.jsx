@@ -180,6 +180,7 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
   const [loading, setLoading] = useState(true);
+  const [headshotFailed, setHeadshotFailed] = useState(false);
   const posAbb = player._position || player.position?.abbreviation || '';
   const cfgKey = getStatCfgKey(player.sport, posAbb);
   const statCfg = STAT_CFGS[cfgKey] || [];
@@ -298,7 +299,6 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
   const isHome = myTeam?.homeAway === 'home';
   const shortDetail = comp?.status?.type?.shortDetail || '';
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
-  // For MiLB players, always derive headshot from MLB CDN using the MLBAM player ID
   const headshotUrl = player.sport === 'milb'
     ? milbHeadshotUrl(player.id)
     : (typeof player.headshot === 'object' ? player.headshot?.href : player.headshot);
@@ -356,9 +356,9 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
 
       {/* Player identity */}
       <div className="pc-player-row" onClick={() => navigate(`/player/${player.sport}/${player.id}`)}>
-        {headshotUrl
-          ? <img src={headshotUrl} alt="" className="pc-headshot" onError={e=>e.target.style.display='none'}/>
-          : <div className="pc-headshot-placeholder">{player.displayName?.[0]}</div>
+        {(headshotUrl && !headshotFailed)
+          ? <img src={headshotUrl} alt="" className="pc-headshot" onError={() => setHeadshotFailed(true)}/>
+          : <div className="pc-headshot-placeholder">{(player.displayName || '?')[0]}</div>
         }
         <div className="pc-player-info">
           <div className="pc-player-name">{player.displayName}</div>

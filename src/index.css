@@ -7598,6 +7598,11 @@ thead .dfs-sticky-player {
   font-weight: 700;
   color: var(--text2);
 }
+.milb-card-time {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
 .milb-card-teams {
   display: flex;
   flex-direction: column;
