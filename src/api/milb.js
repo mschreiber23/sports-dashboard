@@ -51,6 +51,10 @@ export function normalizeMiLBGame(game) {
   const home = game.teams?.home || {};
   const state = milbState(game);
   const ls = game.linescore || {};
+  // game.sport is null in schedule responses; sport ID lives on the team object
+  const sportId = game.sport?.id
+    ?? away.team?.sport?.id
+    ?? home.team?.sport?.id;
 
   const mkTeam = (side, t) => ({
     homeAway: side,
@@ -72,10 +76,10 @@ export function normalizeMiLBGame(game) {
     id: String(game.gamePk),
     _isMiLB: true,
     _gamePk: game.gamePk,
-    _sportId: game.sport?.id,
+    _sportId: sportId,
     competitions: [{
       _gamePk: game.gamePk,
-      _sportId: game.sport?.id,
+      _sportId: sportId,
       _linescore: ls,
       _gameTime: gameTime,
       competitors: [mkTeam('away', away), mkTeam('home', home)],
@@ -102,6 +106,30 @@ export function milbHeadshotUrl(mlbId) {
 /** MLB static team logo URL. */
 export function milbTeamLogoUrl(teamId) {
   return teamId ? `https://www.mlbstatic.com/team-logos/${teamId}.svg` : null;
+}
+
+/**
+ * Search for a player by name in MLB Stats API.
+ * Returns the first match with currentTeam, or null.
+ * If currentTeam.parentOrgId is set, the player is in MiLB.
+ */
+export async function searchMiLBPlayerByName(name) {
+  try {
+    const r = await fetch(
+      `${STATSAPI}/people/search?names=${encodeURIComponent(name)}&hydrate=currentTeam`
+    );
+    const d = await r.json();
+    return d.people?.[0] || null;
+  } catch { return null; }
+}
+
+/** Fetch MiLB team details (abbreviation, sport level, etc.) */
+export async function fetchMiLBTeam(teamId) {
+  try {
+    const r = await fetch(`${STATSAPI}/teams/${teamId}`);
+    const d = await r.json();
+    return d.teams?.[0] || null;
+  } catch { return null; }
 }
 
 /** Fetch full player bio from MLB Stats API. */
@@ -287,7 +315,6 @@ export function buildMiLBComp(raw) {
     competitors: [mkComp('away'), mkComp('home')],
     status: { type: { state, shortDetail } },
     date: gd.datetime?.dateTime || '',
-    _sportId: gd.game?.type === 'R' ? gd.sport?.id : null,
-    _levelShort: levelShort(gd.game?.id ? Math.floor(gd.game.id / 1000) : null),
+    _sportId: gd.teams?.away?.sport?.id ?? gd.teams?.home?.sport?.id ?? null,
   };
 }

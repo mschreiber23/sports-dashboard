@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { fetchMiLBSeasonStats, extractMiLBStats } from '../api/milb';
+import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl, milbTeamLogoUrl } from '../api/milb';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -582,31 +582,65 @@ export default function PlayerCardsPage() {
 
     // ESPN-powered sports (mlb, nba, nfl, nhl)
     const { sport: s, league: l } = SPORT_CFG[player.sport] || {};
+    let ath = {};
     try {
       const r = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/${s}/${l}/athletes/${player.id}`);
       const d = await r.json();
-      const ath = d.athlete || {};
-      const full = {
-        id: player.id,
-        sport: player.sport,
-        displayName: ath.displayName || player.displayName,
-        headshot: typeof ath.headshot === 'object' ? ath.headshot?.href : (ath.headshot || player.headshot),
-        jersey: ath.jersey || '',
-        team: {
-          id: ath.team?.id,
-          abbreviation: ath.team?.abbreviation,
-          displayName: ath.team?.displayName,
-          logo: ath.team?.logos?.[0]?.href || ath.team?.logo,
-          color: ath.team?.color,
-          alternateColor: ath.team?.alternateColor,
-        },
-        position: ath.position?.abbreviation,
-        _position: ath.position?.abbreviation || '',
-      };
-      setCards(prev => [full, ...prev]);
-    } catch {
-      setCards(prev => [player, ...prev]);
+      ath = d.athlete || {};
+    } catch {}
+
+    // For baseball players: cross-reference with MLB Stats API to detect MiLB affiliates
+    if (player.sport === 'mlb') {
+      try {
+        const searchName = ath.displayName || player.displayName;
+        const mlbamPlayer = await searchMiLBPlayerByName(searchName);
+        if (mlbamPlayer?.id && mlbamPlayer.currentTeam?.parentOrgId) {
+          // parentOrgId means this is a MiLB team, not an MLB team
+          const [team] = await Promise.all([fetchMiLBTeam(mlbamPlayer.currentTeam.id)]);
+          if (team) {
+            const milbCard = {
+              id: String(mlbamPlayer.id),
+              sport: 'milb',
+              displayName: mlbamPlayer.fullName || searchName,
+              headshot: milbHeadshotUrl(mlbamPlayer.id),
+              jersey: mlbamPlayer.primaryNumber || ath.jersey || '',
+              team: {
+                id: String(team.id),
+                abbreviation: team.abbreviation || '',
+                displayName: team.name || '',
+                logo: milbTeamLogoUrl(team.id),
+                color: null, alternateColor: null,
+              },
+              position: mlbamPlayer.primaryPosition?.abbreviation || ath.position?.abbreviation || '',
+              _position: mlbamPlayer.primaryPosition?.abbreviation || ath.position?.abbreviation || '',
+            };
+            setCards(prev => [milbCard, ...prev]);
+            setShowSearch(false);
+            return;
+          }
+        }
+      } catch {}
     }
+
+    // Not MiLB (or detection failed) — use ESPN data
+    const full = {
+      id: player.id,
+      sport: player.sport,
+      displayName: ath.displayName || player.displayName,
+      headshot: typeof ath.headshot === 'object' ? ath.headshot?.href : (ath.headshot || player.headshot),
+      jersey: ath.jersey || '',
+      team: {
+        id: ath.team?.id,
+        abbreviation: ath.team?.abbreviation,
+        displayName: ath.team?.displayName,
+        logo: ath.team?.logos?.[0]?.href || ath.team?.logo,
+        color: ath.team?.color,
+        alternateColor: ath.team?.alternateColor,
+      },
+      position: ath.position?.abbreviation,
+      _position: ath.position?.abbreviation || '',
+    };
+    setCards(prev => [full, ...prev]);
     setShowSearch(false);
   };
 
