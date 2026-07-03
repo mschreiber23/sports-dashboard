@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl, milbTeamLogoUrl, levelShort, searchMiLBByName, getMiLBPlayerIndex } from '../api/milb';
+import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl } from '../api/milb';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -576,59 +576,10 @@ export default function PlayerCardsPage() {
       .finally(() => setSearching(false));
   }, []);
 
-  const doMiLBSearch = useCallback(async (q) => {
-    if (!q.trim()) { setResults([]); setSearching(false); return; }
-    setSearching(true);
-    try {
-      // Warm up the index in the background (if not already loaded)
-      getMiLBPlayerIndex();
-      const matches = await searchMiLBByName(q);
-      // Fetch team details for each unique team ID
-      const teamIds = [...new Set(matches.map(p => p.currentTeam?.id).filter(Boolean))];
-      const teamMap = {};
-      await Promise.allSettled(
-        teamIds.map(id =>
-          fetch(`https://statsapi.mlb.com/api/v1/teams/${id}`)
-            .then(r => r.json())
-            .then(d => { const t = d.teams?.[0]; if (t) teamMap[t.id] = t; })
-        )
-      );
-      setResults(matches.map(p => {
-        const team = teamMap[p.currentTeam?.id] || {};
-        return {
-          id: String(p.id),
-          sport: 'milb',
-          displayName: p.fullName || '',
-          headshot: milbHeadshotUrl(p.id),
-          jersey: p.primaryNumber || '',
-          team: {
-            id: String(team.id || p.currentTeam?.id || ''),
-            abbreviation: team.abbreviation || '',
-            displayName: team.name || '',
-            logo: milbTeamLogoUrl(team.id || p.currentTeam?.id),
-            color: null, alternateColor: null,
-          },
-          position: p.primaryPosition?.abbreviation || '',
-          _position: p.primaryPosition?.abbreviation || '',
-          _levelShort: levelShort(team.sport?.id || p._sportId),
-        };
-      }));
-    } catch { setResults([]); }
-    finally { setSearching(false); }
-  }, []);
-
-  const doSearch = useCallback((q) => {
-    if (searchMode === 'milb') doMiLBSearch(q);
-    else doEspnSearch(q);
-  }, [searchMode, doEspnSearch, doMiLBSearch]);
-
   const handleQuery = (e) => {
     const q = e.target.value; setQuery(q);
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      if (searchMode === 'milb') doMiLBSearch(q);
-      else doEspnSearch(q);
-    }, 400);
+    debounceRef.current = setTimeout(() => doEspnSearch(q), 300);
   };
 
   const addCard = async (player) => {
