@@ -298,7 +298,10 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
   const isHome = myTeam?.homeAway === 'home';
   const shortDetail = comp?.status?.type?.shortDetail || '';
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
-  const headshotUrl = typeof player.headshot === 'object' ? player.headshot?.href : player.headshot;
+  // For MiLB players, always derive headshot from MLB CDN using the MLBAM player ID
+  const headshotUrl = player.sport === 'milb'
+    ? milbHeadshotUrl(player.id)
+    : (typeof player.headshot === 'object' ? player.headshot?.href : player.headshot);
 
   return editMode ? (
       <div

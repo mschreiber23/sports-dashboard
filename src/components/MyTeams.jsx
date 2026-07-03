@@ -44,8 +44,27 @@ export default function MyTeams({ editMode = false, setEditMode }) {
     return next;
   });
 
+  // Auto-hide: teams with no upcoming game (session-only, set by TeamRow)
   const [hiddenTeams, setHiddenTeams] = useState({});
   const [showHidden, setShowHidden] = useState(false);
+
+  // Manual visibility toggle: persisted to localStorage, does NOT remove from favorites
+  const HIDE_KEY = 'home_hidden_teams_v1';
+  const [manuallyHidden, setManuallyHidden] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(HIDE_KEY)) || {}; } catch { return {}; }
+  });
+
+  const toggleVisibility = useCallback((teamId, sport) => {
+    setManuallyHidden(prev => {
+      const key = `${sport}-${teamId}`;
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem(HIDE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const isManuallyHidden = (teamId, sport) => !!manuallyHidden[`${sport}-${teamId}`];
+  const manualHideCount = Object.values(manuallyHidden).filter(Boolean).length;
 
   // Team search state
   const [teamQuery, setTeamQuery]         = useState('');
@@ -127,9 +146,9 @@ export default function MyTeams({ editMode = false, setEditMode }) {
       <div className="section-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h2 className="section-title">My Teams</h2>
-          {hiddenCount > 0 && (
+          {(hiddenCount > 0 || manualHideCount > 0) && (
             <button className="show-all-btn" onClick={() => setShowHidden((v) => !v)}>
-              {showHidden ? 'Hide Inactive' : 'Show All'}
+              {showHidden ? 'Collapse' : `Show All${manualHideCount > 0 ? ` (${manualHideCount} hidden)` : ''}`}
             </button>
           )}
           {/* Date nav — inline, compact */}
@@ -285,38 +304,48 @@ export default function MyTeams({ editMode = false, setEditMode }) {
       {editMode && (
         <div className="edit-panel">
           <div className="edit-panel-label">Tap — to remove a team</div>
-          {favorites.teams.map(({ sport, team }, idx) => (
-            <div key={`${sport}-${team.id}`} className="edit-team-row">
-              <button
-                className="edit-remove-btn"
-                onClick={() => removeTeam(team.id, sport)}
-                title="Remove"
-              >
-                −
-              </button>
-              <div className="edit-team-info">
-                {team.logo && <img src={team.logo} alt="" className="edit-team-logo" />}
-                <div>
-                  <div className="edit-team-name">{team.displayName}</div>
-                  <div className="edit-team-sport">{SPORT_LABEL[sport] || sport.toUpperCase()}</div>
+          {favorites.teams.map(({ sport, team }, idx) => {
+            const hidden = isManuallyHidden(team.id, sport);
+            return (
+              <div key={`${sport}-${team.id}`} className={`edit-team-row${hidden ? ' edit-team-row-hidden' : ''}`}>
+                <button
+                  className="edit-remove-btn"
+                  onClick={() => removeTeam(team.id, sport)}
+                  title="Remove from favorites"
+                >−</button>
+                <div className="edit-team-info">
+                  {team.logo && <img src={team.logo} alt="" className="edit-team-logo" />}
+                  <div>
+                    <div className="edit-team-name">{team.displayName}</div>
+                    <div className="edit-team-sport">{SPORT_LABEL[sport] || sport.toUpperCase()}</div>
+                  </div>
+                </div>
+                {/* Visibility toggle */}
+                <button
+                  className={`edit-visibility-btn${hidden ? ' edit-visibility-btn-hidden' : ''}`}
+                  onClick={() => toggleVisibility(team.id, sport)}
+                  title={hidden ? 'Show on home page' : 'Hide from home page'}
+                >
+                  {hidden ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+                <div className="edit-reorder-btns">
+                  <button className="edit-reorder-btn" onClick={() => reorderTeam(idx, idx - 1)} disabled={idx === 0} title="Move up">▲</button>
+                  <button className="edit-reorder-btn" onClick={() => reorderTeam(idx, idx + 1)} disabled={idx === favorites.teams.length - 1} title="Move down">▼</button>
                 </div>
               </div>
-              <div className="edit-reorder-btns">
-                <button
-                  className="edit-reorder-btn"
-                  onClick={() => reorderTeam(idx, idx - 1)}
-                  disabled={idx === 0}
-                  title="Move up"
-                >▲</button>
-                <button
-                  className="edit-reorder-btn"
-                  onClick={() => reorderTeam(idx, idx + 1)}
-                  disabled={idx === favorites.teams.length - 1}
-                  title="Move down"
-                >▼</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {favorites.teams.length === 0 && (
             <div className="loading-text" style={{ padding: '12px 0' }}>No teams added yet.</div>
           )}
@@ -339,8 +368,9 @@ export default function MyTeams({ editMode = false, setEditMode }) {
         <>
           <div className="teams-grid">
             {favorites.teams.map(({ sport, team }) => {
-              const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
-              if (isHidden && !showHidden) return null;
+              const autoHidden   = hiddenTeams[`${team.id}-${sport}`] === true;
+              const manualHidden = isManuallyHidden(team.id, sport);
+              if ((autoHidden || manualHidden) && !showHidden) return null;
               if (sport === 'milb') {
                 return (
                   <MiLBTeamRow

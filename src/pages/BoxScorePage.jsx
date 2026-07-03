@@ -1677,11 +1677,13 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
         const bo  = parseInt(p.battingOrder ?? '0', 10);
         const isSub = bo > 0 && bo % 100 !== 0;
         const full  = p.person?.fullName || '';
+        const mlbId = p.person?.id;
         return {
           athlete: {
-            id: espnIds[normStr(full)] || String(p.person?.id || ''),
+            id: espnIds[normStr(full)] || String(mlbId || ''),
             displayName: full,
             shortName: sn(full),
+            headshot: mlbId ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current` : null,
           },
           position: { abbreviation: p.position?.abbreviation || '' },
           starter: !isSub,
@@ -1698,11 +1700,13 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
       .map(id => pl[`ID${id}`]).filter(p => p?.stats?.pitching)
       .map((p, i) => {
         const full = p.person?.fullName || '';
+        const mlbId = p.person?.id;
         return {
           athlete: {
-            id: espnIds[normStr(full)] || String(p.person?.id || ''),
+            id: espnIds[normStr(full)] || String(mlbId || ''),
             displayName: full,
             shortName: sn(full),
+            headshot: mlbId ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current` : null,
           },
           position: { abbreviation: p.position?.abbreviation || 'P' },
           starter: i === 0,
@@ -1863,8 +1867,11 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
                 className={`bsp-tr ${dnp ? 'bsp-dnp' : ''} ${player.id ? 'bsp-tr-clickable' : ''} ${isSub ? 'bsp-tr-sub' : ''}`}
                 onClick={() => player.id && navigate(`/player/${sport}/${player.id}`)}>
                 <td className="bsp-td bsp-td-player">
-                  {/* All on one line — name · pos · ABs pill */}
                   <div className="bsp-player-cell">
+                    {player.headshot && (
+                      <img src={player.headshot} alt="" className="bsp-player-headshot"
+                        onError={e => { e.target.style.display='none'; }} />
+                    )}
                     <span className={`bsp-player-name${isSub ? ' bsp-player-sub-name' : ''}`}>
                       {player.shortName || player.displayName}
                     </span>
