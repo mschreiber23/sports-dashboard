@@ -107,62 +107,100 @@ export function milbTeamLogoUrl(teamId) {
 /** Fetch full player bio from MLB Stats API. */
 export async function fetchMiLBPlayerBio(playerId) {
   try {
-    const r = await fetch(
-      `${STATSAPI}/people/${playerId}?hydrate=currentTeam,team,stats(type=season,sportId=${ALL_SPORT_IDS})`
-    );
+    const r = await fetch(`${STATSAPI}/people/${playerId}?hydrate=currentTeam`);
     const d = await r.json();
     return d.people?.[0] || null;
   } catch { return null; }
 }
 
-/** Fetch recent game log for a MiLB player. */
-export async function fetchMiLBGameLog(playerId, group = 'hitting') {
+/**
+ * Fetch year-by-year stats for a MiLB player across all four minor league levels.
+ * Each level must be queried separately (comma-separated sportId is not supported).
+ * Returns all splits sorted newest-first.
+ */
+export async function fetchMiLBAllStats(playerId, group = 'hitting') {
+  const results = await Promise.allSettled(
+    [11, 12, 13, 14].map(id =>
+      fetch(`${STATSAPI}/people/${playerId}/stats?stats=yearByYear&group=${group}&sportId=${id}`)
+        .then(r => r.json())
+    )
+  );
+  const all = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled') {
+      all.push(...(r.value.stats?.[0]?.splits || []));
+    }
+  }
+  // Sort newest season first, then by level (AAA → A)
+  all.sort((a, b) => {
+    const sy = parseInt(b.season) - parseInt(a.season);
+    if (sy !== 0) return sy;
+    return (a.sport?.id || 99) - (b.sport?.id || 99);
+  });
+  return all;
+}
+
+/** Fetch recent game log for a MiLB player at a specific sport level. */
+export async function fetchMiLBGameLog(playerId, group = 'hitting', sportId = 11) {
   const year = new Date().getFullYear();
   try {
     const r = await fetch(
       `${STATSAPI}/people/${playerId}/stats?stats=gameLog&season=${year}` +
-      `&group=${group}&sportId=${ALL_SPORT_IDS}`
+      `&group=${group}&sportId=${sportId}`
     );
     const d = await r.json();
     return d.stats?.[0]?.splits || [];
   } catch { return []; }
 }
 
-/** Fetch season stats for a MiLB player from MLB Stats API. Returns ESPN-compatible stat map. */
+/**
+ * Fetch current-season stats for a MiLB player.
+ * Queries each level separately (API rejects comma-separated sportId).
+ * Returns stats from the level with the most games played.
+ */
 export async function fetchMiLBSeasonStats(playerId, posAbb) {
   const isPitcher = /^(SP|RP|P|CP)$/i.test(posAbb || '');
   const group = isPitcher ? 'pitching' : 'hitting';
   const year = new Date().getFullYear();
   try {
-    const r = await fetch(
-      `${STATSAPI}/people/${playerId}/stats?stats=season&season=${year}` +
-      `&group=${group}&sportId=${ALL_SPORT_IDS}`
+    const results = await Promise.allSettled(
+      [11, 12, 13, 14].map(id =>
+        fetch(`${STATSAPI}/people/${playerId}/stats?stats=season&season=${year}&group=${group}&sportId=${id}`)
+          .then(r => r.json())
+      )
     );
-    const d = await r.json();
-    const stat = d.stats?.[0]?.splits?.[0]?.stat || {};
+    let best = null, bestGames = -1;
+    for (const r of results) {
+      if (r.status !== 'fulfilled') continue;
+      const split = r.value.stats?.[0]?.splits?.[0];
+      if (!split) continue;
+      const g = split.stat?.gamesPlayed ?? split.stat?.gamesStarted ?? 0;
+      if (g > bestGames) { bestGames = g; best = split.stat; }
+    }
+    if (!best) return {};
     if (isPitcher) {
       return {
-        IP:  stat.inningsPitched ?? '0.0',
-        H:   String(stat.hits         ?? 0),
-        R:   String(stat.runs         ?? 0),
-        ER:  String(stat.earnedRuns   ?? 0),
-        BB:  String(stat.baseOnBalls  ?? 0),
-        K:   String(stat.strikeOuts   ?? 0),
-        ERA: stat.era   ?? '0.00',
-        PC:  String(stat.numberOfPitches ?? stat.pitchesThrown ?? 0),
+        IP:  best.inningsPitched ?? '0.0',
+        H:   String(best.hits         ?? 0),
+        R:   String(best.runs         ?? 0),
+        ER:  String(best.earnedRuns   ?? 0),
+        BB:  String(best.baseOnBalls  ?? 0),
+        K:   String(best.strikeOuts   ?? 0),
+        ERA: best.era ?? '0.00',
+        PC:  String(best.numberOfPitches ?? best.pitchesThrown ?? 0),
       };
     }
     return {
-      AB:  String(stat.atBats      ?? 0),
-      H:   String(stat.hits        ?? 0),
-      R:   String(stat.runs        ?? 0),
-      RBI: String(stat.rbi         ?? 0),
-      HR:  String(stat.homeRuns    ?? 0),
-      BB:  String(stat.baseOnBalls ?? 0),
-      K:   String(stat.strikeOuts  ?? 0),
-      AVG: stat.avg ?? '.000',
-      OBP: stat.obp ?? '.000',
-      SLG: stat.slg ?? '.000',
+      AB:  String(best.atBats      ?? 0),
+      H:   String(best.hits        ?? 0),
+      R:   String(best.runs        ?? 0),
+      RBI: String(best.rbi         ?? 0),
+      HR:  String(best.homeRuns    ?? 0),
+      BB:  String(best.baseOnBalls ?? 0),
+      K:   String(best.strikeOuts  ?? 0),
+      AVG: best.avg ?? '.000',
+      OBP: best.obp ?? '.000',
+      SLG: best.slg ?? '.000',
     };
   } catch { return {}; }
 }

@@ -7450,6 +7450,7 @@ thead .dfs-sticky-player {
   white-space: nowrap;
 }
 .mpp-gl-td:first-child, .mpp-gl-td:nth-child(2) { text-align: left; color: var(--text2); }
+.mpp-gl-td-hl { color: #fff; font-weight: 700; }
 
 /* ── MiLB Level Badge ─────────────────────────────────── */
 .milb-level-badge {
