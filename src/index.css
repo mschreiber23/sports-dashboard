@@ -7452,6 +7452,35 @@ thead .dfs-sticky-player {
 .mpp-gl-td:first-child, .mpp-gl-td:nth-child(2) { text-align: left; color: var(--text2); }
 .mpp-gl-td-hl { color: #fff; font-weight: 700; }
 
+/* ── Player Cards search mode toggle ──────────────────── */
+.pc-search-mode-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.pc-search-mode-btn {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.pc-search-mode-btn:hover { color: var(--text); }
+.pc-search-mode-active {
+  background: color-mix(in srgb, #1d4ed8 25%, var(--bg3));
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
 /* ── MiLB Level Badge ─────────────────────────────────── */
 .milb-level-badge {
   display: inline-block;

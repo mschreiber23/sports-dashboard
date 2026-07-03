@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl, milbTeamLogoUrl } from '../api/milb';
+import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl, milbTeamLogoUrl, levelShort } from '../api/milb';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -491,10 +491,11 @@ export default function PlayerCardsPage() {
   const shiftDate = (n) => setSelectedDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; });
   const dateStr = toDateStr(selectedDate);
 
-  const [query, setQuery]     = useState('');
-  const [results, setResults] = useState([]);
+  const [query, setQuery]         = useState('');
+  const [results, setResults]     = useState([]);
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [searchMode, setSearchMode] = useState('all'); // 'all' | 'milb'
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
   // Guard: skip saving on the initial render so a parse error can't overwrite stored data
@@ -507,10 +508,10 @@ export default function PlayerCardsPage() {
 
   useEffect(() => {
     if (showSearch) setTimeout(() => inputRef.current?.focus(), 80);
-    else { setQuery(''); setResults([]); }
+    else { setQuery(''); setResults([]); setSearchMode('all'); }
   }, [showSearch]);
 
-  const doSearch = useCallback((q) => {
+  const doEspnSearch = useCallback((q) => {
     if (!q.trim()) { setResults([]); setSearching(false); return; }
     setSearching(true);
     fetch(`${ESPN_SEARCH}?query=${encodeURIComponent(q)}&limit=10`)
@@ -523,13 +524,10 @@ export default function PlayerCardsPage() {
           const sport = SLUG_TO_SPORT[(p.defaultLeagueSlug || p.sport || '').toLowerCase()];
           if (!id || !sport) return null;
           return {
-            id,
-            sport,
-            displayName: p.displayName,
+            id, sport, displayName: p.displayName,
             headshot: p.image?.default || null,
             team: { id: null, abbreviation: p.subtitle || '' },
-            position: null,
-            _position: '',
+            position: null, _position: '',
           };
         }).filter(Boolean);
         setResults(players);
@@ -538,10 +536,64 @@ export default function PlayerCardsPage() {
       .finally(() => setSearching(false));
   }, []);
 
+  const doMiLBSearch = useCallback((q) => {
+    if (!q.trim()) { setResults([]); setSearching(false); return; }
+    setSearching(true);
+    fetch(`https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(q)}&hydrate=currentTeam`)
+      .then(r => r.json())
+      .then(async d => {
+        const people = (d.people || []).filter(p => p.currentTeam?.parentOrgId && p.active);
+        // Fetch team details for level/abbreviation
+        const teamIds = [...new Set(people.map(p => p.currentTeam?.id).filter(Boolean))];
+        const teamResults = await Promise.allSettled(
+          teamIds.map(id => fetch(`https://statsapi.mlb.com/api/v1/teams/${id}`).then(r => r.json()))
+        );
+        const teamMap = {};
+        teamResults.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            const t = r.value.teams?.[0];
+            if (t) teamMap[t.id] = t;
+          }
+        });
+        return people.map(p => {
+          const team = teamMap[p.currentTeam?.id] || {};
+          return {
+            id: String(p.id),
+            sport: 'milb',
+            displayName: p.fullName || '',
+            headshot: milbHeadshotUrl(p.id),
+            jersey: p.primaryNumber || '',
+            team: {
+              id: String(team.id || p.currentTeam?.id || ''),
+              abbreviation: team.abbreviation || '',
+              displayName: team.name || p.currentTeam?.name || '',
+              logo: milbTeamLogoUrl(team.id || p.currentTeam?.id),
+              color: null, alternateColor: null,
+            },
+            position: p.primaryPosition?.abbreviation || '',
+            _position: p.primaryPosition?.abbreviation || '',
+            _levelShort: levelShort(team.sport?.id),
+            _levelId: team.sport?.id,
+          };
+        });
+      })
+      .then(players => setResults(players))
+      .catch(() => setResults([]))
+      .finally(() => setSearching(false));
+  }, []);
+
+  const doSearch = useCallback((q) => {
+    if (searchMode === 'milb') doMiLBSearch(q);
+    else doEspnSearch(q);
+  }, [searchMode, doEspnSearch, doMiLBSearch]);
+
   const handleQuery = (e) => {
     const q = e.target.value; setQuery(q);
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(q), 300);
+    debounceRef.current = setTimeout(() => {
+      if (searchMode === 'milb') doMiLBSearch(q);
+      else doEspnSearch(q);
+    }, 400);
   };
 
   const addCard = async (player) => {
@@ -727,26 +779,52 @@ export default function PlayerCardsPage() {
       {/* Search */}
       {showSearch && (
         <div className="pc-search-wrap">
+          {/* Mode toggle */}
+          <div className="pc-search-mode-row">
+            {['all','milb'].map(mode => (
+              <button key={mode}
+                className={`pc-search-mode-btn${searchMode === mode ? ' pc-search-mode-active' : ''}`}
+                onClick={() => {
+                  setSearchMode(mode);
+                  setResults([]);
+                  if (query.trim()) {
+                    if (mode === 'milb') doMiLBSearch(query);
+                    else doEspnSearch(query);
+                  }
+                }}>
+                {mode === 'all' ? 'All Sports' : <><span className="milb-level-badge" style={{fontSize:9,padding:'1px 5px',marginRight:4}}>MiLB</span>Minor League</>}
+              </button>
+            ))}
+          </div>
           <input
             ref={inputRef}
             className="search-input"
-            placeholder="Search any player…"
+            placeholder={searchMode === 'milb' ? 'Search MiLB players…' : 'Search any player…'}
             value={query}
             onChange={handleQuery}
           />
           {searching && <div className="loading-text" style={{padding:'8px 0'}}>Searching…</div>}
+          {!searching && query.trim() && results.length === 0 && (
+            <div className="loading-text" style={{padding:'8px 0', color:'var(--text2)'}}>No players found.</div>
+          )}
           {results.length > 0 && (
             <div className="picker-list" style={{marginTop:8}}>
               {results.map(p => {
-                const already = cards.some(c => c.id === p.id);
+                const already = cards.some(c => c.id === p.id && c.sport === p.sport);
                 return (
-                  <div key={p.id} className="picker-item">
+                  <div key={`${p.sport}-${p.id}`} className="picker-item">
                     <div className="picker-player-info">
                       {p.headshot && <img src={p.headshot} alt="" className="picker-avatar" onError={e=>e.target.style.display='none'}/>}
                       <div>
                         <div className="picker-name">{p.displayName}</div>
-                        <div className="picker-pos" style={{color: SPORT_COLORS[p.sport] || '#888', fontSize:10, fontWeight:700, textTransform:'uppercase'}}>
-                          {p.sport?.toUpperCase()}
+                        <div style={{display:'flex', alignItems:'center', gap:5, marginTop:2}}>
+                          {p._levelShort && (
+                            <span className="milb-level-badge" style={{fontSize:8, padding:'1px 4px'}}>{p._levelShort}</span>
+                          )}
+                          <span style={{color: p.sport === 'milb' ? '#3b82f6' : (SPORT_COLORS[p.sport] || '#888'), fontSize:10, fontWeight:700, textTransform:'uppercase'}}>
+                            {p.sport === 'milb' ? (p.team?.displayName || 'MiLB') : (p.team?.abbreviation || p.sport?.toUpperCase())}
+                          </span>
+                          {p._position && <span style={{color:'var(--text2)', fontSize:10}}>{p._position}</span>}
                         </div>
                       </div>
                     </div>
