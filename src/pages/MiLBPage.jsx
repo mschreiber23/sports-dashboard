@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchMiLBSchedule, normalizeMiLBGame, MILB_LEVELS } from '../api/milb';
 import { MiLBGameCard } from '../components/TeamRow';
+import { useFavorites } from '../context/FavoritesContext';
 
 function toDateStr(d) {
   return d.getFullYear().toString()
@@ -24,6 +25,8 @@ const STATE_ORDER = { in: 0, post: 1, pre: 2 };
 
 export default function MiLBPage() {
   const navigate = useNavigate();
+  const { favorites } = useFavorites();
+  const favMiLBIds = favorites.teams.filter(ft=>ft.sport==='milb').map(ft=>ft.team.id);
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +62,13 @@ export default function MiLBPage() {
     const sid = g._sportId;
     if (byLevel[sid]) byLevel[sid].push(g);
   }
-  // Sort each level: live first, then final, then pre
+  // Sort each level: favorites first, then live → final → pre
   for (const id of levelIds) {
     byLevel[id].sort((a, b) => {
+      const teamIds = g => (g.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
+      const aFav = teamIds(a).some(id=>favMiLBIds.includes(id)) ? 0 : 1;
+      const bFav = teamIds(b).some(id=>favMiLBIds.includes(id)) ? 0 : 1;
+      if (aFav !== bFav) return aFav - bFav;
       const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
       const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
       return (STATE_ORDER[sa] ?? 2) - (STATE_ORDER[sb] ?? 2);

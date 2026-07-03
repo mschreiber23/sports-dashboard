@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl, milbTeamLogoUrl, levelShort } from '../api/milb';
+import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl, milbTeamLogoUrl, levelShort, searchMiLBByName, getMiLBPlayerIndex } from '../api/milb';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -475,6 +475,44 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
   );
 }
 
+/* ── Add MiLB player directly by MLB player ID ─────────── */
+function MiLBDirectAdd({ onAdd }) {
+  const [mlbId, setMlbId] = useState('');
+  const [adding, setAdding] = useState(false);
+  return (
+    <div className="milb-direct-add">
+      <span className="milb-direct-label">Know their MLB ID?</span>
+      <input
+        type="number"
+        className="milb-direct-input"
+        placeholder="e.g. 828137"
+        value={mlbId}
+        onChange={e => setMlbId(e.target.value)}
+        onKeyDown={async e => {
+          if (e.key === 'Enter' && mlbId.trim()) {
+            setAdding(true);
+            await onAdd({ id: mlbId.trim(), sport: 'milb', displayName: '' });
+            setMlbId('');
+            setAdding(false);
+          }
+        }}
+      />
+      <button
+        className="btn-primary btn-sm"
+        disabled={!mlbId.trim() || adding}
+        onClick={async () => {
+          if (!mlbId.trim()) return;
+          setAdding(true);
+          await onAdd({ id: mlbId.trim(), sport: 'milb', displayName: '' });
+          setMlbId('');
+          setAdding(false);
+        }}>
+        {adding ? '…' : 'Add'}
+      </button>
+    </div>
+  );
+}
+
 const SPORT_BADGE_COLORS = {
   mlb_batter:'#e74c3c', mlb_pitcher:'#c0392b',
   nfl_qb:'#27ae60', nfl_rb:'#1e8449', nfl_wr:'#196f3d',
@@ -536,50 +574,45 @@ export default function PlayerCardsPage() {
       .finally(() => setSearching(false));
   }, []);
 
-  const doMiLBSearch = useCallback((q) => {
+  const doMiLBSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); setSearching(false); return; }
     setSearching(true);
-    fetch(`https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(q)}&hydrate=currentTeam`)
-      .then(r => r.json())
-      .then(async d => {
-        const people = (d.people || []).filter(p => p.currentTeam?.parentOrgId && p.active);
-        // Fetch team details for level/abbreviation
-        const teamIds = [...new Set(people.map(p => p.currentTeam?.id).filter(Boolean))];
-        const teamResults = await Promise.allSettled(
-          teamIds.map(id => fetch(`https://statsapi.mlb.com/api/v1/teams/${id}`).then(r => r.json()))
-        );
-        const teamMap = {};
-        teamResults.forEach((r, i) => {
-          if (r.status === 'fulfilled') {
-            const t = r.value.teams?.[0];
-            if (t) teamMap[t.id] = t;
-          }
-        });
-        return people.map(p => {
-          const team = teamMap[p.currentTeam?.id] || {};
-          return {
-            id: String(p.id),
-            sport: 'milb',
-            displayName: p.fullName || '',
-            headshot: milbHeadshotUrl(p.id),
-            jersey: p.primaryNumber || '',
-            team: {
-              id: String(team.id || p.currentTeam?.id || ''),
-              abbreviation: team.abbreviation || '',
-              displayName: team.name || p.currentTeam?.name || '',
-              logo: milbTeamLogoUrl(team.id || p.currentTeam?.id),
-              color: null, alternateColor: null,
-            },
-            position: p.primaryPosition?.abbreviation || '',
-            _position: p.primaryPosition?.abbreviation || '',
-            _levelShort: levelShort(team.sport?.id),
-            _levelId: team.sport?.id,
-          };
-        });
-      })
-      .then(players => setResults(players))
-      .catch(() => setResults([]))
-      .finally(() => setSearching(false));
+    try {
+      // Warm up the index in the background (if not already loaded)
+      getMiLBPlayerIndex();
+      const matches = await searchMiLBByName(q);
+      // Fetch team details for each unique team ID
+      const teamIds = [...new Set(matches.map(p => p.currentTeam?.id).filter(Boolean))];
+      const teamMap = {};
+      await Promise.allSettled(
+        teamIds.map(id =>
+          fetch(`https://statsapi.mlb.com/api/v1/teams/${id}`)
+            .then(r => r.json())
+            .then(d => { const t = d.teams?.[0]; if (t) teamMap[t.id] = t; })
+        )
+      );
+      setResults(matches.map(p => {
+        const team = teamMap[p.currentTeam?.id] || {};
+        return {
+          id: String(p.id),
+          sport: 'milb',
+          displayName: p.fullName || '',
+          headshot: milbHeadshotUrl(p.id),
+          jersey: p.primaryNumber || '',
+          team: {
+            id: String(team.id || p.currentTeam?.id || ''),
+            abbreviation: team.abbreviation || '',
+            displayName: team.name || '',
+            logo: milbTeamLogoUrl(team.id || p.currentTeam?.id),
+            color: null, alternateColor: null,
+          },
+          position: p.primaryPosition?.abbreviation || '',
+          _position: p.primaryPosition?.abbreviation || '',
+          _levelShort: levelShort(team.sport?.id || p._sportId),
+        };
+      }));
+    } catch { setResults([]); }
+    finally { setSearching(false); }
   }, []);
 
   const doSearch = useCallback((q) => {
@@ -806,6 +839,9 @@ export default function PlayerCardsPage() {
           {searching && <div className="loading-text" style={{padding:'8px 0'}}>Searching…</div>}
           {!searching && query.trim() && results.length === 0 && (
             <div className="loading-text" style={{padding:'8px 0', color:'var(--text2)'}}>No players found.</div>
+          )}
+          {searchMode === 'milb' && !searching && (
+            <MiLBDirectAdd onAdd={addCard} />
           )}
           {results.length > 0 && (
             <div className="picker-list" style={{marginTop:8}}>

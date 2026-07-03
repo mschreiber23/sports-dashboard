@@ -7559,6 +7559,38 @@ thead .dfs-sticky-player {
   color: var(--text);
 }
 
+/* MiLB direct-add by ID */
+.milb-direct-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.milb-direct-label { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.milb-direct-input {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  min-width: 0;
+}
+.milb-direct-input:focus { border-color: var(--accent); }
+
+/* MiLB no-game card */
+.milb-no-game-card { cursor: default; }
+.milb-no-game-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+}
+
 /* MiLB level badge in BoxScore game header */
 .bsp-gh-milb-level {
   position: absolute;

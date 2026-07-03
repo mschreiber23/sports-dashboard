@@ -208,7 +208,17 @@ export default function ScoresPage() {
       )}
       {activeSport === 'milb' && !loading && milbRawGames.length > 0 && (
         <div className="teams-grid" style={{marginTop:12}}>
-          {milbRawGames.map(game => (
+          {[...milbRawGames].sort((a,b) => {
+            const aTeamIds = (a.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
+            const bTeamIds = (b.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
+            const favMiLB = favorites.teams.filter(ft=>ft.sport==='milb').map(ft=>ft.team.id);
+            const aFav = aTeamIds.some(id=>favMiLB.includes(id)) ? 0 : 1;
+            const bFav = bTeamIds.some(id=>favMiLB.includes(id)) ? 0 : 1;
+            if (aFav !== bFav) return aFav - bFav;
+            const stA = a.competitions?.[0]?.status?.type?.state||'pre';
+            const stB = b.competitions?.[0]?.status?.type?.state||'pre';
+            return ({in:0,post:1,pre:2}[stA]??2) - ({in:0,post:1,pre:2}[stB]??2);
+          }).map(game => (
             <MiLBGameCard key={game.id} game={game} navigate={navigate} />
           ))}
         </div>

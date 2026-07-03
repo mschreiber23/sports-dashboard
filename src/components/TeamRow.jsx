@@ -7,7 +7,7 @@ import { mlbHeadshot, extractTopPerformers } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { levelShort } from '../api/milb';
+import { levelShort, normalizeMiLBGame } from '../api/milb';
 
 /** Search ESPN by player name and navigate to their player page. */
 async function goToEspnPlayer(fullName, sport, navigate) {
@@ -1295,6 +1295,49 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const st2 = game.competitions?.[0]?.status?.type?.state;
   if (st2 === 'post') return <SportFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   return <SportPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+}
+
+/* ─── MiLB Team Row (home page) ──────────────────────── */
+export function MiLBTeamRow({ team, dateStr }) {
+  const navigate = useNavigate();
+  const [game, setGame] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const isoDate = dateStr
+    ? `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`
+    : new Date().toISOString().slice(0,10);
+
+  useEffect(() => {
+    if (!team?.id) return;
+    setLoading(true);
+    fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?teamId=${team.id}&sportId=11,12,13,14` +
+      `&date=${isoDate}&hydrate=team,linescore&gameType=R,F,D,L,W,C`
+    )
+      .then(r => r.json())
+      .then(d => {
+        const g = d.dates?.[0]?.games?.[0];
+        setGame(g ? normalizeMiLBGame(g) : null);
+      })
+      .catch(() => setGame(null))
+      .finally(() => setLoading(false));
+  }, [team?.id, isoDate]);
+
+  if (loading) return <div className="mlbc-card" style={{minHeight:70, opacity:0.4}} />;
+
+  if (!game) return (
+    <div className="mlbc-card milb-no-game-card">
+      <div className="milb-no-game-body">
+        <img src={team.logo} alt="" className="milb-card-logo" onError={e=>{e.target.style.display='none';}}/>
+        <div>
+          <div className="milb-card-abbr" style={{fontSize:14}}>{team.abbreviation || team.displayName}</div>
+          <div style={{fontSize:11,color:'var(--text2)'}}>No game today</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return <MiLBGameCard game={game} navigate={navigate} />;
 }
 
 /* ─── MiLB Game Card ──────────────────────────────────── */

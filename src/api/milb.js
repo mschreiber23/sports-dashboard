@@ -132,6 +132,60 @@ export async function fetchMiLBTeam(teamId) {
   } catch { return null; }
 }
 
+/* ── Team listing ──────────────────────────────────────── */
+let _teamsCache = null;
+/** Fetch all MiLB teams across all 4 levels (cached for the session). */
+export async function fetchAllMiLBTeams() {
+  if (_teamsCache) return _teamsCache;
+  const results = await Promise.allSettled(
+    [11, 12, 13, 14].map(id =>
+      fetch(`${STATSAPI}/teams?sportId=${id}&season=${new Date().getFullYear()}&fields=teams,id,name,abbreviation,sport`)
+        .then(r => r.json())
+        .then(d => d.teams || [])
+    )
+  );
+  _teamsCache = results.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+  return _teamsCache;
+}
+
+/* ── Player index (comprehensive name search) ─────────── */
+let _playerIndex = null;
+let _playerIndexPromise = null;
+/**
+ * Lazy-load all active MiLB players across all 4 levels.
+ * Returns a flat array cached for the session.
+ */
+export async function getMiLBPlayerIndex() {
+  if (_playerIndex) return _playerIndex;
+  if (_playerIndexPromise) return _playerIndexPromise;
+  _playerIndexPromise = Promise.all(
+    [11, 12, 13, 14].map(sportId =>
+      fetch(
+        `${STATSAPI}/sports/${sportId}/players?season=${new Date().getFullYear()}` +
+        `&fields=people,id,fullName,currentTeam,primaryPosition,primaryNumber`
+      ).then(r => r.json())
+       .then(d => (d.people || []).map(p => ({ ...p, _sportId: sportId })))
+       .catch(() => [])
+    )
+  ).then(arrays => {
+    _playerIndex = arrays.flat();
+    return _playerIndex;
+  });
+  return _playerIndexPromise;
+}
+
+/**
+ * Search all MiLB players by name (uses the cached index).
+ * Returns up to 20 matches with team info resolved.
+ */
+export async function searchMiLBByName(query) {
+  const norm = s => (s || '').toLowerCase();
+  const q = norm(query.trim());
+  if (q.length < 2) return [];
+  const index = await getMiLBPlayerIndex();
+  return index.filter(p => norm(p.fullName).includes(q)).slice(0, 20);
+}
+
 /** Fetch full player bio from MLB Stats API. */
 export async function fetchMiLBPlayerBio(playerId) {
   try {

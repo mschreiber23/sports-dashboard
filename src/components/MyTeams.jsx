@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
-import TeamRow from './TeamRow';
+import TeamRow, { MiLBTeamRow } from './TeamRow';
 import { SPORTS } from '../api/espn';
+import { fetchAllMiLBTeams, milbTeamLogoUrl, MILB_LEVELS } from '../api/milb';
 
 const SLUG_TO_SPORT = { mlb:'mlb', nba:'nba', nfl:'nfl', nhl:'nhl', baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl' };
 const SPORT_COLORS  = { mlb:'#e74c3c', nba:'#f39c12', nfl:'#27ae60', nhl:'#3498db' };
+const SPORT_LABEL   = { ...Object.fromEntries(Object.entries(SPORTS).map(([k,v])=>[k,v.label])), milb:'MiLB' };
 
 function extractTeamId(uid = '') {
   const m = uid.match(/t:(\d+)/);
@@ -49,6 +51,8 @@ export default function MyTeams({ editMode = false, setEditMode }) {
   const [teamQuery, setTeamQuery]         = useState('');
   const [teamResults, setTeamResults]     = useState([]);
   const [teamSearching, setTeamSearching] = useState(false);
+  const [teamSearchMode, setTeamSearchMode] = useState('all'); // 'all' | 'milb'
+  const [milbTeams, setMilbTeams]         = useState([]);
   const debounceRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -58,10 +62,16 @@ export default function MyTeams({ editMode = false, setEditMode }) {
 
   const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
 
-  // Auto-focus when picker opens
+  // Auto-focus when picker opens; load MiLB teams once
   useEffect(() => {
-    if (showPicker) setTimeout(() => searchInputRef.current?.focus(), 80);
-    else { setTeamQuery(''); setTeamResults([]); }
+    if (showPicker) {
+      setTimeout(() => searchInputRef.current?.focus(), 80);
+      if (milbTeams.length === 0) {
+        fetchAllMiLBTeams().then(setMilbTeams).catch(() => {});
+      }
+    } else {
+      setTeamQuery(''); setTeamResults([]); setTeamSearchMode('all');
+    }
   }, [showPicker]);
 
   const doTeamSearch = useCallback((q) => {
@@ -169,31 +179,100 @@ export default function MyTeams({ editMode = false, setEditMode }) {
       {/* Add team search — above the team list */}
       {showPicker && (
         <div className="mt-team-search">
-          <input
-            ref={searchInputRef}
-            className="search-input"
-            placeholder="Search any team across MLB, NBA, NFL, NHL…"
-            value={teamQuery}
-            onChange={handleQueryChange}
-          />
-          {teamSearching && <div className="loading-text" style={{ padding: '8px 0' }}>Searching…</div>}
-          {teamResults.length > 0 && (
-            <div className="picker-list">
-              {teamResults.map((t) => {
-                const already = favorites.teams.some(ft => ft.team.id === t.id && ft.sport === t.sport);
+          {/* Mode toggle */}
+          <div className="pc-search-mode-row" style={{marginBottom:8}}>
+            {['all','milb'].map(mode => (
+              <button key={mode}
+                className={`pc-search-mode-btn${teamSearchMode===mode?' pc-search-mode-active':''}`}
+                onClick={() => { setTeamSearchMode(mode); setTeamQuery(''); setTeamResults([]); }}>
+                {mode==='all' ? 'MLB / NBA / NFL / NHL' : <><span className="milb-level-badge" style={{fontSize:9,padding:'1px 5px',marginRight:4}}>MiLB</span>Minor League</>}
+              </button>
+            ))}
+          </div>
+
+          {/* ESPN team search */}
+          {teamSearchMode === 'all' && (
+            <>
+              <input
+                ref={searchInputRef}
+                className="search-input"
+                placeholder="Search any team across MLB, NBA, NFL, NHL…"
+                value={teamQuery}
+                onChange={handleQueryChange}
+              />
+              {teamSearching && <div className="loading-text" style={{ padding: '8px 0' }}>Searching…</div>}
+              {teamResults.length > 0 && (
+                <div className="picker-list">
+                  {teamResults.map((t) => {
+                    const already = favorites.teams.some(ft => ft.team.id === t.id && ft.sport === t.sport);
+                    return (
+                      <div key={`${t.sport}-${t.id}`} className="picker-item">
+                        <div className="picker-team-info">
+                          {t.logo && <img src={t.logo} alt="" className="picker-team-logo" onError={e => e.target.style.display='none'} />}
+                          <div className="picker-name">{t.displayName}</div>
+                        </div>
+                        <button className={already?'btn-ghost btn-sm':'btn-primary btn-sm'} disabled={already} onClick={() => handleAddTeam(t)}>
+                          {already ? 'Added' : 'Add'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* MiLB team browser */}
+          {teamSearchMode === 'milb' && (
+            <div>
+              <input
+                ref={teamSearchMode === 'milb' ? searchInputRef : null}
+                className="search-input"
+                placeholder="Filter teams by name…"
+                value={teamQuery}
+                onChange={e => setTeamQuery(e.target.value)}
+              />
+              {milbTeams.length === 0 && <div className="loading-text" style={{padding:'8px 0'}}>Loading teams…</div>}
+              {Object.entries(MILB_LEVELS).map(([sportId, label]) => {
+                const levelTeams = milbTeams
+                  .filter(t => t.sport?.id === Number(sportId))
+                  .filter(t => !teamQuery || t.name.toLowerCase().includes(teamQuery.toLowerCase()))
+                  .sort((a,b) => a.name.localeCompare(b.name));
+                if (!levelTeams.length) return null;
                 return (
-                  <div key={`${t.sport}-${t.id}`} className="picker-item">
-                    <div className="picker-team-info">
-                      {t.logo && <img src={t.logo} alt="" className="picker-team-logo" onError={e => e.target.style.display='none'} />}
-                      <div className="picker-name">{t.displayName}</div>
+                  <div key={sportId} style={{marginTop:8}}>
+                    <div className="milb-level-section-header" style={{padding:'4px 0'}}>
+                      <span className="milb-level-badge">{label}</span>
                     </div>
-                    <button
-                      className={already ? 'btn-ghost btn-sm' : 'btn-primary btn-sm'}
-                      disabled={already}
-                      onClick={() => handleAddTeam(t)}
-                    >
-                      {already ? 'Added' : 'Add'}
-                    </button>
+                    <div className="picker-list">
+                      {levelTeams.map(t => {
+                        const already = favorites.teams.some(ft => ft.team.id === String(t.id) && ft.sport === 'milb');
+                        return (
+                          <div key={t.id} className="picker-item">
+                            <div className="picker-team-info">
+                              <img src={milbTeamLogoUrl(t.id)} alt="" className="picker-team-logo" onError={e=>e.target.style.display='none'} />
+                              <div>
+                                <div className="picker-name">{t.name}</div>
+                                <div style={{fontSize:10,color:'var(--text2)'}}>{t.abbreviation}</div>
+                              </div>
+                            </div>
+                            <button
+                              className={already?'btn-ghost btn-sm':'btn-primary btn-sm'}
+                              disabled={already}
+                              onClick={() => addTeam('milb', {
+                                id: String(t.id),
+                                displayName: t.name,
+                                abbreviation: t.abbreviation || '',
+                                color: null, alternateColor: null,
+                                logo: milbTeamLogoUrl(t.id),
+                                sportId: t.sport?.id,
+                              })}>
+                              {already ? 'Added' : 'Add'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
@@ -219,7 +298,7 @@ export default function MyTeams({ editMode = false, setEditMode }) {
                 {team.logo && <img src={team.logo} alt="" className="edit-team-logo" />}
                 <div>
                   <div className="edit-team-name">{team.displayName}</div>
-                  <div className="edit-team-sport">{SPORTS[sport]?.label}</div>
+                  <div className="edit-team-sport">{SPORT_LABEL[sport] || sport.toUpperCase()}</div>
                 </div>
               </div>
               <div className="edit-reorder-btns">
@@ -262,6 +341,15 @@ export default function MyTeams({ editMode = false, setEditMode }) {
             {favorites.teams.map(({ sport, team }) => {
               const isHidden = hiddenTeams[`${team.id}-${sport}`] === true;
               if (isHidden && !showHidden) return null;
+              if (sport === 'milb') {
+                return (
+                  <MiLBTeamRow
+                    key={`milb-${team.id}`}
+                    team={team}
+                    dateStr={dateStr}
+                  />
+                );
+              }
               return (
                 <TeamRow
                   key={`${sport}-${team.id}`}
