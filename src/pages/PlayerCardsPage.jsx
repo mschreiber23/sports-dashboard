@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
+import { fetchMiLBSeasonStats, extractMiLBStats } from '../api/milb';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -26,10 +27,11 @@ const SLUG_TO_SPORT = {
   baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl',
 };
 const SPORT_CFG = {
-  mlb: { sport:'baseball', league:'mlb' },
-  nba: { sport:'basketball', league:'nba' },
-  nfl: { sport:'football', league:'nfl' },
-  nhl: { sport:'hockey', league:'nhl' },
+  mlb:  { sport:'baseball',    league:'mlb' },
+  milb: { sport:'baseball',    league:'milb', isMiLB: true },
+  nba:  { sport:'basketball',  league:'nba' },
+  nfl:  { sport:'football',    league:'nfl' },
+  nhl:  { sport:'hockey',      league:'nhl' },
 };
 
 /* ── Position helpers ─────────────────────────────────── */
@@ -81,7 +83,7 @@ const STAT_CFGS = {
 };
 
 function getStatCfgKey(sport, posAbb) {
-  if (sport === 'mlb') return isPitcher(posAbb) ? 'mlb_pitcher' : 'mlb_batter';
+  if (sport === 'mlb' || sport === 'milb') return isPitcher(posAbb) ? 'mlb_pitcher' : 'mlb_batter';
   if (sport === 'nfl') {
     const g = nflGroup(posAbb);
     return g ? `nfl_${g}` : 'nfl_wr';
@@ -189,6 +191,59 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
 
   const load = useCallback(async () => {
     try {
+      const isMiLB = player.sport === 'milb';
+
+      // ── MiLB path: use MLB Stats API throughout ──────────
+      if (isMiLB) {
+        const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+        const teamId = player.team?.id;
+        let game = null;
+        if (teamId) {
+          try {
+            const r = await fetch(
+              `https://statsapi.mlb.com/api/v1/schedule?sportId=11,12,13,14` +
+              `&date=${isoDate}&teamId=${teamId}&hydrate=team`
+            );
+            const d = await r.json();
+            const g = d.dates?.[0]?.games?.[0];
+            if (g) {
+              const abs = g.status?.abstractGameState || '';
+              const state = abs === 'Live' ? 'in' : abs === 'Final' ? 'post' : 'pre';
+              game = {
+                id: String(g.gamePk),
+                _gamePk: g.gamePk,
+                competitions: [{ status: { type: { state } }, competitors: [
+                  { homeAway: 'away', team: { id: String(g.teams?.away?.team?.id || '') } },
+                  { homeAway: 'home', team: { id: String(g.teams?.home?.team?.id || '') } },
+                ]}],
+              };
+            }
+          } catch {}
+        }
+        if (!game) {
+          const seasonStats = await fetchMiLBSeasonStats(player.id, posAbb);
+          setGameData({ game: null, seasonStats });
+          setLoading(false);
+          return;
+        }
+        const state = game.competitions?.[0]?.status?.type?.state;
+        if (state === 'pre') {
+          const seasonStats = await fetchMiLBSeasonStats(player.id, posAbb);
+          setGameData({ game, seasonStats, state });
+        } else {
+          // Fetch live feed for game stats
+          const [liveFeed, seasonStats] = await Promise.all([
+            fetch(`https://statsapi.mlb.com/api/v1.1/game/${game._gamePk}/feed/live`).then(r => r.json()),
+            (state === 'in' || state === 'post') ? fetchMiLBSeasonStats(player.id, posAbb) : Promise.resolve({}),
+          ]);
+          const statMap = extractMiLBStats(liveFeed, player.id, posAbb);
+          setGameData({ game, statMap, seasonStats, state });
+        }
+        setLoading(false);
+        return;
+      }
+
+      // ── ESPN path (mlb, nba, nfl, nhl) ──────────────────
       let teamId = player.team?.id;
 
       // If team.id is missing (old stored player), re-fetch athlete data to get it
@@ -198,7 +253,6 @@ function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
           const ar = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/${s}/${l}/athletes/${player.id}`);
           const ad = await ar.json();
           teamId = ad.athlete?.team?.id;
-          // Patch the stored player so future loads work
           if (teamId) {
             onUpdatePlayer?.(player.id, { team: { ...player.team, id: teamId } });
           }

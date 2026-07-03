@@ -4,6 +4,7 @@ import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import useMlbLiveFeed, { mlbHeadshot } from '../hooks/useMlbLiveFeed';
 import NhlGamecast from './NhlGamecast';
+import { buildMiLBComp, levelShort } from '../api/milb';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
 const PITCH_NAMES = {
@@ -1962,12 +1963,12 @@ function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, t
 /* mlbInnings: [{num,away:{runs,hits,errors},home:{...}}]
    mlbTotals:  {away:{runs,hits,errors}, home:{...}} */
 function LineScore({ competitors, sport, mlbInnings, mlbTotals }) {
-  if (!['mlb','nhl'].includes(sport)) return null;
+  if (!['mlb','milb','nhl'].includes(sport)) return null;
 
   const sorted = [...competitors].sort((a,b) => a.homeAway==='away' ? -1 : b.homeAway==='away' ? 1 : 0);
 
   // Prefer MLB innings data for MLB games
-  const useMLB = sport === 'mlb' && mlbInnings?.length > 0;
+  const useMLB = (sport === 'mlb' || sport === 'milb') && mlbInnings?.length > 0;
 
   const maxPeriods = useMLB
     ? Math.max(mlbInnings.length, 9)
@@ -2017,7 +2018,7 @@ function LineScore({ competitors, sport, mlbInnings, mlbTotals }) {
 
 /* ─── Game Header ────────────────────────────────────── */
 /* Compact MLB.com-style game header */
-function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay }) {
+function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, miLBLevel }) {
   const away = competitors?.find((c) => c.homeAway === 'away') || competitors?.[0];
   const home = competitors?.find((c) => c.homeAway === 'home') || competitors?.[1];
   const isLive  = status?.type?.state === 'in';
@@ -2049,6 +2050,11 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay })
 
   return (
     <div className="bsp-gh">
+      {miLBLevel && (
+        <div className="bsp-gh-milb-level">
+          <span className="milb-level-badge">{miLBLevel}</span>
+        </div>
+      )}
       {/* Away */}
       <div className="bsp-gh-team bsp-gh-away">
         <div className="bsp-gh-text">
@@ -2108,15 +2114,25 @@ export default function BoxScorePage() {
   // AB sheet state (Box Score tab)
   const [playerAbsData, setPlayerAbsData] = useState(null); // {name, atBats[]}
 
-  // Pull live innings + score from MLB feed for MLB games
-  const mlbFeed = useMlbLiveFeed(mlbGamePk, sport === 'mlb');
+  const isMiLB = sport === 'milb';
+
+  // For MiLB: gamePk is the URL gameId directly — set immediately
+  useEffect(() => {
+    if (isMiLB && gameId) setMlbGamePk(parseInt(gameId, 10));
+  }, [isMiLB, gameId]);
+
+  // Pull live innings + score from MLB feed for MLB and MiLB games
+  const mlbFeed = useMlbLiveFeed(mlbGamePk, sport === 'mlb' || isMiLB);
   const mlbInnings       = mlbFeed.innings           || [];
   const mlbTotals        = mlbFeed.linescoreTotals   || {};
   const mlbInningDisplay = mlbFeed.inningDisplay     || '';
 
-  const comp   = data?.header?.competitions?.[0];
-  const comps  = comp?.competitors || [];
-  const status = comp?.status;
+  // For MiLB: build all competitor/status data from the live feed (no ESPN data)
+  const _miLBComp  = isMiLB ? buildMiLBComp(mlbFeed.raw) : null;
+  const _espnComp  = data?.header?.competitions?.[0];
+  const comp       = _miLBComp ?? _espnComp;
+  const comps      = comp?.competitors || [];
+  const status     = comp?.status;
   const isLive = status?.type?.state === 'in';
   const isFinal = status?.type?.state === 'post';
   const players      = data?.boxscore?.players || [];
@@ -2134,9 +2150,10 @@ export default function BoxScorePage() {
   const homeDetails = bsTeams.find((t) => t.team?.id === home?.team?.id)?.details || [];
   const groupDetails = [awayDetails, homeDetails];
 
-  // For live MLB games, build groups from MLB live feed (real-time) instead of stale ESPN data
-  const mlbLiveGroups = isLive && sport === 'mlb' && mlbFeed.raw?.liveData?.boxscore
-    ? buildMlbLiveGroups(mlbFeed.raw.liveData.boxscore, away, home, groups)
+  // MiLB always uses live feed groups; MLB uses them only when live
+  const mlbLiveGroups = (
+    ((isLive && sport === 'mlb') || isMiLB) && mlbFeed.raw?.liveData?.boxscore
+  ) ? buildMlbLiveGroups(mlbFeed.raw.liveData.boxscore, away, home, groups)
     : null;
   const activeGroups = mlbLiveGroups || groups;
 
@@ -2219,7 +2236,7 @@ export default function BoxScorePage() {
     return () => { cancelled = true; ctrl.abort(); };
   }, [isPre, sport, data, gameId]);
 
-  // Resolve MLB gamePk for live pitch tracker
+  // Resolve MLB gamePk for live pitch tracker (not needed for MiLB — set directly above)
   useEffect(() => {
     if (sport !== 'mlb' || !data) return;
     const awayTeam = away?.team;
@@ -2233,20 +2250,21 @@ export default function BoxScorePage() {
 
   // Auto-select best tab only if no tab was passed via navigation state
   useEffect(() => {
-    if (!loading && !location.state?.tab) {
-      if (isPre) setActiveTab('Preview');
-      else if (sport === 'nhl') setActiveTab('Gamecast'); // NHL always defaults to Gamecast
+    if ((!loading || isMiLB) && !location.state?.tab) {
+      if (isPre && !isMiLB) setActiveTab('Preview');
+      else if (sport === 'nhl') setActiveTab('Gamecast');
       else if (isFinal) setActiveTab('Box Score');
-      else if (isLive && sport === 'mlb') setActiveTab('Live');
+      else if (isLive && (sport === 'mlb' || isMiLB)) setActiveTab('Live');
+      else if (isMiLB) setActiveTab('Box Score');
       else setActiveTab('Gamecast');
     }
   }, [loading, isLive, isPre, sport]);
 
-  const tabs = isPre
+  const tabs = (isPre && !isMiLB)
     ? ['Preview']
     : sport === 'nhl'
-    ? ['Gamecast', 'Box Score', 'Play-by-Play']  // NHL always has Gamecast
-    : isLive && sport === 'mlb'
+    ? ['Gamecast', 'Box Score', 'Play-by-Play']
+    : (isLive && (sport === 'mlb' || isMiLB))
     ? ['Live', 'Box Score', 'Play-by-Play', 'Scoring Plays']
     : isLive
     ? ['Gamecast', 'Box Score', 'Play-by-Play']
@@ -2255,14 +2273,16 @@ export default function BoxScorePage() {
   return (
     <div className="bsp-page">
 
-      {loading && <div className="tp-loading">Loading…</div>}
-      {error && <div className="error-banner">{error}</div>}
+      {(loading && !isMiLB) && <div className="tp-loading">Loading…</div>}
+      {(isMiLB && !mlbFeed.raw) && <div className="tp-loading">Loading…</div>}
+      {error && !isMiLB && <div className="error-banner">{error}</div>}
 
-      {!loading && !error && data && (
+      {(!loading || isMiLB) && !error && (data || isMiLB) && comp && (
         <>
           <GameHeader competitors={comps} status={status} sport={sport}
             mlbTotals={mlbInnings.length > 0 ? mlbTotals : null}
-            mlbInningDisplay={mlbInningDisplay} />
+            mlbInningDisplay={mlbInningDisplay}
+            miLBLevel={isMiLB ? levelShort(mlbFeed.raw?.gameData?.sport?.id) : null} />
 
           {/* Tabs — hidden when only one tab (pre-game Preview) */}
           {tabs.length > 1 && (
@@ -2287,7 +2307,7 @@ export default function BoxScorePage() {
             )}
 
             {(activeTab === 'Gamecast' || activeTab === 'Live') && (
-              sport === 'mlb'
+              (sport === 'mlb' || isMiLB)
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
                 : sport === 'nhl'
                 ? <NhlGamecast espnGame={{ competitions: [comp], date: comp?.date || data?.header?.competitions?.[0]?.date }} sport={sport} />
@@ -2295,7 +2315,7 @@ export default function BoxScorePage() {
             )}
 
             {(activeTab === 'Scoring Summary' || activeTab === 'Scoring Plays') && (
-              sport === 'mlb' && mlbGamePk
+              (sport === 'mlb' || isMiLB) && mlbGamePk
                 ? <MlbScoringSummary mlbGamePk={mlbGamePk}
                     venueId={home?.team?.id}
                     teamColor={home?.team?.color}

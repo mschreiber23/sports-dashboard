@@ -7278,3 +7278,90 @@ thead .dfs-sticky-player {
   font-family: inherit;
 }
 .top-more-item:hover { background: var(--bg3); }
+
+/* ── MiLB Level Badge ─────────────────────────────────── */
+.milb-level-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: #fff;
+  background: #1d4ed8;
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+/* ── MiLB Score Card ──────────────────────────────────── */
+.milb-card { cursor: pointer; }
+.milb-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px;
+}
+.milb-card-live {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ade80;
+}
+.milb-card-final {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+}
+.milb-card-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 12px 10px;
+}
+.milb-card-team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.milb-card-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.milb-card-abbr {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  width: 36px;
+  flex-shrink: 0;
+}
+.milb-card-name {
+  font-size: 12px;
+  color: var(--text2);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.milb-card-score {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text2);
+  margin-left: auto;
+  min-width: 20px;
+  text-align: right;
+}
+.milb-card-score-win {
+  color: var(--text);
+}
+
+/* MiLB level badge in BoxScore game header */
+.bsp-gh-milb-level {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.bsp-gh { position: relative; }

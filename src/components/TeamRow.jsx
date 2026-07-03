@@ -7,6 +7,7 @@ import { mlbHeadshot, extractTopPerformers } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
+import { levelShort } from '../api/milb';
 
 /** Search ESPN by player name and navigate to their player page. */
 async function goToEspnPlayer(fullName, sport, navigate) {
@@ -1294,6 +1295,55 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const st2 = game.competitions?.[0]?.status?.type?.state;
   if (st2 === 'post') return <SportFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   return <SportPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+}
+
+/* ─── MiLB Game Card ──────────────────────────────────── */
+export function MiLBGameCard({ game, navigate }) {
+  const comp        = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away        = competitors.find(c => c.homeAway === 'away') || competitors[0];
+  const home        = competitors.find(c => c.homeAway === 'home') || competitors[1];
+  const state       = comp?.status?.type?.state;
+  const shortDetail = comp?.status?.type?.shortDetail || '';
+  const isLive      = state === 'in';
+  const isFinal     = state === 'post';
+  const level       = levelShort(comp?._sportId);
+  const gamePk      = comp?._gamePk || game._gamePk;
+
+  const go = (tab) => navigate(`/boxscore/milb/${gamePk}`, { state: { tab } });
+
+  return (
+    <div className="mlbc-card milb-card" onClick={() => go(isLive ? 'Live' : 'Box Score')}>
+      <div className="milb-card-header">
+        <span className="milb-level-badge">{level}</span>
+        {isLive && (
+          <span className="milb-card-live">
+            <span className="live-dot" style={{marginRight:4}}/>
+            {shortDetail}
+          </span>
+        )}
+        {isFinal && <span className="milb-card-final">Final</span>}
+      </div>
+      <div className="milb-card-teams">
+        {[{ c: away, side: 'away' }, { c: home, side: 'home' }].map(({ c, side }) => (
+          <div key={side} className="milb-card-team-row">
+            <img
+              src={c?.team?.logo} alt=""
+              className="milb-card-logo"
+              onError={e => { e.target.style.display = 'none'; }}
+            />
+            <span className="milb-card-abbr">{c?.team?.abbreviation}</span>
+            <span className="milb-card-name">{c?.team?.shortDisplayName || c?.team?.displayName}</span>
+            {(isLive || isFinal) && (
+              <span className={`milb-card-score${(isFinal && c?.winner) ? ' milb-card-score-win' : ''}`}>
+                {c?.score ?? ''}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // Named exports for use in ScoresPage and elsewhere
