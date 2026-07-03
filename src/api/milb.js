@@ -35,6 +35,16 @@ export async function fetchMiLBSchedule(isoDate) {
   return out;
 }
 
+/** Format a UTC game date string as a local time string. */
+export function formatGameTime(gameDate) {
+  if (!gameDate) return '';
+  try {
+    return new Date(gameDate).toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+    });
+  } catch { return ''; }
+}
+
 /** Convert an MLB Stats API schedule game to an ESPN-compatible shape for sort/render. */
 export function normalizeMiLBGame(game) {
   const away = game.teams?.away || {};
@@ -56,6 +66,8 @@ export function normalizeMiLBGame(game) {
     },
   });
 
+  const gameTime = formatGameTime(game.gameDate);
+
   return {
     id: String(game.gamePk),
     _isMiLB: true,
@@ -65,17 +77,55 @@ export function normalizeMiLBGame(game) {
       _gamePk: game.gamePk,
       _sportId: game.sport?.id,
       _linescore: ls,
+      _gameTime: gameTime,
       competitors: [mkTeam('away', away), mkTeam('home', home)],
       status: {
         type: {
           state,
           shortDetail: state === 'in'
             ? `${ls.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${ls.currentInning || ''}`
-            : state === 'post' ? 'Final' : '',
+            : state === 'post' ? 'Final'
+            : gameTime,
         },
       },
     }],
   };
+}
+
+/** MLB CDN headshot URL for a player. */
+export function milbHeadshotUrl(mlbId) {
+  return mlbId
+    ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`
+    : null;
+}
+
+/** MLB static team logo URL. */
+export function milbTeamLogoUrl(teamId) {
+  return teamId ? `https://www.mlbstatic.com/team-logos/${teamId}.svg` : null;
+}
+
+/** Fetch full player bio from MLB Stats API. */
+export async function fetchMiLBPlayerBio(playerId) {
+  try {
+    const r = await fetch(
+      `${STATSAPI}/people/${playerId}?hydrate=currentTeam,team,stats(type=season,sportId=${ALL_SPORT_IDS})`
+    );
+    const d = await r.json();
+    return d.people?.[0] || null;
+  } catch { return null; }
+}
+
+/** Fetch recent game log for a MiLB player. */
+export async function fetchMiLBGameLog(playerId, group = 'hitting') {
+  const year = new Date().getFullYear();
+  try {
+    const r = await fetch(
+      `${STATSAPI}/people/${playerId}/stats?stats=gameLog&season=${year}` +
+      `&group=${group}&sportId=${ALL_SPORT_IDS}`
+    );
+    const d = await r.json();
+    return d.stats?.[0]?.splits || [];
+  } catch { return []; }
 }
 
 /** Fetch season stats for a MiLB player from MLB Stats API. Returns ESPN-compatible stat map. */

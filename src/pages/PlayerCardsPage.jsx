@@ -545,10 +545,44 @@ export default function PlayerCardsPage() {
   };
 
   const addCard = async (player) => {
-    if (cards.some(c => c.id === player.id)) return;
+    if (cards.some(c => c.id === player.id && c.sport === player.sport)) return;
+
+    // MiLB players: use MLB Stats API for bio/team info
+    if (player.sport === 'milb') {
+      try {
+        const r = await fetch(
+          `https://statsapi.mlb.com/api/v1/people/${player.id}?hydrate=currentTeam`
+        );
+        const d = await r.json();
+        const p = d.people?.[0] || {};
+        const team = p.currentTeam || {};
+        const full = {
+          id: String(player.id),
+          sport: 'milb',
+          displayName: p.fullName || player.displayName,
+          headshot: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${player.id}/headshot/67/current`,
+          jersey: p.primaryNumber || '',
+          team: {
+            id: String(team.id || ''),
+            abbreviation: team.abbreviation || '',
+            displayName: team.name || '',
+            logo: `https://www.mlbstatic.com/team-logos/${team.id}.svg`,
+            color: null, alternateColor: null,
+          },
+          position: p.primaryPosition?.abbreviation || player._position || '',
+          _position: p.primaryPosition?.abbreviation || player._position || '',
+        };
+        setCards(prev => [full, ...prev.filter(c => !(c.id === full.id && c.sport === 'milb'))]);
+      } catch {
+        setCards(prev => [player, ...prev]);
+      }
+      setShowSearch(false);
+      return;
+    }
+
+    // ESPN-powered sports (mlb, nba, nfl, nhl)
     const { sport: s, league: l } = SPORT_CFG[player.sport] || {};
     try {
-      // Use the common/v3 endpoint which works reliably for all athletes
       const r = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/${s}/${l}/athletes/${player.id}`);
       const d = await r.json();
       const ath = d.athlete || {};

@@ -114,7 +114,19 @@ function CardsIcon({ active }) {
   );
 }
 
+function MiLBIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 3 C9 7 9 17 12 21"/>
+      <path d="M12 3 C15 7 15 17 12 21"/>
+      <path d="M3 12 L21 12"/>
+    </svg>
+  );
+}
+
 const MORE_ITEMS = [
+  { path: '/milb',     label: 'MiLB',       Icon: MiLBIcon },
   { path: '/me',       label: 'My Profile', Icon: MeIcon },
   { path: '/leaders',  label: 'Leaders',    Icon: LeadersIcon },
   { path: '/rankings', label: 'Rankings',   Icon: LeadersIcon },

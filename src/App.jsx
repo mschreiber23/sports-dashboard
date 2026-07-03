@@ -22,6 +22,8 @@ import PlayersPage from './pages/PlayersPage';
 import TeamsPage from './pages/TeamsPage';
 import NhlDemoPage from './pages/NhlDemoPage';
 import PlayerCardsPage from './pages/PlayerCardsPage';
+import MiLBPage from './pages/MiLBPage';
+import MiLBPlayerPage from './pages/MiLBPlayerPage';
 import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
@@ -81,6 +83,7 @@ function AppShell({ userId }) {
             <Route path="/standings" element={<main className="main"><StandingsPage /></main>} />
             <Route path="/leaders"   element={<main className="main"><LeadersPage /></main>} />
             <Route path="/me"        element={<main className="main"><ProfilePage /></main>} />
+            <Route path="/player/milb/:playerId"             element={<main className="main"><MiLBPlayerPage /></main>} />
             <Route path="/player/:sport/:playerId"          element={<main className="main"><PlayerPage /></main>} />
             <Route path="/statcast/mlb/:playerId"            element={<main className="main"><StatcastPage /></main>} />
             <Route path="/dfs"                               element={<main className="main"><DFSPage /></main>} />
@@ -91,6 +94,7 @@ function AppShell({ userId }) {
             <Route path="/teams"                             element={<main className="main"><TeamsPage /></main>} />
             <Route path="/boxscore/:sport/:gameId"           element={<main className="main"><BoxScorePage /></main>} />
             <Route path="/team/:sport/:teamId"               element={<main className="main"><TeamPage /></main>} />
+            <Route path="/milb"                              element={<main className="main"><MiLBPage /></main>} />
           </Routes>
         </div>
         <BottomNav />
