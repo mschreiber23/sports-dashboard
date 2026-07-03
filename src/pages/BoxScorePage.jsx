@@ -2040,11 +2040,14 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, m
     : isPre   ? null
     : mlbInningDisplay || shortDetail;
 
-  // For pre-game, extract date + time from shortDetail e.g. "Tue, June 30 · 7:10 PM EDT"
-  // or from status directly
+  // For pre-game, extract date + time from shortDetail
+  // ESPN formats: "7:10 PM EDT"  |  "7/3 - 4:05 PM EDT"  |  "Sat, Jul 5 · 1:05 PM EDT"
   const gameDate = (() => {
     if (!isPre) return null;
-    // ESPN shortDetail for pre-game: "7:10 PM EDT" or "Sat, Jul 5 · 1:05 PM EDT"
+    if (shortDetail.includes(' - ')) {
+      const idx = shortDetail.indexOf(' - ');
+      return { date: shortDetail.slice(0, idx).trim(), time: shortDetail.slice(idx + 3).trim() };
+    }
     if (shortDetail.includes('·')) {
       const [datePart, timePart] = shortDetail.split('·').map(s => s.trim());
       return { date: datePart, time: timePart };
