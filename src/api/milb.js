@@ -96,10 +96,10 @@ export function normalizeMiLBGame(game) {
   };
 }
 
-/** MLB CDN headshot URL for a player. */
+/** MLB CDN headshot URL for a player (face-cropped, with generic fallback). */
 export function milbHeadshotUrl(mlbId) {
   return mlbId
-    ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`
+    ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/c_fill,g_face,w_180,h_180/v1/people/${mlbId}/headshot/67/current`
     : null;
 }
 

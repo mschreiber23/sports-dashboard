@@ -7050,7 +7050,7 @@ thead .dfs-sticky-player {
   height: 44px;
   border-radius: 50%;
   object-fit: cover;
-  object-position: center 15%;
+  object-position: top center;
   background: var(--bg3);
   flex-shrink: 0;
 }

@@ -88,6 +88,9 @@ export default function MiLBPage() {
   });
   const didMountRef = useRef(false);
 
+  // Show all games vs favorites-only
+  const [showAllGames, setShowAllGames] = useState(false);
+
   // Edit/customize mode
   const [editMode, setEditMode] = useState(false);
   const [showTeamPicker, setShowTeamPicker] = useState(false);
@@ -234,20 +237,29 @@ export default function MiLBPage() {
   };
 
   /* ── Sort games: favorites first, then live→final→pre ─ */
+  const tIds = g => (g.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
+  const isFavGame = g => tIds(g).some(id => favMiLBIds.includes(id));
+
   const sortedGames = [...games].sort((a, b) => {
-    const tIds = g => (g.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
-    const aFav = tIds(a).some(id=>favMiLBIds.includes(id)) ? 0 : 1;
-    const bFav = tIds(b).some(id=>favMiLBIds.includes(id)) ? 0 : 1;
+    const aFav = isFavGame(a) ? 0 : 1;
+    const bFav = isFavGame(b) ? 0 : 1;
     if (aFav !== bFav) return aFav - bFav;
     const sa = a.competitions?.[0]?.status?.type?.state||'pre';
     const sb = b.competitions?.[0]?.status?.type?.state||'pre';
     return (STATE_ORDER[sa]??2)-(STATE_ORDER[sb]??2);
   });
 
+  // When favorites exist, show only their games by default
+  const hasFavTeams = favMiLBIds.length > 0;
+  const visibleGames = (hasFavTeams && !showAllGames)
+    ? sortedGames.filter(g => isFavGame(g))
+    : sortedGames;
+  const hiddenCount = sortedGames.length - visibleGames.length;
+
   const levelIds = Object.keys(MILB_LEVELS).map(Number);
   const byLevel = {};
   for (const id of levelIds) byLevel[id] = [];
-  for (const g of sortedGames) {
+  for (const g of visibleGames) {
     const sid = Number(g._sportId);
     if (byLevel[sid]) byLevel[sid].push(g);
   }
@@ -409,6 +421,16 @@ export default function MiLBPage() {
       {/* ── Scores section ──────────────────────────────── */}
       <div className="milb-section-header">
         <span className="milb-section-title">Scores</span>
+        {hasFavTeams && games.length > 0 && (
+          <button
+            className="show-all-btn"
+            style={{marginLeft:'auto'}}
+            onClick={() => setShowAllGames(v => !v)}>
+            {showAllGames
+              ? `My Teams (${favMiLBIds.length})`
+              : `Show All (${hiddenCount > 0 ? `+${hiddenCount} more` : 'all shown'})`}
+          </button>
+        )}
       </div>
 
       {gamesLoading && (
@@ -421,6 +443,12 @@ export default function MiLBPage() {
         <div className="empty-state" style={{padding:'24px 0'}}>
           <div className="empty-icon">⚾</div>
           <p>No MiLB games on {formatDateLabel(selectedDate).toLowerCase()}.</p>
+        </div>
+      )}
+      {!gamesLoading && games.length > 0 && visibleGames.length === 0 && (
+        <div className="empty-state" style={{padding:'16px 0'}}>
+          <p style={{fontSize:13,color:'var(--text2)'}}>No games for your favorite teams today.</p>
+          <button className="show-all-btn" style={{marginTop:8}} onClick={() => setShowAllGames(true)}>Show All {games.length} Games</button>
         </div>
       )}
 
