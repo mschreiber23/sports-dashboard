@@ -19,7 +19,7 @@ function formatDateLabel(date) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const todayMidnight = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const STATE_ORDER = { in: 0, post: 1, pre: 2 };
 
 export default function MiLBPage() {
@@ -78,7 +78,7 @@ export default function MiLBPage() {
       <div className="scores-page-header">
         <h1 className="page-title" style={{ margin: 0 }}>
           <span className="milb-page-title-badge">MiLB</span>
-          Minor Leagues
+          Minor League Baseball
         </h1>
         <div className="sp-date-nav">
           <button className="sp-date-btn" onClick={() => shiftDate(-1)}>‹</button>
