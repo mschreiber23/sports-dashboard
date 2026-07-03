@@ -175,7 +175,7 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
 }
 
 /* ── Individual player card ───────────────────────────── */
-function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
+export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
   onDragStart, onDragEnter, onDragEnd, onTouchStart, isDragOver }) {
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
@@ -536,7 +536,6 @@ export default function PlayerCardsPage() {
   const [results, setResults]     = useState([]);
   const [searching, setSearching] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [searchMode, setSearchMode] = useState('all'); // 'all' | 'milb'
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
   // Guard: skip saving on the initial render so a parse error can't overwrite stored data
@@ -549,7 +548,7 @@ export default function PlayerCardsPage() {
 
   useEffect(() => {
     if (showSearch) setTimeout(() => inputRef.current?.focus(), 80);
-    else { setQuery(''); setResults([]); setSearchMode('all'); }
+    else { setQuery(''); setResults([]); }
   }, [showSearch]);
 
   const doEspnSearch = useCallback((q) => {
@@ -812,30 +811,13 @@ export default function PlayerCardsPage() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search — MLB / NBA / NFL / NHL only (MiLB players managed on the MiLB page) */}
       {showSearch && (
         <div className="pc-search-wrap">
-          {/* Mode toggle */}
-          <div className="pc-search-mode-row">
-            {['all','milb'].map(mode => (
-              <button key={mode}
-                className={`pc-search-mode-btn${searchMode === mode ? ' pc-search-mode-active' : ''}`}
-                onClick={() => {
-                  setSearchMode(mode);
-                  setResults([]);
-                  if (query.trim()) {
-                    if (mode === 'milb') doMiLBSearch(query);
-                    else doEspnSearch(query);
-                  }
-                }}>
-                {mode === 'all' ? 'All Sports' : <><span className="milb-level-badge" style={{fontSize:9,padding:'1px 5px',marginRight:4}}>MiLB</span>Minor League</>}
-              </button>
-            ))}
-          </div>
           <input
             ref={inputRef}
             className="search-input"
-            placeholder={searchMode === 'milb' ? 'Search MiLB players…' : 'Search any player…'}
+            placeholder="Search any player (MLB, NBA, NFL, NHL)…"
             value={query}
             onChange={handleQuery}
           />
@@ -843,12 +825,9 @@ export default function PlayerCardsPage() {
           {!searching && query.trim() && results.length === 0 && (
             <div className="loading-text" style={{padding:'8px 0', color:'var(--text2)'}}>No players found.</div>
           )}
-          {searchMode === 'milb' && !searching && (
-            <MiLBDirectAdd onAdd={addCard} />
-          )}
           {results.length > 0 && (
             <div className="picker-list" style={{marginTop:8}}>
-              {results.map(p => {
+              {results.filter(p => p.sport !== 'milb').map(p => {
                 const already = cards.some(c => c.id === p.id && c.sport === p.sport);
                 return (
                   <div key={`${p.sport}-${p.id}`} className="picker-item">
@@ -856,14 +835,8 @@ export default function PlayerCardsPage() {
                       {p.headshot && <img src={p.headshot} alt="" className="picker-avatar" onError={e=>e.target.style.display='none'}/>}
                       <div>
                         <div className="picker-name">{p.displayName}</div>
-                        <div style={{display:'flex', alignItems:'center', gap:5, marginTop:2}}>
-                          {p._levelShort && (
-                            <span className="milb-level-badge" style={{fontSize:8, padding:'1px 4px'}}>{p._levelShort}</span>
-                          )}
-                          <span style={{color: p.sport === 'milb' ? '#3b82f6' : (SPORT_COLORS[p.sport] || '#888'), fontSize:10, fontWeight:700, textTransform:'uppercase'}}>
-                            {p.sport === 'milb' ? (p.team?.displayName || 'MiLB') : (p.team?.abbreviation || p.sport?.toUpperCase())}
-                          </span>
-                          {p._position && <span style={{color:'var(--text2)', fontSize:10}}>{p._position}</span>}
+                        <div style={{fontSize:10, fontWeight:700, textTransform:'uppercase', color: SPORT_COLORS[p.sport] || '#888', marginTop:2}}>
+                          {p.team?.abbreviation || p.sport?.toUpperCase()}
                         </div>
                       </div>
                     </div>
@@ -895,7 +868,7 @@ export default function PlayerCardsPage() {
         onTouchMove={editMode ? handleTouchMove : undefined}
         onTouchEnd={editMode ? handleTouchEnd : undefined}
       >
-        {cards.map((player, idx) => (
+        {cards.filter(p => p.sport !== 'milb').map((player, idx) => (
           <div key={`${player.id}-${dateStr}`} data-card-idx={idx}>
             <PlayerGameCard player={player}
               onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard}

@@ -2,12 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
-import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard, MiLBGameCard } from '../components/TeamRow';
+import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard } from '../components/TeamRow';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { fetchMiLBSchedule, normalizeMiLBGame } from '../api/milb';
-
-const SPORT_LABELS = { ...Object.fromEntries(Object.entries(SPORTS).map(([k,v]) => [k, v.label])), milb: 'MiLB' };
+const SPORT_LABELS = Object.fromEntries(Object.entries(SPORTS).map(([k,v]) => [k, v.label]));
 
 /* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
 async function fetchMlbScoreMap(dateStr, espnGames) {
@@ -88,7 +86,6 @@ export default function ScoresPage() {
   const [activeSport, setActiveSport] = useState('mlb');
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const [rawGames, setRawGames] = useState([]);
-  const [milbRawGames, setMilbRawGames] = useState([]);
   const [mlbScoreMap, setMlbScoreMap] = useState({});
   const [nhlScoreMap, setNhlScoreMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -120,20 +117,7 @@ export default function ScoresPage() {
     clearInterval(pollRef.current);
     setLoading(true);
     setRawGames([]);
-    setMilbRawGames([]);
     setMlbScoreMap({});
-
-    // MiLB: fetch from MLB Stats API directly
-    if (activeSport === 'milb') {
-      const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
-      const loadMiLB = () => fetchMiLBSchedule(isoDate)
-        .then(games => setMilbRawGames(games.map(normalizeMiLBGame)))
-        .catch(() => setMilbRawGames([]))
-        .finally(() => setLoading(false));
-      loadMiLB();
-      if (isToday) pollRef.current = setInterval(loadMiLB, 30000);
-      return () => clearInterval(pollRef.current);
-    }
 
     const load = () => getScoreboard(activeSport, dateStr)
       .then(async (evts) => {
@@ -157,7 +141,7 @@ export default function ScoresPage() {
     return () => clearInterval(pollRef.current);
   }, [activeSport, dateStr]);
 
-  const availableSports = ['mlb','milb','nba','nfl','nhl'];
+  const availableSports = ['mlb','nba','nfl','nhl'];
 
   return (
     <div className="page-content">
@@ -199,39 +183,13 @@ export default function ScoresPage() {
         </div>
       )}
 
-      {/* MiLB — data comes from MLB Stats API */}
-      {activeSport === 'milb' && !loading && milbRawGames.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-icon">🏟</div>
-          <p>No MiLB games on {formatDateLabel(selectedDate).toLowerCase()}.</p>
-        </div>
-      )}
-      {activeSport === 'milb' && !loading && milbRawGames.length > 0 && (
-        <div className="teams-grid" style={{marginTop:12}}>
-          {[...milbRawGames].sort((a,b) => {
-            const aTeamIds = (a.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
-            const bTeamIds = (b.competitions?.[0]?.competitors||[]).map(c=>c.team?.id);
-            const favMiLB = favorites.teams.filter(ft=>ft.sport==='milb').map(ft=>ft.team.id);
-            const aFav = aTeamIds.some(id=>favMiLB.includes(id)) ? 0 : 1;
-            const bFav = bTeamIds.some(id=>favMiLB.includes(id)) ? 0 : 1;
-            if (aFav !== bFav) return aFav - bFav;
-            const stA = a.competitions?.[0]?.status?.type?.state||'pre';
-            const stB = b.competitions?.[0]?.status?.type?.state||'pre';
-            return ({in:0,post:1,pre:2}[stA]??2) - ({in:0,post:1,pre:2}[stB]??2);
-          }).map(game => (
-            <MiLBGameCard key={game.id} game={game} navigate={navigate} />
-          ))}
-        </div>
-      )}
-
-      {/* ESPN-powered sports */}
-      {activeSport !== 'milb' && !loading && games.length === 0 && (
+      {!loading && games.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">🏟</div>
           <p>No {SPORT_LABELS[activeSport] || activeSport.toUpperCase()} games on {formatDateLabel(selectedDate).toLowerCase()}.</p>
         </div>
       )}
-      {activeSport !== 'milb' && !loading && games.length > 0 && (
+      {!loading && games.length > 0 && (
         <div className="teams-grid" style={{marginTop:12}}>
           {games.map((game) => {
             const st = game.competitions?.[0]?.status?.type?.state;

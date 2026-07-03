@@ -7304,7 +7304,65 @@ thead .dfs-sticky-player {
 }
 .top-more-item:hover { background: var(--bg3); }
 
-/* ── MiLB Hub Page ────────────────────────────────────── */
+/* ── MiLB Hub Page ─────────────────────────────────────── */
+.milb-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.milb-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.milb-customize-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.milb-customize-section { display: flex; flex-direction: column; gap: 8px; }
+.milb-customize-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.milb-customize-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.milb-cust-team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.milb-cust-team-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.milb-cust-headshot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+
 .milb-page-title-badge {
   display: inline-block;
   font-size: 11px;
