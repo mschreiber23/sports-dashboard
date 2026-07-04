@@ -1626,7 +1626,7 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
   if (!mlbBoxscore?.teams) return null;
 
   const BAT_LABELS = ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'];
-  const PIT_LABELS = ['IP','H','R','ER','BB','K','ERA'];
+  const PIT_LABELS = ['IP','H','R','ER','BB','K','ERA','PC'];
 
   // game = current-game counting stats; season = season-to-date rate stats
   const fmtBat = (game = {}, season = {}) => [
