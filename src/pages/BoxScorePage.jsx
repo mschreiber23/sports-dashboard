@@ -1669,10 +1669,12 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
     const td = mlbBoxscore.teams[side] || {};
     const pl = td.players || {};
 
-    // Batters in batting-order sequence (all who appeared)
+    // Batters in batting-order sequence — exclude pitchers (who don't bat in DH era)
+    const PITCHER_POS = new Set(['P','SP','RP','CP','CL','MR','SU']);
     const batterIds = td.batters || [];
     const batters = batterIds
-      .map(id => pl[`ID${id}`]).filter(Boolean)
+      .map(id => pl[`ID${id}`])
+      .filter(p => p && !PITCHER_POS.has(p.position?.abbreviation))
       .map(p => {
         const bo  = parseInt(p.battingOrder ?? '0', 10);
         const isSub = bo > 0 && bo % 100 !== 0;
