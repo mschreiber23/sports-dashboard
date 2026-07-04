@@ -1612,7 +1612,7 @@ function PlayByPlay({ data, competitors, sport }) {
 /* ─── BOX SCORE TAB (unchanged) ─────────────────────── */
 const COLS = {
   mlb_batting:  ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'],
-  mlb_pitching: ['IP','H','R','ER','BB','K','ERA'],
+  mlb_pitching: ['IP','H','R','ER','BB','K','ERA','PC'],
   nba:          ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','+/-'],
   nfl_passing:  ['C/ATT','YDS','TD','INT','RTG'],
   nfl_rushing:  ['CAR','YDS','AVG','TD'],
@@ -1645,6 +1645,7 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
     String(game.earnedRuns  ?? '—'), String(game.baseOnBalls ?? '—'),
     String(game.strikeOuts  ?? '—'),
     season.era ?? game.era ?? '-.--',
+    String(game.numberOfPitches ?? game.pitchesThrown ?? '—'),
   ];
 
   const sn = (full = '') => {
