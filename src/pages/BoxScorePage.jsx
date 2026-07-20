@@ -2189,36 +2189,20 @@ export default function BoxScorePage() {
     setLineups({ away: null, home: null });
     setLineupLoading({ away: true, home: true });
 
-    // Look up TODAY's probable pitchers using only today's date (no Final-game fallback)
-    const normStr = (s) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
-    mlbFetch(`${STATSAPI}/schedule?sportId=1&date=${gameDate}&hydrate=probablePitcher,teams`)
-      .then(schedData => {
-        if (cancelled) return;
-        const games = schedData.dates?.[0]?.games || [];
-        const g = games.find(g => {
-          const a = normStr(g.teams?.away?.team?.name);
-          const h = normStr(g.teams?.home?.team?.name);
-          return (normStr(awayTeam.displayName).includes(a.split(' ').pop()) && normStr(homeTeam.displayName).includes(h.split(' ').pop())) ||
-                 (a === normStr(awayTeam.displayName) && h === normStr(homeTeam.displayName));
-        });
-        if (g) {
-          setPitcherMlbIds({
-            away: g.teams?.away?.probablePitcher?.id ?? null,
-            home: g.teams?.home?.probablePitcher?.id ?? null,
-            awayName: g.teams?.away?.probablePitcher?.fullName || '',
-            homeName: g.teams?.home?.probablePitcher?.fullName || '',
-          });
-        }
-      })
-      .catch(() => {});
-
     getMlbGameForDate(gameDate, awayTeam.displayName, homeTeam.displayName).then(async (mlbGame) => {
       if (cancelled || !mlbGame) {
         setLineupLoading({ away: false, home: false });
         return;
       }
 
-      // (pitcher IDs already set above from the scheduled game)
+      // Set probable pitchers from this game (getMlbGameForDate hydrates probablePitcher
+      // and handles both the ESPN UTC date AND the previous day for West Coast games)
+      setPitcherMlbIds({
+        away: mlbGame.teams?.away?.probablePitcher?.id ?? null,
+        home: mlbGame.teams?.home?.probablePitcher?.id ?? null,
+        awayName: mlbGame.teams?.away?.probablePitcher?.fullName || '',
+        homeName: mlbGame.teams?.home?.probablePitcher?.fullName || '',
+      });
 
       const awayId = mlbGame.teams?.away?.team?.id;
       const homeId = mlbGame.teams?.home?.team?.id;
