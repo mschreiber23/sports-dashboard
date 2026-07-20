@@ -749,14 +749,21 @@ async function getMlbGameForDate(dateStr, awayName, homeName) {
   if (!allMatching.length) return null;
 
   // Prefer Live > Final > Scheduled so we pick the currently active game
-  // when a series has games on both candidate dates
+  // when a series has games on both candidate dates.
+  // Tiebreaker: among same state, prefer the EARLIER gameDate so that a late-night
+  // game whose ESPN UTC date is "tomorrow" still beats tomorrow's actual scheduled game.
   const stateScore = (g) => {
     const s = g.status?.abstractGameState || '';
     if (s === 'Live') return 2;
     if (s === 'Final') return 1;
     return 0;
   };
-  allMatching.sort((a, b) => stateScore(b) - stateScore(a));
+  allMatching.sort((a, b) => {
+    const sd = stateScore(b) - stateScore(a);
+    if (sd !== 0) return sd;
+    // Earlier gameDate wins (tonight's game over tomorrow's)
+    return (new Date(a.gameDate || 0).getTime()) - (new Date(b.gameDate || 0).getTime());
+  });
   return allMatching[0];
 }
 
