@@ -748,21 +748,19 @@ async function getMlbGameForDate(dateStr, awayName, homeName) {
 
   if (!allMatching.length) return null;
 
-  // Prefer Live > Final > Scheduled so we pick the currently active game
-  // when a series has games on both candidate dates.
-  // Tiebreaker: among same state, prefer the EARLIER gameDate so that a late-night
-  // game whose ESPN UTC date is "tomorrow" still beats tomorrow's actual scheduled game.
-  const stateScore = (g) => {
-    const s = g.status?.abstractGameState || '';
-    if (s === 'Live') return 2;
-    if (s === 'Final') return 1;
-    return 0;
-  };
+  // Primary: Live game wins outright (it's the one currently in progress).
+  // For all other states (Preview/Scheduled or Final), pick the game whose
+  // gameDate is closest to the ESPN game date — this correctly handles:
+  //   • Yesterday's Final vs today's Preview  → today wins (closer to ESPN date)
+  //   • Tonight's game vs tomorrow's Scheduled → tonight wins (closer to ESPN date)
+  //   • Post-game Final vs next-day Scheduled  → Final wins (closer to ESPN date)
+  const isLive = (g) => g.status?.abstractGameState === 'Live';
+  const refTime = new Date(dateStr + 'T18:00:00Z').getTime(); // 6 PM UTC reference
   allMatching.sort((a, b) => {
-    const sd = stateScore(b) - stateScore(a);
-    if (sd !== 0) return sd;
-    // Earlier gameDate wins (tonight's game over tomorrow's)
-    return (new Date(a.gameDate || 0).getTime()) - (new Date(b.gameDate || 0).getTime());
+    if (isLive(b) !== isLive(a)) return isLive(b) ? 1 : -1;
+    const distA = Math.abs(new Date(a.gameDate || 0).getTime() - refTime);
+    const distB = Math.abs(new Date(b.gameDate || 0).getTime() - refTime);
+    return distA - distB;
   });
   return allMatching[0];
 }
