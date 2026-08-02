@@ -5909,7 +5909,9 @@ thead .dfs-sticky-player {
 
 /* Pitch zone SVG */
 .ab-modal-svg {
-  width: 100%;
+  width: 65%;
+  margin: 0 auto;
+  display: block;
   height: auto;
   aspect-ratio: 360/490;
   display: block;
