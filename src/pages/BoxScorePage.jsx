@@ -202,8 +202,13 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
             const col = resultColor(p.details);
             return (
               <g key={i}>
-                <circle cx={cx} cy={cy} r={6} fill={col}
-                  stroke="rgba(0,0,0,0.6)" strokeWidth="1"/>
+                <circle cx={cx} cy={cy} r={10} fill={col}
+                  stroke="rgba(0,0,0,0.5)" strokeWidth="1.2"/>
+                <text x={cx} y={cy+4} textAnchor="middle"
+                  fontSize="9" fontWeight="900" fill="#fff"
+                  style={{fontFamily:'system-ui,sans-serif'}}>
+                  {i + 1}
+                </text>
               </g>
             );
           })}
@@ -663,11 +668,16 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
               return (
                 <g key={i} filter={isLast ? 'url(#pvGlow)' : undefined}>
                   {isLast && (
-                    <circle cx={cx} cy={cy} r={11}
-                      fill="none" stroke={col} strokeWidth="1.5" opacity="0.4"/>
+                    <circle cx={cx} cy={cy} r={15}
+                      fill="none" stroke={col} strokeWidth="1.5" opacity="0.35"/>
                   )}
-                  <circle cx={cx} cy={cy} r={6} fill={col}
-                    stroke="rgba(0,0,0,0.6)" strokeWidth="1"/>
+                  <circle cx={cx} cy={cy} r={10} fill={col}
+                    stroke="rgba(0,0,0,0.5)" strokeWidth="1.2"/>
+                  <text x={cx} y={cy+4} textAnchor="middle"
+                    fontSize="9" fontWeight="900" fill="#fff"
+                    style={{fontFamily:'system-ui,sans-serif'}}>
+                    {i + 1}
+                  </text>
                 </g>
               );
             })}
