@@ -27,6 +27,21 @@ function resultColor(details) {
   return '#6b7280';
 }
 
+/* ─── Display last name, handling suffixes (Jr., Sr., III) ──
+   "Ronald Acuña Jr." → "Acuña Jr."   "Miles Mikolas" → "Mikolas"
+──────────────────────────────────────────────────────────── */
+const SUFFIXES = new Set(['jr.','sr.','ii','iii','iv','v','jr','sr']);
+function displayLastName(full) {
+  if (!full) return '';
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 1) return full;
+  const last = parts[parts.length - 1];
+  if (SUFFIXES.has(last.toLowerCase()) && parts.length >= 2) {
+    return `${parts[parts.length - 2]} ${last}`;
+  }
+  return last;
+}
+
 /* ─── SVG pitch zone coordinate system ──────────────────
    Must be defined before AtBatModal which references them.
    pX=0 plate center, pZ=0 ground level.
@@ -70,8 +85,8 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
 
   const pitcherPhoto = mlbHeadshot(matchup.pitcher?.id);
   const batterPhoto  = mlbHeadshot(matchup.batter?.id);
-  const pName = matchup.pitcher?.fullName?.split(' ').slice(-1)[0] || '';
-  const bName = matchup.batter?.fullName?.split(' ').slice(-1)[0]  || '';
+  const pName = displayLastName(matchup.pitcher?.fullName);
+  const bName = displayLastName(matchup.batter?.fullName);
 
   // Zone bounds
   const zL = svgX(-0.83), zR = svgX(0.83);
@@ -1031,9 +1046,8 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
   const homeH2H = useH2HStats(homeBatterIds, pitcherMlbIds?.away);
 
   // Pitcher names for the header label
-  const lastName = (name) => name ? name.split(' ').slice(-1)[0] : '';
-  const awayOppName = lastName(pitcherMlbIds?.homeName);  // pitcher away batters face
-  const homeOppName = lastName(pitcherMlbIds?.awayName);  // pitcher home batters face
+  const awayOppName = displayLastName(pitcherMlbIds?.homeName);  // pitcher away batters face
+  const homeOppName = displayLastName(pitcherMlbIds?.awayName);  // pitcher home batters face
 
   const formatH2H = (stat) => {
     if (!stat || !stat.atBats) return 'No past matchups';
@@ -1314,10 +1328,9 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
   const pitcherId = mlbMatchup?.pitcher?.id;
   const batterPhoto  = mlbHeadshot(batterId);
   const pitcherPhoto = mlbHeadshot(pitcherId);
-  // Last name only for compact display
-  const lastName = (full) => full?.split(' ').slice(-1)[0] || full || '';
-  const batterLastName  = lastName(mlbMatchup?.batter?.fullName);
-  const pitcherLastName = lastName(mlbMatchup?.pitcher?.fullName);
+  // Last name only for compact display (handles suffixes: Acuña Jr. → "Acuña Jr.")
+  const batterLastName  = displayLastName(mlbMatchup?.batter?.fullName);
+  const pitcherLastName = displayLastName(mlbMatchup?.pitcher?.fullName);
 
   const inningStr = inningDisplay || mlbShortDetail || status?.type?.shortDetail || '';
 
@@ -1431,9 +1444,9 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
           {/* On deck / In the hole */}
           {(onDeck || inHole) && (
             <div className="gc-on-deck">
-              {onDeck && <span>On deck: {lastName(onDeck.fullName)}</span>}
+              {onDeck && <span>On deck: {displayLastName(onDeck.fullName)}</span>}
               {onDeck && inHole && <span className="gc-on-deck-sep"> · </span>}
-              {inHole && <span>In the hole: {lastName(inHole.fullName)}</span>}
+              {inHole && <span>In the hole: {displayLastName(inHole.fullName)}</span>}
             </div>
           )}
           </div>
