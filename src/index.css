@@ -5256,7 +5256,7 @@ thead .dfs-sticky-player {
 .mlb-pv-svg {
   width: 100%;
   height: auto;
-  aspect-ratio: 360/215; /* viewBox 360×345, slightly wider display ratio */
+  aspect-ratio: 1; /* square, matches viewBox 360×360 */
   display: block;
 }
 
@@ -5911,7 +5911,7 @@ thead .dfs-sticky-player {
 .ab-modal-svg {
   width: 100%;
   height: auto;
-  aspect-ratio: 360/310;
+  aspect-ratio: 1;
   display: block;
 }
 
