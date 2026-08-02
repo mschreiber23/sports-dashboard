@@ -47,13 +47,11 @@ function displayLastName(full) {
    pX=0 plate center, pZ=0 ground level.
    svgX(pX) = 180 + pX * 60   svgY(pZ) = 440 - pZ * 60
 ──────────────────────────────────────────────────────── */
-const SX = 80;   // horizontal pixels per foot
-const SY = 57;   // vertical pixels per foot (broadcast aspect: horiz/vert ≈ 38/27 ≈ 1.41)
-                 // Makes zone ~square: width=2*0.7083*80=113px, height=1.728*57=99px
+const SX = 60;
 const CX = 180;
-const BY = 500;
+const BY = 440;
 function svgX(pX) { return CX + pX * SX; }
-function svgY(pZ) { return BY - pZ * SY; }
+function svgY(pZ) { return BY - pZ * SX; }
 const platePts = (() => {
   const cy = svgY(0.18), hw = 0.7083 * SX;
   return [[CX-hw,cy-10],[CX+hw,cy-10],[CX+hw,cy+2],[CX,cy+12],[CX-hw,cy+2]]
@@ -142,7 +140,7 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
         </div>
 
         {/* Pitch zone SVG — full at-bat pitches */}
-        <svg viewBox="0 150 360 360" className="ab-modal-svg">
+        <svg viewBox="0 110 360 345" className="ab-modal-svg">
           <defs>
             <linearGradient id="abBg" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#050c0a"/>
@@ -168,17 +166,17 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
             </linearGradient>
           </defs>
 
-          <rect x="0" y="0" width="360" height="510" fill="url(#abBg)"/>
+          <rect x="0" y="0" width="360" height="440" fill="url(#abBg)"/>
           {venueId && (
             <image href={`https://a.espncdn.com/i/venues/mlb/day/${venueId}.jpg`}
-              x="0" y="0" width="360" height="510"
+              x="0" y="0" width="360" height="440"
               preserveAspectRatio="xMidYMid slice" opacity="0.2"
               onError={(e) => { e.target.style.display='none'; }} />
           )}
-          <ellipse cx="180" cy="240" rx="220" ry="120" fill="url(#abGrass)"/>
-          <ellipse cx="180" cy="500" rx="210" ry="80"  fill="url(#abDirt)"/>
-          <rect x="0" y="0" width="360" height="510" fill="url(#abVignette)"/>
-          <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},510 L${svgX(-1.6)},510 Z`}
+          <ellipse cx="180" cy="170" rx="220" ry="140" fill="url(#abGrass)"/>
+          <ellipse cx="180" cy="440" rx="210" ry="90"  fill="url(#abDirt)"/>
+          <rect x="0" y="0" width="360" height="440" fill="url(#abVignette)"/>
+          <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},440 L${svgX(-1.6)},440 Z`}
             fill="url(#abTunnel)"/>
 
           {/* Strike zone */}
@@ -549,7 +547,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
     <div className="mlb-pitch-view">
 
       <div className="mlb-pv-batter">
-          <svg viewBox="0 150 360 360" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
+          <svg viewBox="0 110 360 345" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
             <defs>
               {/* Field background gradient */}
               <linearGradient id="pvBg" x1="0" y1="0" x2="0" y2="1">
@@ -591,13 +589,13 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
 
             {/* ── Backgrounds ── */}
             {/* Dark base */}
-            <rect x="0" y="0" width="360" height="510" fill="url(#pvBg)"/>
+            <rect x="0" y="0" width="360" height="440" fill="url(#pvBg)"/>
 
             {/* Venue photo — ESPN CDN, stadium day image */}
             {venueId && (
               <image
                 href={`https://a.espncdn.com/i/venues/mlb/day/${venueId}.jpg`}
-                x="0" y="0" width="360" height="510"
+                x="0" y="0" width="360" height="440"
                 preserveAspectRatio="xMidYMid slice"
                 opacity="0.22"
                 onError={(e) => { e.target.style.display = 'none'; }}
@@ -614,7 +612,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
                 <stop offset="100%" stopColor="rgba(4,9,12,0.7)"/>
               </radialGradient>
             </defs>
-            <rect x="0" y="0" width="360" height="510" fill="url(#pvVignette)"/>
+            <rect x="0" y="0" width="360" height="440" fill="url(#pvVignette)"/>
 
             {/* Faint infield arc lines for depth cue */}
             {[55, 90, 130].map((r, i) => (
