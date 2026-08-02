@@ -88,12 +88,13 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
   const pName = displayLastName(matchup.pitcher?.fullName);
   const bName = displayLastName(matchup.batter?.fullName);
 
-  // Zone bounds
-  const zL = svgX(-0.83), zR = svgX(0.83);
-  const zT = svgY(szTop),  zB = svgY(szBot);
-  const zW = zR - zL,      zH = zB - zT;
-  const c1 = zL + zW/3,  c2 = zL + zW*2/3;
-  const r1 = zT + zH/3,  r2 = zT + zH*2/3;
+  // Zone bounds — use actual plate half-width (8.5 in = 0.7083 ft) so pitches on the
+  // "black" (called zone 0.7083–0.83 ft) correctly appear outside the box
+  const zL = svgX(-0.7083), zR = svgX(0.7083);
+  const zT = svgY(szTop),   zB = svgY(szBot);
+  const zW = zR - zL,       zH = zB - zT;
+  const c1 = zL + zW/3,   c2 = zL + zW*2/3;
+  const r1 = zT + zH/3,   r2 = zT + zH*2/3;
 
   const glowC = teamGlowColor(teamColor, 0.5);
   const glowA = teamGlowColor(teamAltColor || teamColor, 0.3);
@@ -535,9 +536,9 @@ function AtBatEntry({ atBat, isCurrent, onSelect }) {
 
 function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situation, venueId, teamColor, teamAltColor }) {
 
-  // Zone bounds in SVG coords
-  const zL = svgX(-0.83), zR = svgX(0.83);
-  const zT = svgY(szTop),  zB = svgY(szBot);
+  // Zone bounds — actual plate half-width (0.7083 ft = 8.5 in) matching MLB app
+  const zL = svgX(-0.7083), zR = svgX(0.7083);
+  const zT = svgY(szTop),   zB = svgY(szBot);
   const zW = zR - zL, zH = zB - zT;
 
   // 3x3 grid dividers
