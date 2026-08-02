@@ -47,7 +47,7 @@ function displayLastName(full) {
    pX=0 plate center, pZ=0 ground level.
    svgX(pX) = 180 + pX * 60   svgY(pZ) = 440 - pZ * 60
 ──────────────────────────────────────────────────────── */
-const SX = 60;
+const SX = 80;
 const CX = 180;
 const BY = 440;
 function svgX(pX) { return CX + pX * SX; }
