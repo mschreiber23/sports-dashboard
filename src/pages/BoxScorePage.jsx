@@ -48,7 +48,7 @@ function displayLastName(full) {
    svgX(pX) = 180 + pX * 60   svgY(pZ) = 440 - pZ * 60
 ──────────────────────────────────────────────────────── */
 const SX = 100;  // horizontal pixels/foot
-const SY = 130;  // vertical pixels/foot — taller than wide (matches MLB app portrait zone)
+const SY = 110;  // vertical pixels/foot — cells ~1.1:1 matching MLB app
 const CX = 180;
 const BY = 580;
 function svgX(pX) { return CX + pX * SX; }
@@ -140,7 +140,7 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
         </div>
 
         {/* Pitch zone SVG — full at-bat pitches */}
-        <svg viewBox="0 50 360 540" className="ab-modal-svg">
+        <svg viewBox="0 100 360 490" className="ab-modal-svg">
           <defs>
             <linearGradient id="abBg" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#050c0a"/>
@@ -552,7 +552,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
     <div className="mlb-pitch-view">
 
       <div className="mlb-pv-batter">
-          <svg viewBox="0 50 360 540" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
+          <svg viewBox="0 100 360 490" className="mlb-pv-svg" preserveAspectRatio="xMidYMid meet">
             <defs>
               {/* Field background gradient */}
               <linearGradient id="pvBg" x1="0" y1="0" x2="0" y2="1">
