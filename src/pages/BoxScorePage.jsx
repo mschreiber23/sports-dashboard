@@ -47,11 +47,13 @@ function displayLastName(full) {
    pX=0 plate center, pZ=0 ground level.
    svgX(pX) = 180 + pX * 60   svgY(pZ) = 440 - pZ * 60
 ──────────────────────────────────────────────────────── */
-const SX = 80;   // pixels per foot — larger = more zoomed-in zone matching MLB app
+const SX = 80;   // horizontal pixels per foot
+const SY = 57;   // vertical pixels per foot (broadcast aspect: horiz/vert ≈ 38/27 ≈ 1.41)
+                 // Makes zone ~square: width=2*0.7083*80=113px, height=1.728*57=99px
 const CX = 180;
-const BY = 500;   // lower baseline gives more headroom above the zone
+const BY = 500;
 function svgX(pX) { return CX + pX * SX; }
-function svgY(pZ) { return BY - pZ * SX; }
+function svgY(pZ) { return BY - pZ * SY; }
 const platePts = (() => {
   const cy = svgY(0.18), hw = 0.7083 * SX;
   return [[CX-hw,cy-10],[CX+hw,cy-10],[CX+hw,cy+2],[CX,cy+12],[CX-hw,cy+2]]
@@ -166,17 +168,17 @@ function AtBatModal({ atBat, venueId, teamColor, teamAltColor, onClose }) {
             </linearGradient>
           </defs>
 
-          <rect x="0" y="0" width="360" height="520" fill="url(#abBg)"/>
+          <rect x="0" y="0" width="360" height="510" fill="url(#abBg)"/>
           {venueId && (
             <image href={`https://a.espncdn.com/i/venues/mlb/day/${venueId}.jpg`}
-              x="0" y="0" width="360" height="520"
+              x="0" y="0" width="360" height="510"
               preserveAspectRatio="xMidYMid slice" opacity="0.2"
               onError={(e) => { e.target.style.display='none'; }} />
           )}
-          <ellipse cx="180" cy="200" rx="220" ry="140" fill="url(#abGrass)"/>
-          <ellipse cx="180" cy="500" rx="210" ry="90"  fill="url(#abDirt)"/>
-          <rect x="0" y="0" width="360" height="520" fill="url(#abVignette)"/>
-          <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},520 L${svgX(-1.6)},520 Z`}
+          <ellipse cx="180" cy="240" rx="220" ry="120" fill="url(#abGrass)"/>
+          <ellipse cx="180" cy="500" rx="210" ry="80"  fill="url(#abDirt)"/>
+          <rect x="0" y="0" width="360" height="510" fill="url(#abVignette)"/>
+          <path d={`M${svgX(-0.3)},0 L${svgX(0.3)},0 L${svgX(1.6)},510 L${svgX(-1.6)},510 Z`}
             fill="url(#abTunnel)"/>
 
           {/* Strike zone */}
@@ -589,13 +591,13 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
 
             {/* ── Backgrounds ── */}
             {/* Dark base */}
-            <rect x="0" y="0" width="360" height="520" fill="url(#pvBg)"/>
+            <rect x="0" y="0" width="360" height="510" fill="url(#pvBg)"/>
 
             {/* Venue photo — ESPN CDN, stadium day image */}
             {venueId && (
               <image
                 href={`https://a.espncdn.com/i/venues/mlb/day/${venueId}.jpg`}
-                x="0" y="0" width="360" height="520"
+                x="0" y="0" width="360" height="510"
                 preserveAspectRatio="xMidYMid slice"
                 opacity="0.22"
                 onError={(e) => { e.target.style.display = 'none'; }}
@@ -612,7 +614,7 @@ function MlbPitchView({ pitches, lastPitch, szTop, szBot, matchup, count, situat
                 <stop offset="100%" stopColor="rgba(4,9,12,0.7)"/>
               </radialGradient>
             </defs>
-            <rect x="0" y="0" width="360" height="520" fill="url(#pvVignette)"/>
+            <rect x="0" y="0" width="360" height="510" fill="url(#pvVignette)"/>
 
             {/* Faint infield arc lines for depth cue */}
             {[55, 90, 130].map((r, i) => (
