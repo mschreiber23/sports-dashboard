@@ -1854,11 +1854,18 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
 
   const getPlayerAbs = (playerName) => {
     if (!allAtBats?.length || !playerName) return [];
-    // Match by last name (last word of the display name)
-    const lastName = norm(playerName.split(' ').pop());
+    // Use suffix-aware last name so "Jr." players don't all match each other.
+    // e.g. "L. García Jr." → search key "garciajr", not just "jr"
+    const SUFFIXES = new Set(['jr','sr','ii','iii','iv','v']);
+    const parts = playerName.trim().split(/\s+/);
+    const last = parts[parts.length - 1];
+    const lastNorm = norm(last);
+    const key = SUFFIXES.has(lastNorm) && parts.length >= 2
+      ? norm(parts[parts.length - 2]) + lastNorm   // e.g. "garciajr"
+      : lastNorm;                                    // e.g. "grisham"
     return allAtBats.filter((ab) => {
       const battFull = norm(ab.matchup?.batter?.fullName || '');
-      return battFull.includes(lastName);
+      return battFull.includes(key);
     });
   };
 
