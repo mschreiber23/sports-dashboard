@@ -1149,6 +1149,186 @@ function BattingLineups({ lineups, lineupLoading, away, home, pitcherMlbIds }) {
 /* ─── PREVIEW TAB ──────────────────────────────────── */
 const WEATHER_ICONS = { '1':'☀️','2':'⛅','3':'🌥','4':'☁️','5':'🌧','6':'🌦','7':'🌩','8':'❄️','11':'🌫','12':'🌧','13':'🌨','14':'⛈','15':'⛈','16':'❄️','17':'⛈','18':'🌧','19':'🌨','20':'🌨','21':'🌨','22':'❄️','23':'🌬','25':'🌧','26':'🌧','29':'🌧','30':'🌡️','31':'🧊','32':'☀️','33':'🌙','34':'⛅','35':'⛅','36':'🌥','37':'🌧','38':'⛈','39':'🌧','40':'🌧','41':'❄️','42':'❄️','43':'❄️','44':'⛅' };
 
+/* ─── Non-MLB preview sections ───────────────────────── */
+function SportPreviewSections({ data, away, home, sport }) {
+  const gameInfo = data?.gameInfo || {};
+  const venue = gameInfo.venue;
+  const wx = gameInfo.weather;
+  const injuries = data?.injuries || [];
+  const lastFive = data?.lastFiveGames || [];
+  const pickcenter = data?.pickcenter?.[0];
+  const article = data?.article;
+  const newsArticles = data?.news?.articles || [];
+  const leaders = data?.leaders || [];
+
+  const statusBadgeColor = (s) => {
+    const abbr = (s?.abbreviation || '').toUpperCase();
+    if (abbr === 'OUT') return '#ef4444';
+    if (abbr === 'IR') return '#991b1b';
+    if (abbr === 'Q') return '#f59e0b';
+    if (abbr === 'D') return '#f97316';
+    return 'var(--text2)';
+  };
+
+  return (
+    <>
+      {/* Venue & Weather */}
+      {(venue?.fullName || wx?.temperature) && (
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">Game Info</div>
+          <div className="nfl-preview-info-grid">
+            {venue?.fullName && (
+              <div className="nfl-preview-info-item">
+                <span className="nfl-preview-info-icon">🏟</span>
+                <span className="nfl-preview-info-text">{venue.fullName}</span>
+              </div>
+            )}
+            {wx?.temperature && (
+              <div className="nfl-preview-info-item">
+                <span className="nfl-preview-info-icon">{WEATHER_ICONS[wx.conditionId] || '🌤'}</span>
+                <span className="nfl-preview-info-text">
+                  {wx.temperature}°F
+                  {wx.displayValue ? ` · ${wx.displayValue}` : ''}
+                  {wx.gust ? ` · ${wx.gust} mph wind` : ''}
+                </span>
+              </div>
+            )}
+            {venue?.indoor && (
+              <div className="nfl-preview-info-item">
+                <span className="nfl-preview-info-icon">🏠</span>
+                <span className="nfl-preview-info-text">Indoor / Dome</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Betting odds */}
+      {pickcenter && (pickcenter.spread || pickcenter.overUnder) && (
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">Betting Lines</div>
+          <div className="nfl-odds-grid">
+            {pickcenter.spread != null && (
+              <div className="nfl-odds-cell">
+                <div className="nfl-odds-val">{pickcenter.homeTeamOdds?.favorite ? home?.team?.abbreviation : away?.team?.abbreviation} {pickcenter.spread > 0 ? `+${pickcenter.spread}` : pickcenter.spread}</div>
+                <div className="nfl-odds-lbl">Spread</div>
+              </div>
+            )}
+            {pickcenter.overUnder != null && (
+              <div className="nfl-odds-cell">
+                <div className="nfl-odds-val">O/U {pickcenter.overUnder}</div>
+                <div className="nfl-odds-lbl">Total</div>
+              </div>
+            )}
+            {pickcenter.awayTeamOdds?.moneyLine != null && (
+              <div className="nfl-odds-cell">
+                <div className="nfl-odds-val">{away?.team?.abbreviation} {pickcenter.awayTeamOdds.moneyLine > 0 ? `+${pickcenter.awayTeamOdds.moneyLine}` : pickcenter.awayTeamOdds.moneyLine}</div>
+                <div className="nfl-odds-lbl">ML Away</div>
+              </div>
+            )}
+            {pickcenter.homeTeamOdds?.moneyLine != null && (
+              <div className="nfl-odds-cell">
+                <div className="nfl-odds-val">{home?.team?.abbreviation} {pickcenter.homeTeamOdds.moneyLine > 0 ? `+${pickcenter.homeTeamOdds.moneyLine}` : pickcenter.homeTeamOdds.moneyLine}</div>
+                <div className="nfl-odds-lbl">ML Home</div>
+              </div>
+            )}
+          </div>
+          {pickcenter.provider?.name && <div style={{fontSize:10,color:'var(--text2)',textAlign:'right',paddingTop:4}}>via {pickcenter.provider.name}</div>}
+        </div>
+      )}
+
+      {/* Season leaders */}
+      {leaders.filter(l => l.displayName && l.leaders?.length).length > 0 && (
+        <GameLeaders leaders={leaders} away={away} home={home} />
+      )}
+
+      {/* Last 5 games */}
+      {lastFive.length > 0 && (
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">Recent Form</div>
+          <div className="nfl-last5-wrap">
+            {lastFive.map((teamObj, ti) => {
+              const abbr = teamObj.team?.abbreviation || (ti === 0 ? away?.team?.abbreviation : home?.team?.abbreviation);
+              const events = teamObj.events || [];
+              const recent = events.slice(0, 5);
+              return (
+                <div key={ti} className="nfl-last5-row">
+                  <span className="nfl-last5-abbr">{abbr}</span>
+                  <div className="nfl-last5-games">
+                    {recent.map((ev, ei) => (
+                      <span key={ei} className={`nfl-last5-result nfl-last5-${(ev.gameResult||'').toLowerCase()}`}>
+                        {ev.gameResult || '?'}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="nfl-last5-record">{teamObj.team?.recordSummary || ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Injury report */}
+      {injuries.some(t => t.injuries?.length > 0) && (
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">Injury Report</div>
+          {injuries.map((teamObj, ti) => {
+            const teamAbbr = teamObj.team?.abbreviation;
+            const injList = (teamObj.injuries || []).filter(p => p.status?.abbreviation !== 'FULL');
+            if (!injList.length) return null;
+            return (
+              <div key={ti} style={{marginBottom: ti === 0 && injuries.length > 1 ? 10 : 0}}>
+                <div className="nfl-inj-team-header">{teamAbbr}</div>
+                {injList.slice(0, 8).map((inj, ii) => {
+                  const ath = inj.athlete || {};
+                  const pos = ath.position?.abbreviation || '';
+                  const status = inj.status?.abbreviation || inj.type?.abbreviation || '?';
+                  return (
+                    <div key={ii} className="nfl-inj-row">
+                      {ath.headshot?.href && (
+                        <img src={ath.headshot.href} alt="" className="nfl-inj-headshot" onError={e=>e.target.style.display='none'} />
+                      )}
+                      <span className="nfl-inj-name">{ath.shortName || ath.displayName || '—'}</span>
+                      {pos && <span className="nfl-inj-pos">{pos}</span>}
+                      <span className="nfl-inj-status" style={{color: statusBadgeColor(inj.status)}}>{status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Preview article */}
+      {article?.headline && (
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">Game Preview</div>
+          <div className="nfl-article-headline">{article.headline}</div>
+          {article.description && <div className="nfl-article-desc">{article.description}</div>}
+        </div>
+      )}
+
+      {/* Related news */}
+      {newsArticles.length > 0 && (
+        <div className="preview-card">
+          <div className="preview-leaders-cat-label">News</div>
+          {newsArticles.slice(0, 4).map((n, i) => (
+            <div key={i} className="nfl-news-item">
+              {n.images?.[0]?.url && <img src={n.images[0].url} alt="" className="nfl-news-thumb" onError={e=>e.target.style.display='none'} />}
+              <div className="nfl-news-text">
+                <div className="nfl-news-headline">{n.headline}</div>
+                {n.description && <div className="nfl-news-desc">{n.description?.slice(0, 120)}{n.description?.length > 120 ? '…' : ''}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, pitcherMlbIds }) {
   const gameInfo = data?.gameInfo || {};
   const venue = gameInfo.venue?.fullName;
@@ -1251,6 +1431,11 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
       {/* MLB: Batting lineups */}
       {sport === 'mlb' && (
         <BattingLineups lineups={lineups} lineupLoading={lineupLoading} away={away} home={home} pitcherMlbIds={pitcherMlbIds} />
+      )}
+
+      {/* NFL / NBA / NHL: full preview sections */}
+      {sport !== 'mlb' && (
+        <SportPreviewSections data={data} away={away} home={home} sport={sport} />
       )}
 
     </div>
