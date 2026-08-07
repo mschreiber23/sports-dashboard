@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route, useLocation, matchPath } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, matchPath, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import { BottomNav, TopNav } from './components/Nav';
@@ -20,6 +20,10 @@ import DFSPage from './pages/DFSPage';
 import RankingsPage from './pages/RankingsPage';
 import PlayersPage from './pages/PlayersPage';
 import TeamsPage from './pages/TeamsPage';
+import NhlDemoPage from './pages/NhlDemoPage';
+import PlayerCardsPage from './pages/PlayerCardsPage';
+import MiLBPage from './pages/MiLBPage';
+import MiLBPlayerPage from './pages/MiLBPlayerPage';
 import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
@@ -31,22 +35,8 @@ function Dashboard() {
 
   return (
     <main className="main">
-      <TodaysScores />
       <MyTeams editMode={editMode} setEditMode={setEditMode} />
       <PlayerRoster editMode={editMode} setEditMode={setEditMode} />
-      {hasContent && (
-        <button
-          className={`dashboard-edit-btn ${editMode ? 'dashboard-edit-btn-active' : ''}`}
-          onClick={() => setEditMode((v) => !v)}
-        >
-          {editMode ? '✓ Done Editing' : '✎ Edit Dashboard'}
-        </button>
-      )}
-      {/* Account + sign out at the bottom of the dashboard */}
-      <div className="dashboard-account">
-        {user?.email && <span className="dashboard-account-email">{user.email}</span>}
-        <button className="dashboard-signout-btn" onClick={signOut}>Sign Out</button>
-      </div>
     </main>
   );
 }
@@ -55,20 +45,37 @@ function Dashboard() {
 function AppShell({ userId }) {
   const { pathname } = useLocation();
   const isSubPage = ['/player/', '/boxscore/', '/team/'].some((p) => pathname.startsWith(p));
-  // Show compact sticky ticker on all pages except home and player/boxscore/team sub-pages
-  const isHome = pathname === '/';
-  const showStickyTicker = !isHome && !isSubPage;
+  const showStickyTicker = !isSubPage;
+
+  // Ticker visibility — persisted across sessions
+  const [tickerVisible, setTickerVisible] = useState(() =>
+    localStorage.getItem('tickerVisible') !== 'false'
+  );
+  const toggleTicker = () => {
+    const next = !tickerVisible;
+    setTickerVisible(next);
+    localStorage.setItem('tickerVisible', String(next));
+  };
 
   return (
     <FavoritesProvider userId={userId}>
       <div className="app">
-        <TopNav />
-        <InstallBanner />
-        {showStickyTicker && (
-          <div className="global-ticker-sticky">
-            <TodaysScores compact />
-          </div>
-        )}
+        <div className="app-sticky-header">
+          <TopNav />
+          <InstallBanner />
+          {showStickyTicker && (
+            tickerVisible
+              ? <TodaysScores compact onCollapse={toggleTicker} />
+              : (
+                <div className="ticker-collapsed-bar" onClick={toggleTicker}>
+                  <span className="ticker-collapsed-label">Scores</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+              )
+          )}
+        </div>
         <div className="app-body">
           <Routes>
             <Route path="/"          element={<Dashboard />} />
@@ -76,14 +83,18 @@ function AppShell({ userId }) {
             <Route path="/standings" element={<main className="main"><StandingsPage /></main>} />
             <Route path="/leaders"   element={<main className="main"><LeadersPage /></main>} />
             <Route path="/me"        element={<main className="main"><ProfilePage /></main>} />
+            <Route path="/player/milb/:playerId"             element={<main className="main"><MiLBPlayerPage /></main>} />
             <Route path="/player/:sport/:playerId"          element={<main className="main"><PlayerPage /></main>} />
             <Route path="/statcast/mlb/:playerId"            element={<main className="main"><StatcastPage /></main>} />
             <Route path="/dfs"                               element={<main className="main"><DFSPage /></main>} />
+            <Route path="/demo/nhl"                          element={<main className="main"><NhlDemoPage /></main>} />
+            <Route path="/player-cards"                      element={<main className="main"><PlayerCardsPage /></main>} />
             <Route path="/rankings"                          element={<main className="main"><RankingsPage /></main>} />
             <Route path="/players"                           element={<main className="main"><PlayersPage /></main>} />
             <Route path="/teams"                             element={<main className="main"><TeamsPage /></main>} />
             <Route path="/boxscore/:sport/:gameId"           element={<main className="main"><BoxScorePage /></main>} />
             <Route path="/team/:sport/:teamId"               element={<main className="main"><TeamPage /></main>} />
+            <Route path="/milb"                              element={<main className="main"><MiLBPage /></main>} />
           </Routes>
         </div>
         <BottomNav />

@@ -41,7 +41,7 @@ export function recordPlayerView(player) {
 /* ── Player result card ─────────────────────────────────────────────── */
 function PlayerCard({ player, onClick }) {
   const sport = player.sport;
-  const color = SPORT_COLORS[sport] || '#7c3aed';
+  const color = SPORT_COLORS[sport] || '#0092ff';
   const label = SPORT_LABELS[sport] || sport?.toUpperCase();
   return (
     <button className="player-search-card" onClick={onClick}>
@@ -77,7 +77,7 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
       </div>
       <div className="player-viewed-grid">
         {players.map((p) => {
-          const color = SPORT_COLORS[p.sport] || '#7c3aed';
+          const color = SPORT_COLORS[p.sport] || '#0092ff';
           const label = SPORT_LABELS[p.sport] || p.sport?.toUpperCase();
           const nameParts = (p.name || '').split(' ');
           const lastName  = nameParts.slice(-1)[0] || '';
@@ -105,7 +105,7 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
                 <div className="player-viewed-first">{firstName}</div>
                 <div className="player-viewed-last">{lastName}</div>
                 <div className="player-viewed-sub">
-                  {p.position && <span>{p.position}</span>}
+                  {p.position && <span>{typeof p.position === 'string' ? p.position : p.position?.abbreviation || ''}</span>}
                   {p.jersey   && <span>{p.jersey.startsWith('#') ? p.jersey : `#${p.jersey}`}</span>}
                 </div>
                 {p.team && <div className="player-viewed-team">{p.team}</div>}

@@ -7,7 +7,7 @@ export default function useBoxScore(sport, gameId) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!gameId || !sport) return;
+    if (!gameId || !sport || sport === 'milb') return; // MiLB has no ESPN data
     setLoading(true);
     setError(null);
     setData(null);

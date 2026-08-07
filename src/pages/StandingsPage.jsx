@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getStandings, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 
 /* ── View configs ──────────────────────────────────── */
@@ -103,7 +104,7 @@ function getStatMap(entry) {
 }
 
 /* ── Sortable Table ─────────────────────────────────── */
-function StandingsTable({ entries, cols, sortKey, sortDir, onSort }) {
+function StandingsTable({ entries, cols, sortKey, sortDir, onSort, sport }) {
   const sorted = sortEntries(entries, sortKey, sortDir);
   return (
     <div className="standings-table-wrap">
@@ -139,11 +140,13 @@ function StandingsTable({ entries, cols, sortKey, sortDir, onSort }) {
             return (
               <tr key={team.id || i} className="standings-tr">
                 <td className="standings-td standings-td-team">
-                  <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
-                  <div className="standings-team-info">
-                    <span className="standings-abbr">{team.abbreviation}</span>
-                    {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
-                  </div>
+                  <Link to={`/team/${sport}/${team.id}`} className="standings-team-link">
+                    <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
+                    <div className="standings-team-info">
+                      <span className="standings-abbr">{team.abbreviation}</span>
+                      {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                    </div>
+                  </Link>
                 </td>
                 {cols.map((c) => {
                   const val = stats[c.k] ?? '—';
@@ -165,7 +168,7 @@ function StandingsTable({ entries, cols, sortKey, sortDir, onSort }) {
 }
 
 /* ── Group renderer ─────────────────────────────────── */
-function StandingsGroup({ group, cols, sortKey, sortDir, onSort, wcSpots = 0 }) {
+function StandingsGroup({ group, cols, sortKey, sortDir, onSort, wcSpots = 0, sport }) {
   const sorted = sortEntries(group.entries, sortKey, sortDir);
   return (
     <div className="standings-group">
@@ -179,7 +182,7 @@ function StandingsGroup({ group, cols, sortKey, sortDir, onSort, wcSpots = 0 }) 
                 const isActive = sortKey === c.k;
                 return (
                   <th key={c.k} className={`standings-th standings-th-sortable ${c.hl ? 'standings-th-hl' : ''} ${isActive ? 'standings-th-sorted' : ''}`} onClick={() => onSort(c.k, c.rev)}>
-                    {c.label}<span className="standings-sort-icon">{isActive ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ' ↕'}</span>
+                    {c.label}
                   </th>
                 );
               })}
@@ -199,12 +202,14 @@ function StandingsGroup({ group, cols, sortKey, sortDir, onSort, wcSpots = 0 }) 
                 <>
                   <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
                     <td className="standings-td standings-td-team">
-                      <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
-                      <div className="standings-team-info">
-                        <span className="standings-abbr">{team.abbreviation}</span>
-                        {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
-                        {wcSpots > 0 && i < wcSpots && <span className="standings-wc-badge">WC</span>}
-                      </div>
+                      <Link to={`/team/${sport}/${team.id}`} className="standings-team-link">
+                        <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
+                        <div className="standings-team-info">
+                          <span className="standings-abbr">{team.abbreviation}</span>
+                          {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                          {wcSpots > 0 && i < wcSpots && <span className="standings-wc-badge">WC</span>}
+                        </div>
+                      </Link>
                     </td>
                     {cols.map((c) => {
                       const val = stats[c.k] ?? '—';
@@ -284,7 +289,7 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
             {cols.map((c) => (
               <th key={c.k} className={`standings-th standings-th-sortable ${c.hl ? 'standings-th-hl' : ''} ${sortKey === c.k ? 'standings-th-sorted' : ''}`}
                 onClick={() => onSort(c.k, c.rev)}>
-                {c.label}<span className="standings-sort-icon">{sortKey === c.k ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ' ↕'}</span>
+                {c.label}
               </th>
             ))}
           </tr>
@@ -431,11 +436,11 @@ function WildCardView({ sport, cols, sortKey, sortDir, onSort }) {
               {divGroups.map(({ div, top3 }) => (
                 <div key={div}>
                   <div className="standings-wc-section-label">{div}</div>
-                  <StandingsGroup group={{ name: '', entries: top3 }} cols={nhlCols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} />
+                  <StandingsGroup group={{ name: '', entries: top3 }} cols={nhlCols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} sport={sport} />
                 </div>
               ))}
               <div className="standings-wc-section-label">Wild Card</div>
-              <StandingsGroup group={{ name: '', entries: wcPool }} cols={nhlCols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} wcSpots={2} />
+              <StandingsGroup group={{ name: '', entries: wcPool }} cols={nhlCols} sortKey={sortKey} sortDir={sortDir} onSort={onSort} wcSpots={2} sport={sport} />
             </div>
           );
         })}
@@ -496,7 +501,7 @@ function SportStandings({ sport, view }) {
   return (
     <div className="standings-groups">
       {groups.map((g, i) => (
-        <StandingsGroup key={i} group={g} cols={cols} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+        <StandingsGroup key={i} group={g} cols={cols} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sport={sport} />
       ))}
     </div>
   );

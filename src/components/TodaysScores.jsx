@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
+import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 
 function getScore(c) {
   const s = c?.score;
@@ -52,7 +53,7 @@ function MiniDiamond({ onFirst, onSecond, onThird }) {
 }
 
 /* ── Compact ticker card ──────────────────────────────── */
-function TickerCard({ game, sport, myTeamIds }) {
+function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -64,6 +65,9 @@ function TickerCard({ game, sport, myTeamIds }) {
   const isFinal = state === 'post';
   const isPre = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
+  // Use sport-specific live score if available
+  const awayScore = nhlScore?.awayScore ?? mlbScore?.awayRuns ?? getScore(away);
+  const homeScore = nhlScore?.homeScore ?? mlbScore?.homeRuns ?? getScore(home);
   const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
   const sit = comp?.situation || {};
@@ -101,19 +105,28 @@ function TickerCard({ game, sport, myTeamIds }) {
   if (isLive) return (
     <button className={`ticker-card ticker-card-live-style ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
-        <span className="ticker-live"><span className="live-dot" />{shortDetail}</span>
+        <span className="ticker-live"><span className="live-dot" />{
+          sport === 'mlb' && mlbScore?.inning && mlbScore?.inningHalf
+            ? `${mlbScore.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${mlbScore.inning}`
+          : sport === 'nhl' && nhlScore?.period
+            ? `${nhlScore.periodType === 'OT' ? 'OT' : `P${nhlScore.period}`} ${nhlScore.clock}`
+            : shortDetail
+        }</span>
         {broadcast && <span className="ticker-broadcast">{broadcast}</span>}
       </div>
       <div className="ticker-teams">
-        {[away, home].filter(Boolean).map((c) => (
-          <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
-            <div className="ticker-team-left">
-              <LogoImg team={c.team} className="ticker-logo" />
-              <span className="ticker-abbr">{c.team?.abbreviation}</span>
+        {[away, home].filter(Boolean).map((c) => {
+          const score = c.homeAway === 'away' ? awayScore : homeScore;
+          return (
+            <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
+              <div className="ticker-team-left">
+                <LogoImg team={c.team} className="ticker-logo" />
+                <span className="ticker-abbr">{c.team?.abbreviation}</span>
+              </div>
+              <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{score ?? '0'}</span>
             </div>
-            <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="ticker-bottom ticker-bottom-live">
         <div className="ticker-situation">
@@ -131,18 +144,21 @@ function TickerCard({ game, sport, myTeamIds }) {
         <span className="ticker-final">Final</span>
       </div>
       <div className="ticker-teams">
-        {[away, home].filter(Boolean).map((c) => (
-          <div key={c.team?.id} className={`ticker-team ${c.winner ? 'ticker-winner' : ''} ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
-            <div className="ticker-team-left">
-              <LogoImg team={c.team} className="ticker-logo" />
-              <div>
-                <span className="ticker-abbr">{c.team?.abbreviation}</span>
-                {c.records?.[0]?.summary && <span className="ticker-record"> {c.records[0].summary}</span>}
+        {[away, home].filter(Boolean).map((c) => {
+          const score = c.homeAway === 'away' ? awayScore : homeScore;
+          return (
+            <div key={c.team?.id} className={`ticker-team ${c.winner ? 'ticker-winner' : ''} ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
+              <div className="ticker-team-left">
+                <LogoImg team={c.team} className="ticker-logo" />
+                <div>
+                  <span className="ticker-abbr">{c.team?.abbreviation}</span>
+                  {c.records?.[0]?.summary && <span className="ticker-record"> {c.records[0].summary}</span>}
+                </div>
               </div>
+              <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{score ?? '0'}</span>
             </div>
-            <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{getScore(c) ?? '0'}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="ticker-bottom" />
     </button>
@@ -150,7 +166,7 @@ function TickerCard({ game, sport, myTeamIds }) {
 }
 
 /* ── Full grid card — same design as ticker, just larger ── */
-function GridCard({ game, sport, myTeamIds }) {
+function GridCard({ game, sport, myTeamIds, mlbScore }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -163,6 +179,8 @@ function GridCard({ game, sport, myTeamIds }) {
   const isPre = state === 'pre';
   const shortDetail = status?.type?.shortDetail || '';
   const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
+  const awayScoreG = mlbScore?.awayRuns ?? getScore(away);
+  const homeScoreG = mlbScore?.homeRuns ?? getScore(home);
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
   const sit = comp?.situation || {};
   const outs = sit.outs ?? null;
@@ -203,7 +221,7 @@ function GridCard({ game, sport, myTeamIds }) {
               <LogoImg team={c.team} className="grid-logo" />
               <span className="grid-abbr">{c.team?.abbreviation}</span>
             </div>
-            <span className="grid-score">{getScore(c) ?? '0'}</span>
+            <span className="grid-score">{(c.homeAway === 'away' ? awayScoreG : homeScoreG) ?? '0'}</span>
           </div>
         ))}
       </div>
@@ -238,14 +256,120 @@ function GridCard({ game, sport, myTeamIds }) {
   );
 }
 
+/* ── NHL live score overlay via NHL.com API ─────────────
+   Returns a map: ESPN game id → { awayScore, homeScore, period, clock, strength }
+──────────────────────────────────────────────────────── */
+const NHL_PROXY = 'https://api.allorigins.win/raw?url=';
+const nhlFetchUrl = (path) => `${NHL_PROXY}${encodeURIComponent(`https://api-web.nhle.com${path}`)}`;
+
+async function fetchNhlLiveScores(dateStr, espnGames) {
+  try {
+    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+    const r = await fetch(nhlFetchUrl(`/v1/score/${isoDate}`));
+    const data = await r.json();
+    const nhlGames = data.games || [];
+    const map = {};
+    for (const eg of espnGames) {
+      const comps = eg.competitions?.[0]?.competitors || [];
+      const ea = normNhlAbb(comps.find(c => c.homeAway === 'away')?.team?.abbreviation || '');
+      const eh = normNhlAbb(comps.find(c => c.homeAway === 'home')?.team?.abbreviation || '');
+      const ng = nhlGames.find(g => normNhlAbb(g.awayTeam?.abbrev) === ea && normNhlAbb(g.homeTeam?.abbrev) === eh);
+      if (!ng) continue;
+      const period = ng.periodDescriptor?.number || ng.period;
+      const pType  = ng.periodDescriptor?.periodType || 'REG';
+      const ppTeam = (() => {
+        const sit = ng.situation;
+        if (!sit) return null;
+        const a = parseInt(sit.awayTeam?.situationCode?.[1] || '5');
+        const h = parseInt(sit.awayTeam?.situationCode?.[2] || '5');
+        if (a > h) return ng.awayTeam?.abbrev;
+        if (h > a) return ng.homeTeam?.abbrev;
+        return null;
+      })();
+      map[eg.id] = {
+        awayScore: ng.awayTeam?.score ?? null,
+        homeScore: ng.homeTeam?.score ?? null,
+        period,
+        periodType: pType,
+        clock: ng.clock?.timeRemaining || '',
+        state: ng.gameState,
+        ppTeam,
+        nhlGameId: ng.id,
+      };
+    }
+    return map;
+  } catch { return {}; }
+}
+
+/* ── MLB live score overlay via MLB Stats API ───────────
+   Returns a map: ESPN game id → { awayRuns, homeRuns, awayHits, homeHits, awayErrors, homeErrors }
+   Matched by comparing ESPN team displayNames to MLB team names.
+──────────────────────────────────────────────────────── */
+async function fetchMlbLiveScores(dateStr, espnGames) {
+  try {
+    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+    const res = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&hydrate=linescore`
+    );
+    const data = await res.json();
+    const mlbGames = data.dates?.[0]?.games || [];
+
+    const norm = (s) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
+    const map = {};
+
+    for (const eg of espnGames) {
+      const comps = eg.competitions?.[0]?.competitors || [];
+      const ea = comps.find((c) => c.homeAway === 'away')?.team?.displayName;
+      const eh = comps.find((c) => c.homeAway === 'home')?.team?.displayName;
+      if (!ea || !eh) continue;
+
+      const mlbGame = mlbGames.find((mg) => {
+        const ma = mg.teams?.away?.team?.name;
+        const mh = mg.teams?.home?.team?.name;
+        return norm(ma) === norm(ea) && norm(mh) === norm(eh);
+      });
+      if (!mlbGame?.linescore) continue;
+
+      const ls = mlbGame.linescore;
+      map[eg.id] = {
+        awayRuns:   ls.teams?.away?.runs   ?? null,
+        homeRuns:   ls.teams?.home?.runs   ?? null,
+        awayHits:   ls.teams?.away?.hits   ?? null,
+        homeHits:   ls.teams?.home?.hits   ?? null,
+        awayErrors: ls.teams?.away?.errors ?? null,
+        homeErrors: ls.teams?.home?.errors ?? null,
+        inning:     ls.currentInningOrdinal || '',
+        inningHalf: ls.inningHalf || '',
+      };
+    }
+    return map;
+  } catch { return {}; }
+}
+
 /* ── Main Component ──────────────────────────────────── */
-export default function TodaysScores({ compact = false }) {
+function readSbCache(sport, dateStr) {
+  try {
+    const ck = `sb_${sport}_${dateStr}`;
+    const cached = JSON.parse(localStorage.getItem(ck) || 'null');
+    if (cached?.ts && Date.now() - cached.ts < 120000 && cached.data?.length) return cached.data;
+  } catch {}
+  return null;
+}
+
+export default function TodaysScores({ compact = false, onCollapse }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
-  const [activeSport, setActiveSport] = useState(sportOrder[0] || 'mlb');
-  const [games, setGames] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const defaultSport = sportOrder[0] || 'mlb';
+  const todayDateStr = toDateStr(new Date());
+
+  const [activeSport, setActiveSport] = useState(defaultSport);
+  // Seed rawGames from cache immediately — zero flicker on remount
+  const [rawGames, setRawGames] = useState(() => readSbCache(defaultSport, todayDateStr) || []);
+  const [mlbScores, setMlbScores] = useState({});
+  const [nhlScores, setNhlScores] = useState({});
+  const [loading, setLoading] = useState(() => !readSbCache(defaultSport, todayDateStr));
   const [expanded, setExpanded] = useState(false);
   const [editOrder, setEditOrder] = useState(false);
+  const pollRef = useRef(null);
 
   // Date navigation
   const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
@@ -255,26 +379,62 @@ export default function TodaysScores({ compact = false }) {
 
   const myTeamIds = favorites.teams.filter((t) => t.sport === activeSport).map((t) => t.team.id);
 
+  // Derived sort — instantly reacts when favorites change without a new API call
+  const stateOrderConst = { in: 0, post: 1, pre: 2 };
+  const games = useMemo(() => [...rawGames].sort((a, b) => {
+    const aMine = a.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    const bMine = b.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
+    if (aMine !== bMine) return aMine - bMine;
+    const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
+    const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
+    return (stateOrderConst[sa] ?? 2) - (stateOrderConst[sb] ?? 2);
+  }), [rawGames, favorites.teams, activeSport]);
+
+  const refreshMlbScores = useRef(null);
+  refreshMlbScores.current = async (evts) => {
+    if (activeSport !== 'mlb' || !isToday || !evts.length) return;
+    const scores = await fetchMlbLiveScores(toDateStr(selectedDate), evts);
+    setMlbScores(scores);
+  };
+
+  const refreshNhlScores = useRef(null);
+  refreshNhlScores.current = async (evts) => {
+    if (activeSport !== 'nhl' || !isToday || !evts.length) return;
+    const scores = await fetchNhlLiveScores(toDateStr(selectedDate), evts);
+    setNhlScores(scores);
+  };
+
   useEffect(() => {
-    setLoading(true);
-    setGames([]);
     const dateStr = toDateStr(selectedDate);
-    getScoreboard(activeSport, dateStr)
-      .then((evts) => {
-        // Sort: my teams first, then live, final, pre
-        const stateOrder = { in: 0, post: 1, pre: 2 };
-        const sorted = [...evts].sort((a, b) => {
-          const aMine = a.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
-          const bMine = b.competitions?.[0]?.competitors?.some((c) => myTeamIds.includes(c.team?.id)) ? 0 : 1;
-          if (aMine !== bMine) return aMine - bMine;
-          const sa = a.competitions?.[0]?.status?.type?.state || 'pre';
-          const sb = b.competitions?.[0]?.status?.type?.state || 'pre';
-          return (stateOrder[sa] ?? 2) - (stateOrder[sb] ?? 2);
-        });
-        setGames(sorted);
-      })
-      .catch(() => setGames([]))
-      .finally(() => setLoading(false));
+    const ck = `sb_${activeSport}_${dateStr}`;
+    // Seed from cache immediately if sport/date changed
+    const cached = readSbCache(activeSport, dateStr);
+    if (cached) { setRawGames(cached); setLoading(false); }
+    else { setLoading(true); /* keep existing rawGames visible until fresh data arrives */ }
+
+    setMlbScores({});
+    clearInterval(pollRef.current);
+
+    const load = () =>
+      getScoreboard(activeSport, dateStr)
+        .then((evts) => {
+          setRawGames(evts);
+          try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data: evts })); } catch {}
+          refreshMlbScores.current(evts);
+          refreshNhlScores.current(evts);
+          return evts;
+        })
+        .catch(() => { setRawGames([]); return []; });
+
+    load().finally(() => setLoading(false));
+
+    pollRef.current = setInterval(async () => {
+      const evts = await load();
+      await refreshMlbScores.current(evts);
+      await refreshNhlScores.current(evts);
+    }, 30000);
+
+    return () => clearInterval(pollRef.current);
   }, [activeSport, selectedDate]);
 
   const liveCount = games.filter((g) => g.competitions?.[0]?.status?.type?.state === 'in').length;
@@ -288,7 +448,7 @@ export default function TodaysScores({ compact = false }) {
           <select
             className="ts-sport-select"
             value={activeSport}
-            onChange={(e) => { setActiveSport(e.target.value); setGames([]); }}
+            onChange={(e) => { setActiveSport(e.target.value); setRawGames([]); }}
           >
             {sportOrder.map((s) => (
               <option key={s} value={s}>{SPORTS[s]?.label}</option>
@@ -305,6 +465,13 @@ export default function TodaysScores({ compact = false }) {
           <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
             {expanded ? '✕ Close' : 'All Scores'}
           </button>
+          {onCollapse && (
+            <button className="ts-collapse-btn" onClick={onCollapse} title="Hide ticker">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="18 15 12 9 6 15"/>
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Row 2: horizontal scrolling ticker */}
@@ -312,7 +479,7 @@ export default function TodaysScores({ compact = false }) {
           {loading && [1,2,3,4].map((i) => <div key={i} className="ticker-skeleton" />)}
           {!loading && games.length === 0 && <span className="ts-no-games">No games</span>}
           {!loading && games.map((game) => (
-            <TickerCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} />
+            <TickerCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} mlbScore={mlbScores[game.id]} nhlScore={nhlScores[game.id]} />
           ))}
         </div>
       </div>
@@ -329,7 +496,7 @@ export default function TodaysScores({ compact = false }) {
           </div>
           <div className="scores-grid">
             {games.map((game) => (
-              <GridCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} />
+              <GridCard key={game.id} game={game} sport={activeSport} myTeamIds={myTeamIds} mlbScore={mlbScores[game.id]} nhlScore={nhlScores[game.id]} />
             ))}
           </div>
         </div>
