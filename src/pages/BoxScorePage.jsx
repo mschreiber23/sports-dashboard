@@ -1705,6 +1705,196 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
   );
 }
 
+/* ─── NFL GAMECAST ──────────────────────────────────── */
+function NflGamecast({ data, situation, competitors, status }) {
+  const isLive  = status?.type?.state === 'in';
+  const isFinal = status?.type?.state === 'post';
+  const shortDetail = status?.type?.shortDetail || '';
+
+  const away = competitors?.find(c => c.homeAway === 'away') || competitors?.[0];
+  const home = competitors?.find(c => c.homeAway === 'home') || competitors?.[1];
+
+  // Situation data (from scoreboard, real-time)
+  const sit = situation || {};
+  const downText   = sit.downDistanceText || '';
+  const fieldPos   = sit.possessionText   || '';
+  const isRedZone  = sit.isRedZone;
+  const homeTimeouts = sit.homeTimeouts ?? 3;
+  const awayTimeouts = sit.awayTimeouts ?? 3;
+  const lastPlayText = sit.lastPlay?.text || '';
+  const driveDesc  = sit.lastPlay?.drive?.description || '';
+  const winPct     = sit.lastPlay?.probability;
+
+  // Possession: which team id has the ball?
+  const possTeamId = sit.possession?.id || sit.lastPlay?.team?.id;
+  const awayHasBall = possTeamId && possTeamId === away?.team?.id;
+  const homeHasBall = possTeamId && possTeamId === home?.team?.id;
+
+  // Drives from summary
+  const drives = data?.drives || {};
+  const currentDrive = drives.current;
+
+  // Plays from summary
+  const plays = data?.plays || [];
+  const scoringPlays = plays.filter(p => p.scoringPlay).reverse();
+
+  // Team stats from boxscore
+  const bsTeams = data?.boxscore?.teams || [];
+  const getTeamStats = (teamId) => {
+    const t = bsTeams.find(t => t.team?.id === String(teamId));
+    const sm = {};
+    (t?.statistics || []).forEach(cat => {
+      (cat.stats || []).forEach(s => { sm[s.name] = s.displayValue; });
+    });
+    return sm;
+  };
+  const awayStats = getTeamStats(away?.team?.id);
+  const homeStats = getTeamStats(home?.team?.id);
+  const statHasData = (sm) => Object.values(sm).some(v => v && v !== '0' && v !== '0.0' && v !== '--' && v !== '0/0');
+
+  const STAT_ROWS = [
+    { key: 'totalYards',        label: 'Total Yards' },
+    { key: 'netPassingYards',   label: 'Pass Yds' },
+    { key: 'rushingYards',      label: 'Rush Yds' },
+    { key: 'completionAttempts',label: 'Comp/Att' },
+    { key: 'thirdDownEff',      label: '3rd Down' },
+    { key: 'turnovers',         label: 'Turnovers' },
+    { key: 'totalPenaltiesYards', label: 'Penalties' },
+    { key: 'possessionTime',    label: 'Poss. Time' },
+  ];
+
+  const timeoutDots = (n) => Array.from({length:3}).map((_,i) => (
+    <span key={i} className={`nfl-timeout-dot${i < n ? ' nfl-timeout-active' : ''}`} />
+  ));
+
+  return (
+    <div className="gamecast-wrap">
+
+      {/* ── Live situation bar ── */}
+      {isLive && (
+        <div className="nfl-sit-bar">
+          <div className="nfl-sit-top">
+            <div className="nfl-sit-quarter">
+              {isRedZone && <span className="nfl-rz-badge">🔴 RED ZONE</span>}
+              <span className="nfl-sit-detail">{shortDetail}</span>
+            </div>
+          </div>
+          {downText && (
+            <div className="nfl-sit-down">
+              <span className="nfl-sit-down-text">{downText}</span>
+              {fieldPos && <span className="nfl-sit-field">{fieldPos}</span>}
+            </div>
+          )}
+
+          {/* Possession + timeouts */}
+          <div className="nfl-sit-possession-row">
+            <div className={`nfl-team-possession${awayHasBall ? ' nfl-has-ball' : ''}`}>
+              <div className="nfl-timeout-row">{timeoutDots(awayTimeouts)}</div>
+              <span className="nfl-team-abbr">{away?.team?.abbreviation}</span>
+              {awayHasBall && <span className="nfl-ball-icon">🏈</span>}
+            </div>
+            <div className={`nfl-team-possession nfl-team-possession-right${homeHasBall ? ' nfl-has-ball' : ''}`}>
+              {homeHasBall && <span className="nfl-ball-icon">🏈</span>}
+              <span className="nfl-team-abbr">{home?.team?.abbreviation}</span>
+              <div className="nfl-timeout-row">{timeoutDots(homeTimeouts)}</div>
+            </div>
+          </div>
+
+          {/* Win probability bar */}
+          {winPct && (winPct.homeWinPercentage > 0 || winPct.awayWinPercentage > 0) && (() => {
+            const awayPct = Math.round((winPct.awayWinPercentage || 0) * 100);
+            const homePct = Math.round((winPct.homeWinPercentage || 0) * 100);
+            return (
+              <div className="nfl-winprob-wrap">
+                <span className="nfl-winprob-pct">{awayPct}%</span>
+                <div className="nfl-winprob-bar">
+                  <div className="nfl-winprob-away" style={{width:`${awayPct}%`}} />
+                </div>
+                <span className="nfl-winprob-pct">{homePct}%</span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── Current drive / last play ── */}
+      {isLive && (lastPlayText || driveDesc) && (
+        <div className="nfl-lastplay-section">
+          {currentDrive && (
+            <div className="nfl-drive-header">
+              <span className="nfl-drive-team">{currentDrive.team?.abbreviation}</span>
+              <span className="nfl-drive-desc">{currentDrive.description}</span>
+            </div>
+          )}
+          {lastPlayText && (
+            <div className="nfl-lastplay-text">{lastPlayText}</div>
+          )}
+        </div>
+      )}
+
+      {/* ── Scoring plays ── */}
+      {scoringPlays.length > 0 && (
+        <div className="gc-plays-section">
+          <div className="gc-section-label">Scoring Plays</div>
+          {scoringPlays.map((p, i) => (
+            <div key={i} className="gc-play-row gc-play-scoring">
+              <div className="gc-play-period">{p.period?.displayValue}</div>
+              <div className="gc-play-text">{p.text}</div>
+              <div className="gc-play-score">{p.awayScore}–{p.homeScore}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recent plays when live and no scoring plays yet */}
+      {isLive && scoringPlays.length === 0 && plays.length > 0 && (
+        <div className="gc-plays-section">
+          <div className="gc-section-label">Recent Plays</div>
+          {plays.slice(-6).reverse().map((p, i) => (
+            <div key={i} className={`gc-play-row ${p.scoringPlay ? 'gc-play-scoring' : ''}`}>
+              <div className="gc-play-period">{p.period?.displayValue}</div>
+              <div className="gc-play-text">{p.text}</div>
+              {p.scoringPlay && <div className="gc-play-score">{p.awayScore}–{p.homeScore}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Team stats ── */}
+      {(statHasData(awayStats) || statHasData(homeStats)) && (
+        <div className="gc-plays-section">
+          <div className="gc-section-label">Team Stats</div>
+          <div className="nfl-stats-table">
+            <div className="nfl-stats-row nfl-stats-header">
+              <span>{away?.team?.abbreviation}</span>
+              <span />
+              <span>{home?.team?.abbreviation}</span>
+            </div>
+            {STAT_ROWS.map(({key, label}) => {
+              const av = awayStats[key]; const hv = homeStats[key];
+              if (!av && !hv) return null;
+              return (
+                <div key={key} className="nfl-stats-row">
+                  <span className="nfl-stats-val">{av || '—'}</span>
+                  <span className="nfl-stats-lbl">{label}</span>
+                  <span className="nfl-stats-val">{hv || '—'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLive && !isFinal && scoringPlays.length === 0 && (
+        <div className="gc-plays-section" style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>
+          Game hasn't started yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GenericGamecast({ data, situation, competitors, status, sport }) {
   const plays = data?.plays || [];
   const recentPlays = plays.slice(-8).reverse();
@@ -2518,6 +2708,8 @@ export default function BoxScorePage() {
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
                 : sport === 'nhl'
                 ? <NhlGamecast espnGame={{ competitions: [comp], date: comp?.date || data?.header?.competitions?.[0]?.date }} sport={sport} />
+                : sport === 'nfl'
+                ? <NflGamecast data={data} situation={situation} competitors={comps} status={status} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 
