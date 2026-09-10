@@ -7182,6 +7182,11 @@ thead .dfs-sticky-player {
   padding: 4px 8px;
   flex-shrink: 0;
 }
+.pc-stat-cell-dk {
+  background: color-mix(in srgb, #22c55e 12%, transparent);
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
+}
 .pc-stat-val {
   font-size: 13px;
   font-weight: 700;

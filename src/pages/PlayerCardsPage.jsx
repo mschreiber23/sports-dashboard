@@ -44,6 +44,38 @@ const nflGroup     = (pos) => {
   return null;
 };
 
+/* ── DraftKings NFL fantasy points calculation ──────────
+   Scoring: Pass Yd +0.04 | Pass TD +4 | INT -1 | 300+ Pass Bonus +3
+            Rush/Rec Yd +0.1 | Rush/Rec TD +6 | 100+ Bonus +3
+            Reception +1 (full PPR) | Fumble Lost -1
+─────────────────────────────────────────────────────── */
+function calcDKFP(statMap, posGroup) {
+  const n = (v) => parseFloat(String(v || '').replace(/[^\d.-]/g, '')) || 0;
+  let pts = 0;
+
+  if (posGroup === 'qb') {
+    const passYds = n(statMap['YDS']);
+    pts += passYds * 0.04 + n(statMap['TD']) * 4 - n(statMap['INT']);
+    if (passYds >= 300) pts += 3;
+    const rushYds = n(statMap['RYDS']);
+    pts += rushYds * 0.1 + n(statMap['RTD']) * 6;
+    if (rushYds >= 100) pts += 3;
+  } else if (posGroup === 'rb') {
+    const rushYds = n(statMap['YDS']);
+    pts += rushYds * 0.1 + n(statMap['TD']) * 6;
+    if (rushYds >= 100) pts += 3;
+    const recYds = n(statMap['RECYDS']);
+    pts += n(statMap['REC']) * 1 + recYds * 0.1 + n(statMap['RECTD']) * 6;
+    if (recYds >= 100) pts += 3;
+  } else {
+    const recYds = n(statMap['RECYDS']);
+    pts += n(statMap['REC']) * 1 + recYds * 0.1 + n(statMap['RECTD']) * 6;
+    if (recYds >= 100) pts += 3;
+  }
+  pts -= n(statMap['FUML'] || statMap['FUM'] || '0');
+  return pts > 0 ? pts.toFixed(1) : null;
+}
+
 /* ── Stat display configs (ESPN label → display label) ── */
 const STAT_CFGS = {
   mlb_batter: [
@@ -58,14 +90,16 @@ const STAT_CFGS = {
   nfl_qb: [
     {s:'C/ATT',l:'C/ATT'},{s:'YDS',l:'PYDS'},{s:'TD',l:'PTD'},{s:'INT',l:'INT'},
     {s:'CAR',l:'CAR'},{s:'RYDS',l:'RYDS'},{s:'RTD',l:'RTD'},
+    {s:'DKFP',l:'DKFP',dkfp:'qb'},
   ],
   nfl_rb: [
     {s:'CAR',l:'CAR'},{s:'YDS',l:'RYDS'},{s:'TD',l:'RTD'},
-    {s:'TGTS',l:'TGT'},{s:'REC',l:'REC'},{s:'RECYDS',l:'RECYDS'},{s:'RECTD',l:'RECTD'},
+    {s:'REC',l:'REC'},{s:'TGTS',l:'TGT'},{s:'RECYDS',l:'RECYDS'},{s:'RECTD',l:'RECTD'},
+    {s:'DKFP',l:'DKFP',dkfp:'rb'},
   ],
   nfl_wr: [
-    {s:'TGTS',l:'TGT'},{s:'REC',l:'REC'},{s:'YDS',l:'RECYDS'},{s:'TD',l:'RECTD'},
-    {s:'CAR',l:'CAR'},{s:'RYDS',l:'RYDS'},{s:'RTD',l:'RTD'},
+    {s:'REC',l:'REC'},{s:'TGTS',l:'TGT'},{s:'RECYDS',l:'REC YDS'},{s:'RECTD',l:'REC TD'},
+    {s:'DKFP',l:'DKFP',dkfp:'wr'},
   ],
   nba: [
     {s:'MIN',l:'MIN'},{s:'PTS',l:'PTS'},{s:'REB',l:'REB'},{s:'AST',l:'AST'},
@@ -119,11 +153,45 @@ async function fetchSeasonStats(sport, athleteId, posAbb) {
     const d = await r.json();
     const cats = d?.splits?.categories || [];
     const sm = {};
-    // For MLB, get batting or pitching category; for others get all
-    const wantCat = sport === 'mlb' ? (isPitcher(posAbb) ? 'pitching' : 'batting') : null;
-    for (const cat of cats) {
-      if (!wantCat || cat.name?.toLowerCase() === wantCat) {
-        for (const s of cat.stats || []) sm[s.abbreviation] = s.displayValue;
+
+    if (sport === 'mlb') {
+      const wantCat = isPitcher(posAbb) ? 'pitching' : 'batting';
+      for (const cat of cats) {
+        if (cat.name?.toLowerCase() === wantCat) {
+          for (const stat of cat.stats || []) sm[stat.abbreviation] = stat.displayValue;
+        }
+      }
+    } else if (sport === 'nfl') {
+      // Position-aware mapping to avoid key collisions between rushing/receiving 'YDS'/'TD'
+      const pg = nflGroup(posAbb);
+      for (const cat of cats) {
+        const cn = cat.name?.toLowerCase();
+        const stats = cat.stats || [];
+        if (cn === 'passing' && (pg === 'qb' || !pg)) {
+          for (const stat of stats) sm[stat.abbreviation] = stat.displayValue;
+        } else if (cn === 'rushing') {
+          if (pg === 'qb') {
+            for (const stat of stats) {
+              if (stat.abbreviation === 'YDS') sm['RYDS'] = stat.displayValue;
+              else if (stat.abbreviation === 'TD') sm['RTD'] = stat.displayValue;
+              else sm[stat.abbreviation] = stat.displayValue;
+            }
+          } else {
+            for (const stat of stats) sm[stat.abbreviation] = stat.displayValue;
+          }
+        } else if (cn === 'receiving' && pg !== 'qb') {
+          for (const stat of stats) {
+            if (stat.abbreviation === 'YDS') sm['RECYDS'] = stat.displayValue;
+            else if (stat.abbreviation === 'TD') sm['RECTD'] = stat.displayValue;
+            else sm[stat.abbreviation] = stat.displayValue;
+          }
+        } else if (cn === 'fumbles') {
+          for (const stat of stats) sm[stat.abbreviation] = stat.displayValue;
+        }
+      }
+    } else {
+      for (const cat of cats) {
+        for (const stat of cat.stats || []) sm[stat.abbreviation] = stat.displayValue;
       }
     }
     return sm;
@@ -376,19 +444,22 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
           <div className="pc-season-label">{new Date().getFullYear()} Season Stats</div>
           <div className="pc-stats-grid">
             {statCfg.map((cfg) => {
-              const { s, l, combo } = cfg;
+              const { s, l, combo, dkfp } = cfg;
               let val;
               if (combo) {
                 const h  = gameData.seasonStats[combo.h];
                 const ab = gameData.seasonStats[combo.ab];
                 if (h === undefined && ab === undefined) return null;
                 val = `${h ?? '0'}-${ab ?? '0'}`;
+              } else if (dkfp) {
+                val = calcDKFP(gameData.seasonStats, dkfp);
+                if (val === null) return null;
               } else {
                 val = gameData.seasonStats[s];
                 if (val === undefined) return null;
               }
               return (
-                <div key={s} className="pc-stat-cell">
+                <div key={s} className={`pc-stat-cell${dkfp ? ' pc-stat-cell-dk' : ''}`}>
                   <div className="pc-stat-val">{val}</div>
                   <div className="pc-stat-lbl">{l}</div>
                 </div>
@@ -423,19 +494,22 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
               <div className="pc-season-label">{new Date().getFullYear()} Season Stats</div>
               <div className="pc-stats-grid">
                 {statCfg.map((cfg) => {
-                  const { s, l, combo } = cfg;
+                  const { s, l, combo, dkfp } = cfg;
                   let val;
                   if (combo) {
                     const h  = gameData.seasonStats[combo.h];
                     const ab = gameData.seasonStats[combo.ab];
                     if (h === undefined && ab === undefined) return null;
                     val = `${h ?? '0'}-${ab ?? '0'}`;
+                  } else if (dkfp) {
+                    val = calcDKFP(gameData.seasonStats, dkfp);
+                    if (val === null) return null;
                   } else {
                     val = gameData.seasonStats[s];
                     if (val === undefined) return null;
                   }
                   return (
-                    <div key={s} className="pc-stat-cell">
+                    <div key={s} className={`pc-stat-cell${dkfp ? ' pc-stat-cell-dk' : ''}`}>
                       <div className="pc-stat-val">{val}</div>
                       <div className="pc-stat-lbl">{l}</div>
                     </div>
@@ -451,19 +525,22 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
       {(state === 'in' || state === 'post') && gameData?.statMap && statCfg.length > 0 && (
         <div className="pc-stats-grid">
           {statCfg.map((cfg) => {
-            const { s, l, combo } = cfg;
+            const { s, l, combo, dkfp } = cfg;
             let val;
             if (combo) {
               const h  = gameData.statMap[combo.h];
               const ab = gameData.statMap[combo.ab];
               if (h === undefined && ab === undefined) return null;
               val = `${h ?? '0'}-${ab ?? '0'}`;
+            } else if (dkfp) {
+              val = calcDKFP(gameData.statMap, dkfp);
+              if (val === null) return null;
             } else {
               val = gameData.statMap[s];
               if (val === undefined) return null;
             }
             return (
-              <div key={s} className="pc-stat-cell">
+              <div key={s} className={`pc-stat-cell${dkfp ? ' pc-stat-cell-dk' : ''}`}>
                 <div className="pc-stat-val">{val ?? '—'}</div>
                 <div className="pc-stat-lbl">{l}</div>
               </div>
