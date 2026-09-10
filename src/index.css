@@ -2420,17 +2420,7 @@ body {
 .nfl-cd-sit-val { font-size: 16px; font-weight: 800; color: var(--text); }
 
 /* Field SVG */
-.nfl-field-svg-outer { padding: 12px 0 0; }
-.nfl-field-perspective-wrap {
-  perspective: 280px;
-  perspective-origin: 50% 100%;
-  overflow: hidden;
-}
-.nfl-field-perspective-wrap > svg {
-  display: block;
-  transform: rotateX(12deg);
-  transform-origin: bottom center;
-}
+.nfl-field-svg-outer { padding: 10px 0 0; }
 .nfl-field-yard-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 4px 0 8px;

@@ -1780,18 +1780,18 @@ function nflPlayLabel(play) {
   if (!play) return '';
   const type = (play.type?.text || '').toLowerCase();
   const yds = play.statYardage ?? 0;
-  if (/rush|run/i.test(type))               return `${yds}-yd Run`;
-  if (/pass completion/i.test(type))         return `${yds}-yd Pass`;
-  if (/pass incompletion|incomplete/i.test(type)) return 'Incomplete Pass';
-  if (/sack/i.test(type))                   return `${Math.abs(yds)}-yd Sack`;
-  if (/touchdown/i.test(type))              return 'Touchdown';
-  if (/field goal good/i.test(type))        return 'Field Goal';
-  if (/field goal no good/i.test(type))     return 'Missed FG';
-  if (/punt/i.test(type))                   return 'Punt';
-  if (/kickoff/i.test(type))                return 'Kickoff';
-  if (/penalty/i.test(type))                return 'Penalty';
-  if (/timeout/i.test(type))                return 'Timeout';
-  if (/two.point/i.test(type))              return '2-Pt Conversion';
+  if (/rush|run/i.test(type))                            return `${yds}-yd Run`;
+  if (/pass reception|pass completion|completion/i.test(type)) return `${yds}-yd Pass`;
+  if (/pass incompletion|incomplete/i.test(type))        return 'Incomplete Pass';
+  if (/sack/i.test(type))                                return `${Math.abs(yds)}-yd Sack`;
+  if (/touchdown/i.test(type))                           return 'Touchdown';
+  if (/field goal good/i.test(type))                     return 'Field Goal';
+  if (/field goal no good/i.test(type))                  return 'Missed FG';
+  if (/punt/i.test(type))                                return 'Punt';
+  if (/kickoff/i.test(type))                             return 'Kickoff';
+  if (/penalty/i.test(type))                             return 'Penalty';
+  if (/timeout/i.test(type))                             return 'Timeout';
+  if (/two.point/i.test(type))                           return '2-Pt Conversion';
   return play.type?.text || '';
 }
 
@@ -1800,10 +1800,10 @@ function nflPrimaryParticipant(play) {
   const participants = play?.participants || [];
   if (!participants.length) return null;
   const type = (play?.type?.text || '').toLowerCase();
-  const priority = /rush|run/i.test(type)               ? ['rusher', 'runner']
-                 : /pass completion/i.test(type)         ? ['receiver', 'rusher']
-                 : /pass incompletion|incomplete/i.test(type) ? ['passer']
-                 : /sack/i.test(type)                    ? ['rusher', 'passer']
+  const priority = /rush|run/i.test(type)                            ? ['rusher', 'runner']
+                 : /pass reception|pass completion|completion/i.test(type) ? ['receiver', 'rusher']
+                 : /pass incompletion|incomplete/i.test(type)        ? ['passer']
+                 : /sack/i.test(type)                                ? ['rusher', 'passer']
                  : /field goal|kick/i.test(type)         ? ['kicker']
                  : /punt/i.test(type)                    ? ['punter']
                  : [];
@@ -1816,106 +1816,107 @@ function nflPrimaryParticipant(play) {
 
 /* ─── NFL Field SVG ──────────────────────────────────── */
 function NflFieldSvg({ away, home, ballPct, startPct, fdPct, awayDriving }) {
-  const W = 360, H = 90, EZW = 32, FW = W - EZW * 2;
+  const W = 360, H = 80, EZW = 32, FW = W - EZW * 2;
   const awayColor = away?.team?.color ? `#${away.team.color}` : '#1a4aee';
   const homeColor = home?.team?.color ? `#${home.team.color}` : '#003366';
   const awayAbbr  = (away?.team?.abbreviation || '').toUpperCase();
   const homeAbbr  = (home?.team?.abbreviation || '').toUpperCase();
 
   const pctX = (p) => EZW + clamp(p, 0, 100) / 100 * FW;
-  const ballX = ballPct != null ? pctX(ballPct) : null;
-  const fdX   = fdPct   != null ? pctX(fdPct)   : null;
+  const ballX  = ballPct  != null ? pctX(ballPct)  : null;
+  const fdX    = fdPct    != null ? pctX(fdPct)    : null;
   const startX = startPct != null ? pctX(startPct) : null;
 
+  // Alternating light-gray stripes per 10-yard section
   const stripes = [0,1,2,3,4,5,6,7,8,9].map(i => ({
-    x: EZW + i * FW / 10, fill: i % 2 === 0 ? '#d4d4d4' : '#c8c8c8',
+    x: EZW + i * FW / 10,
+    fill: i % 2 === 0 ? '#e2e2e2' : '#d6d6d6',
   }));
   const yardLines = [1,2,3,4,5,6,7,8,9].map(i => EZW + i * FW / 10);
   const yardLabels = [10,20,30,40,50,40,30,20,10];
+  const mid = H / 2;
 
-  /* Pin shape: M cx,top+24  arc top  point bottom  */
-  const pinPath = (cx, top) =>
-    `M ${cx},${top+24} C ${cx-10},${top+14} ${cx-13},${top+6} ${cx-13},${top} `+
-    `A 13 13 0 1 1 ${cx+13},${top} `+
-    `C ${cx+13},${top+6} ${cx+10},${top+14} ${cx},${top+24} Z`;
-
-  const pinTop = H * 0.08;
+  // Arrow direction (rightward offset if away driving, leftward if home)
+  const arrowDir = awayDriving ? -4 : 4;
 
   return (
     <div className="nfl-field-svg-outer">
-      <div className="nfl-field-perspective-wrap">
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <marker id="nfl-arr" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
-              <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(0,0,0,0.55)" />
-            </marker>
-          </defs>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="nfl-arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0.5 L5.5,3 L0,5.5 Z" fill="rgba(30,30,30,0.6)" />
+          </marker>
+        </defs>
 
-          {/* End zones */}
-          <rect x={0}      y={0} width={EZW} height={H} fill={awayColor} />
-          <rect x={W-EZW} y={0} width={EZW} height={H} fill={homeColor} />
+        {/* End zones */}
+        <rect x={0}     y={0} width={EZW} height={H} fill={awayColor} />
+        <rect x={W-EZW} y={0} width={EZW} height={H} fill={homeColor} />
 
-          {/* Field stripes */}
-          {stripes.map((s, i) => <rect key={i} x={s.x} y={0} width={FW/10} height={H} fill={s.fill} />)}
+        {/* Field stripes */}
+        {stripes.map((s, i) => (
+          <rect key={i} x={s.x} y={0} width={FW/10} height={H} fill={s.fill} />
+        ))}
 
-          {/* Yard lines */}
-          {yardLines.map((x, i) => (
-            <line key={i} x1={x} y1={0} x2={x} y2={H} stroke="rgba(255,255,255,0.65)" strokeWidth="0.5" />
-          ))}
+        {/* Subtle yard lines */}
+        {yardLines.map((x, i) => (
+          <line key={i} x1={x} y1={0} x2={x} y2={H}
+            stroke="rgba(255,255,255,0.8)" strokeWidth="0.5" />
+        ))}
 
-          {/* First down line (yellow) */}
-          {fdX != null && (
-            <line x1={fdX} y1={0} x2={fdX} y2={H} stroke="#FFD600" strokeWidth="2.5" />
-          )}
+        {/* First-down yellow line */}
+        {fdX != null && (
+          <line x1={fdX} y1={0} x2={fdX} y2={H} stroke="#FFD600" strokeWidth="2.5" />
+        )}
 
-          {/* Play direction arrow */}
-          {startX != null && ballX != null && Math.abs(startX - ballX) > 6 && (
-            <line
-              x1={startX} y1={H * 0.72}
-              x2={ballX + (awayDriving ? -5 : 5)} y2={H * 0.72}
-              stroke="rgba(0,0,0,0.5)" strokeWidth="2"
-              markerEnd="url(#nfl-arr)"
-            />
-          )}
+        {/* Play arrow: only when ball actually moved */}
+        {startX != null && ballX != null && Math.abs(startX - ballX) > 4 && (
+          <line
+            x1={startX} y1={mid}
+            x2={ballX + arrowDir} y2={mid}
+            stroke="rgba(30,30,30,0.55)" strokeWidth="1.5"
+            markerEnd="url(#nfl-arr)"
+          />
+        )}
 
-          {/* Ball position dashed line */}
-          {ballX != null && (
-            <line x1={ballX} y1={0} x2={ballX} y2={H} stroke="rgba(0,0,0,0.18)" strokeWidth="1" strokeDasharray="3,2" />
-          )}
+        {/* Ball position: clean pin marker */}
+        {ballX != null && (
+          <g>
+            {/* Stem */}
+            <line x1={ballX} y1={mid + 8} x2={ballX} y2={H - 4}
+              stroke="rgba(0,0,0,0.35)" strokeWidth="1.5" />
+            {/* White ring */}
+            <circle cx={ballX} cy={mid - 6} r="12"
+              fill="white" />
+            {/* Team color fill */}
+            <circle cx={ballX} cy={mid - 6} r="10"
+              fill={awayDriving ? awayColor : homeColor} />
+          </g>
+        )}
 
-          {/* Ball pin marker */}
-          {ballX != null && (
-            <g>
-              <path d={pinPath(ballX, pinTop)} fill="white" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
-              <circle cx={ballX} cy={pinTop + 13} r="10"
-                fill={awayDriving ? awayColor : homeColor} />
-            </g>
-          )}
+        {/* Goal posts – away left */}
+        <rect x={5}    y={14}    width={2} height={H - 28} fill="#FFD600" opacity="0.9" />
+        <rect x={2}    y={24}    width={8} height={1.5}    fill="#FFD600" opacity="0.9" />
+        <rect x={2}    y={H-26}  width={8} height={1.5}    fill="#FFD600" opacity="0.9" />
 
-          {/* Goal posts – away (left) */}
-          <rect x={5}   y={16}   width={2} height={H - 32} fill="#FFD600" />
-          <rect x={2}   y={26}   width={8} height={2}      fill="#FFD600" />
-          <rect x={2}   y={H-28} width={8} height={2}      fill="#FFD600" />
+        {/* Goal posts – home right */}
+        <rect x={W-7}  y={14}    width={2} height={H - 28} fill="#FFD600" opacity="0.9" />
+        <rect x={W-10} y={24}    width={8} height={1.5}    fill="#FFD600" opacity="0.9" />
+        <rect x={W-10} y={H-26}  width={8} height={1.5}    fill="#FFD600" opacity="0.9" />
 
-          {/* Goal posts – home (right) */}
-          <rect x={W-7}  y={16}   width={2} height={H - 32} fill="#FFD600" />
-          <rect x={W-10} y={26}   width={8} height={2}      fill="#FFD600" />
-          <rect x={W-10} y={H-28} width={8} height={2}      fill="#FFD600" />
+        {/* End zone team names */}
+        <text x={EZW/2} y={H/2} textAnchor="middle" dominantBaseline="central"
+          fontSize="6.5" fontWeight="900" fill="rgba(255,255,255,0.92)" letterSpacing="1.5"
+          transform={`rotate(-90, ${EZW/2}, ${H/2})`}>
+          {awayAbbr}
+        </text>
+        <text x={W-EZW/2} y={H/2} textAnchor="middle" dominantBaseline="central"
+          fontSize="6.5" fontWeight="900" fill="rgba(255,255,255,0.92)" letterSpacing="1.5"
+          transform={`rotate(90, ${W-EZW/2}, ${H/2})`}>
+          {homeAbbr}
+        </text>
+      </svg>
 
-          {/* End zone team names */}
-          <text x={EZW/2} y={H/2} textAnchor="middle" dominantBaseline="central"
-            fontSize="6" fontWeight="900" fill="rgba(255,255,255,0.9)" letterSpacing="1.5"
-            transform={`rotate(-90, ${EZW/2}, ${H/2})`}>
-            {awayAbbr}
-          </text>
-          <text x={W-EZW/2} y={H/2} textAnchor="middle" dominantBaseline="central"
-            fontSize="6" fontWeight="900" fill="rgba(255,255,255,0.9)" letterSpacing="1.5"
-            transform={`rotate(90, ${W-EZW/2}, ${H/2})`}>
-            {homeAbbr}
-          </text>
-        </svg>
-      </div>
-      {/* Yard labels row */}
+      {/* Yard labels */}
       <div className="nfl-field-yard-row">
         <span className="nfl-yd-abbr">{awayAbbr}</span>
         {yardLabels.map((y, i) => <span key={i} className="nfl-yd-num">{y}</span>)}
@@ -1933,24 +1934,26 @@ function NflCurrentDriveView({ drive, lastPlay, away, home, winProbEntry, boxsco
   const awayDriving = driveTeamAbbr && driveTeamAbbr === awayAbbr;
   const drivingComp = awayDriving ? away : home;
 
-  const sit = lastPlay?.start || {};
-  const end = lastPlay?.end   || {};
+  const start = lastPlay?.start || {};
+  const end   = lastPlay?.end   || {};
 
-  // Down & distance — prefer start (what was on the board when play was called),
-  // fall back to end (for special teams plays like kickoffs where start is sparse)
-  const downText   = sit.shortDownDistanceText || end.shortDownDistanceText || situation?.downDistanceText || '';
-  const ballOnText = sit.possessionText || end.possessionText || '';
+  // Always show the CURRENT state (end of last play = what's live on the field now)
+  const downText   = end.shortDownDistanceText || situation?.downDistanceText || '';
+  const ballOnText = end.possessionText || '';
 
-  // Field positions — use end for ball position (where ball is NOW), start for origin
-  const yte  = sit.yardsToEndzone ?? end.yardsToEndzone;  // at snap (or fallback to end)
-  const dist = sit.distance ?? end.distance ?? 0;
-  const endYte = end.yardsToEndzone ?? yte;
+  // Field positions
+  // Ball is where it is NOW (end of last play)
+  const endYte  = end.yardsToEndzone;
+  const endDist = end.distance ?? 0;
+  // Arrow origin is where the ball was snapped from
+  const startYte = start.yardsToEndzone ?? endYte;
 
-  // Ball position % from left (away=0, home=100)
-  const ballPct  = endYte  != null ? (awayDriving ? 100 - endYte  : endYte)  : null;
-  const startPct = yte     != null ? (awayDriving ? 100 - yte     : yte)     : null;
-  const fdYte    = yte != null && dist > 0 ? yte - dist : null;
-  const fdPct    = fdYte   != null ? (awayDriving ? 100 - fdYte   : fdYte)   : null;
+  // Percentages from left (away end zone = 0%, home end zone = 100%)
+  const ballPct  = endYte   != null ? (awayDriving ? 100 - endYte   : endYte)   : null;
+  const startPct = startYte != null ? (awayDriving ? 100 - startYte : startYte) : null;
+  // First down marker: based on CURRENT down/distance
+  const fdYte    = endYte != null && endDist > 0 ? endYte - endDist : null;
+  const fdPct    = fdYte  != null ? (awayDriving ? 100 - fdYte : fdYte) : null;
 
   // Win probability
   const wp = winProbEntry;
@@ -2057,12 +2060,8 @@ function NflCurrentDriveView({ drive, lastPlay, away, home, winProbEntry, boxsco
         </div>
       )}
 
-      {/* Next down (after play) */}
-      {end.shortDownDistanceText && (
-        <div className="nfl-cd-next-down">
-          {end.shortDownDistanceText}{end.possessionText ? ` at ${end.possessionText}` : ''}
-        </div>
-      )}
+      {/* Spacer below player card */}
+      <div style={{ height: 12 }} />
     </div>
   );
 }
