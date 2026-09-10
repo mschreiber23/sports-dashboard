@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getScoreboard, getTeamSchedule } from '../api/espn';
+import { getNflWeekGames, getNflWeekInfo } from '../api/nfl';
 
 const CACHE_TTL = 60 * 1000; // 60 seconds — show cached data instantly, refresh in background
 
@@ -25,7 +26,16 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
     return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
   })();
   const effectiveDateStr = dateStr || todayStr;
-  const ck = cacheKey(sport, teamId, effectiveDateStr);
+
+  // For NFL: use the week as the cache key so all dates in the same week share cache
+  const isNfl = sport === 'nfl';
+  const nflWeekInfo = isNfl ? getNflWeekInfo(
+    new Date(effectiveDateStr.slice(0,4)+'-'+effectiveDateStr.slice(4,6)+'-'+effectiveDateStr.slice(6,8))
+  ) : null;
+  const ckSuffix = isNfl && nflWeekInfo
+    ? `nfl_week_${nflWeekInfo.week}_${nflWeekInfo.seasontype}`
+    : effectiveDateStr;
+  const ck = cacheKey(sport, teamId, ckSuffix);
 
   // Seed from cache immediately — eliminates the loading blink
   const [game, setGame] = useState(() => readCache(ck));
@@ -35,7 +45,15 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
 
   const fetchScoreboard = useCallback(async () => {
     try {
-      const events = await getScoreboard(sport, effectiveDateStr);
+      let events;
+      if (isNfl && nflWeekInfo) {
+        // NFL: fetch the entire week's games
+        events = await getNflWeekGames(
+          new Date(effectiveDateStr.slice(0,4)+'-'+effectiveDateStr.slice(4,6)+'-'+effectiveDateStr.slice(6,8))
+        );
+      } else {
+        events = await getScoreboard(sport, effectiveDateStr);
+      }
       const found = events.find((e) =>
         e.competitions?.[0]?.competitors?.some((c) => c.team?.id === String(teamId))
       ) || null;
@@ -47,7 +65,7 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
     } finally {
       setLoading(false);
     }
-  }, [sport, teamId, effectiveDateStr, ck]);
+  }, [sport, teamId, effectiveDateStr, ck, isNfl, nflWeekInfo?.week, nflWeekInfo?.seasontype]);
 
   useEffect(() => {
     if (!teamId || dateStr) return;

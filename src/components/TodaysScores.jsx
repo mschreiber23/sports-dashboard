@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
+import { getNflWeekGames, getNflWeekInfo, getNflWeekLabel } from '../api/nfl';
 
 function getScore(c) {
   const s = c?.score;
@@ -418,32 +419,42 @@ export default function TodaysScores({ compact = false, onCollapse }) {
 
   useEffect(() => {
     const dateStr = toDateStr(selectedDate);
-    const ck = `sb_${activeSport}_${dateStr}`;
+    const isNfl = activeSport === 'nfl';
+    const ck = `sb_${activeSport}_${isNfl ? `week_${getNflWeekInfo(selectedDate)?.week}_${getNflWeekInfo(selectedDate)?.seasontype}` : dateStr}`;
+
     // Seed from cache immediately if sport/date changed
     const cached = readSbCache(activeSport, dateStr);
     if (cached) { setRawGames(cached); setLoading(false); }
-    else { setLoading(true); /* keep existing rawGames visible until fresh data arrives */ }
+    else { setLoading(true); }
 
     setMlbScores({});
     clearInterval(pollRef.current);
 
-    const load = () =>
-      getScoreboard(activeSport, dateStr)
+    const load = () => {
+      const fetcher = isNfl
+        ? getNflWeekGames(selectedDate)
+        : getScoreboard(activeSport, dateStr);
+      return fetcher
         .then((evts) => {
           setRawGames(evts);
           try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data: evts })); } catch {}
-          refreshMlbScores.current(evts);
-          refreshNhlScores.current(evts);
+          if (!isNfl) {
+            refreshMlbScores.current(evts);
+            refreshNhlScores.current(evts);
+          }
           return evts;
         })
         .catch(() => { setRawGames([]); return []; });
+    };
 
     load().finally(() => setLoading(false));
 
     pollRef.current = setInterval(async () => {
       const evts = await load();
-      await refreshMlbScores.current(evts);
-      await refreshNhlScores.current(evts);
+      if (!isNfl) {
+        await refreshMlbScores.current(evts);
+        await refreshNhlScores.current(evts);
+      }
     }, 30000);
 
     return () => clearInterval(pollRef.current);
@@ -467,11 +478,15 @@ export default function TodaysScores({ compact = false, onCollapse }) {
             ))}
           </select>
 
-          {/* Date selector */}
+          {/* Date selector — for NFL show week label */}
           <div className="ts-date-nav">
-            <button className="ts-date-btn" onClick={() => shiftDate(-1)}>‹</button>
-            <span className="ts-date-label">{formatDateLabel(selectedDate)}</span>
-            <button className="ts-date-btn" onClick={() => shiftDate(1)}>›</button>
+            <button className="ts-date-btn" onClick={() => shiftDate(activeSport === 'nfl' ? -7 : -1)}>‹</button>
+            <span className="ts-date-label">
+              {activeSport === 'nfl'
+                ? (getNflWeekLabel(getNflWeekInfo(selectedDate)) || formatDateLabel(selectedDate))
+                : formatDateLabel(selectedDate)}
+            </span>
+            <button className="ts-date-btn" onClick={() => shiftDate(activeSport === 'nfl' ? 7 : 1)}>›</button>
           </div>
 
           <button className="ts-all-scores-btn" onClick={() => setExpanded((v) => !v)}>
@@ -501,7 +516,7 @@ export default function TodaysScores({ compact = false, onCollapse }) {
         <div className="ts-expanded">
           <div className="ts-expanded-header">
             <span className="ts-expanded-title">
-              {SPORTS[activeSport]?.label} · {formatDateLabel(selectedDate)}
+              {SPORTS[activeSport]?.label} · {activeSport === 'nfl' ? (getNflWeekLabel(getNflWeekInfo(selectedDate)) || formatDateLabel(selectedDate)) : formatDateLabel(selectedDate)}
               {liveCount > 0 && <span className="ts-live-badge" style={{marginLeft:8}}><span className="ts-live-dot" />{liveCount} Live</span>}
             </span>
             <button className="btn-ghost btn-sm" onClick={() => setExpanded(false)}>Close</button>
