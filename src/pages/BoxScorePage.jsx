@@ -2353,22 +2353,73 @@ function NflPlayByPlay({ data, competitors }) {
 
   const drives = data?.drives || {};
   const allDrives = [...(drives.previous || []), ...(drives.current ? [drives.current] : [])];
-  const scoringPlay = (p) => p.scoringPlay;
 
-  if (!allDrives.length) return <div className="tp-loading">Play-by-play not available.</div>;
+  // Top-level scoringPlays array is the authoritative source for scoring view
+  const scoringPlays = (data?.scoringPlays || []).slice().reverse();
+
+  const toggle = (
+    <div className="pbp-toggle">
+      <button className={`pbp-tog-btn ${!showScoring ? 'pbp-tog-active' : ''}`} onClick={() => setShowScoring(false)}>All Plays</button>
+      <button className={`pbp-tog-btn ${showScoring ? 'pbp-tog-active' : ''}`} onClick={() => setShowScoring(true)}>Scoring Plays</button>
+    </div>
+  );
+
+  /* ── Scoring Plays view ── */
+  if (showScoring) {
+    if (!scoringPlays.length) {
+      return (
+        <div className="pbp-wrap">
+          {toggle}
+          <div className="tp-loading">No scoring plays yet.</div>
+        </div>
+      );
+    }
+    return (
+      <div className="pbp-wrap">
+        {toggle}
+        {scoringPlays.map((p, i) => {
+          const abbr = p.team?.abbreviation || '';
+          const isAway = abbr === away?.team?.abbreviation;
+          const teamComp = isAway ? away : home;
+          const scoreVal = p.scoringType?.abbreviation || p.type?.abbreviation || '';
+          return (
+            <div key={p.id || i} className="nfl-scoring-row">
+              <div className="nfl-scoring-meta">
+                Q{p.period?.number} {p.clock?.displayValue}
+              </div>
+              <div className="nfl-scoring-body">
+                <div className="nfl-scoring-row-top">
+                  <LogoImg team={teamComp?.team} className="pbp-team-logo" />
+                  {scoreVal && <span className="nfl-scoring-badge">{scoreVal}</span>}
+                  <span className="nfl-scoring-score-after">{away?.team?.abbreviation} {p.awayScore} – {home?.team?.abbreviation} {p.homeScore}</span>
+                </div>
+                <div className="nfl-scoring-text">{p.text}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ── All Plays view (grouped by drive) ── */
+  if (!allDrives.length) {
+    return (
+      <div className="pbp-wrap">
+        {toggle}
+        <div className="tp-loading">Play-by-play not available.</div>
+      </div>
+    );
+  }
 
   const displayDrives = allDrives.slice().reverse();
 
   return (
     <div className="pbp-wrap">
-      <div className="pbp-toggle">
-        <button className={`pbp-tog-btn ${!showScoring ? 'pbp-tog-active' : ''}`} onClick={() => setShowScoring(false)}>All Plays</button>
-        <button className={`pbp-tog-btn ${showScoring ? 'pbp-tog-active' : ''}`} onClick={() => setShowScoring(true)}>Scoring Plays</button>
-      </div>
+      {toggle}
       {displayDrives.map((drive, di) => {
         const plays = (drive.plays || []).filter(p => p.text);
-        const filtered = showScoring ? plays.filter(scoringPlay) : plays;
-        if (showScoring && !plays.some(scoringPlay)) return null;
+        if (!plays.length) return null;
         const teamComp = competitors?.find(c => c.team?.id === drive.team?.id);
         const lastPlay = plays[plays.length - 1];
         return (
@@ -2378,11 +2429,9 @@ function NflPlayByPlay({ data, competitors }) {
               <span className="pbp-group-label">{drive.team?.abbreviation} · {drive.description}</span>
               {lastPlay && <span className="pbp-score">{away?.team?.abbreviation} {lastPlay.awayScore} · {home?.team?.abbreviation} {lastPlay.homeScore}</span>}
             </div>
-            {filtered.map((p, pi) => (
+            {plays.map((p, pi) => (
               <div key={p.id || pi} className={`pbp-play ${p.scoringPlay ? 'pbp-play-scoring' : ''}`}>
-                <div className="pbp-play-icon">
-                  {p.scoringPlay ? '🏈' : '·'}
-                </div>
+                <div className="pbp-play-icon">{p.scoringPlay ? '🏈' : '·'}</div>
                 <div className="pbp-play-text">
                   <span className="pbp-play-clock">Q{p.period?.number} {p.clock?.displayValue}</span>
                   {' '}{p.text}
