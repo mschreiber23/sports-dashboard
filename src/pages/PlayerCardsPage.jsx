@@ -162,31 +162,34 @@ async function fetchSeasonStats(sport, athleteId, posAbb) {
         }
       }
     } else if (sport === 'nfl') {
-      // Position-aware mapping to avoid key collisions between rushing/receiving 'YDS'/'TD'
+      // ESPN season stats API returns duplicate abbreviations in each category
+      // (e.g. 'TD' appears once for rushing TDs, then again for total TDs).
+      // Use first-occurrence-wins so we always get the category-specific value.
+      const setOnce = (key, val) => { if (sm[key] === undefined) sm[key] = val; };
       const pg = nflGroup(posAbb);
       for (const cat of cats) {
         const cn = cat.name?.toLowerCase();
         const stats = cat.stats || [];
         if (cn === 'passing' && (pg === 'qb' || !pg)) {
-          for (const stat of stats) sm[stat.abbreviation] = stat.displayValue;
+          for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
         } else if (cn === 'rushing') {
           if (pg === 'qb') {
             for (const stat of stats) {
-              if (stat.abbreviation === 'YDS') sm['RYDS'] = stat.displayValue;
-              else if (stat.abbreviation === 'TD') sm['RTD'] = stat.displayValue;
-              else sm[stat.abbreviation] = stat.displayValue;
+              if (stat.abbreviation === 'YDS') setOnce('RYDS', stat.displayValue);
+              else if (stat.abbreviation === 'TD') setOnce('RTD', stat.displayValue);
+              else setOnce(stat.abbreviation, stat.displayValue);
             }
           } else {
-            for (const stat of stats) sm[stat.abbreviation] = stat.displayValue;
+            for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
           }
         } else if (cn === 'receiving' && pg !== 'qb') {
           for (const stat of stats) {
-            if (stat.abbreviation === 'YDS') sm['RECYDS'] = stat.displayValue;
-            else if (stat.abbreviation === 'TD') sm['RECTD'] = stat.displayValue;
-            else sm[stat.abbreviation] = stat.displayValue;
+            if (stat.abbreviation === 'YDS') setOnce('RECYDS', stat.displayValue);
+            else if (stat.abbreviation === 'TD') setOnce('RECTD', stat.displayValue);
+            else setOnce(stat.abbreviation, stat.displayValue);
           }
         } else if (cn === 'fumbles') {
-          for (const stat of stats) sm[stat.abbreviation] = stat.displayValue;
+          for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
         }
       }
     } else {
