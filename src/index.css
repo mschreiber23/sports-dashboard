@@ -2385,7 +2385,136 @@ body {
 }
 .preview-card:first-child { border-top: none; }
 
-/* ── NFL Gamecast ──────────────────────────────────────── */
+/* ── NFL Gamecast v2 ───────────────────────────────────── */
+.nfl-gamecast { display: flex; flex-direction: column; gap: 0; }
+.nfl-gc-section {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+}
+.nfl-gc-section:first-child { border-top: none; }
+.nfl-gc-section-title {
+  font-size: 11px; font-weight: 800; letter-spacing: .5px;
+  text-transform: uppercase; color: var(--text2); margin-bottom: 10px;
+}
+
+/* Field */
+.nfl-field-wrap {
+  display: flex; align-items: stretch; border-radius: 6px;
+  overflow: hidden; height: 64px; margin-bottom: 10px;
+}
+.nfl-ez {
+  width: 48px; flex-shrink: 0; display: flex;
+  align-items: center; justify-content: center; padding: 4px;
+}
+.nfl-ez-name {
+  font-size: 9px; font-weight: 800; color: #fff;
+  writing-mode: vertical-rl; text-orientation: mixed;
+  text-transform: uppercase; letter-spacing: 1px;
+  transform: rotate(180deg); opacity: 0.9;
+}
+.nfl-field-center {
+  flex: 1; background: #2d5a1b; position: relative;
+  display: flex; align-items: center; justify-content: space-around;
+  border-top: 2px solid rgba(255,255,255,0.2);
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+}
+.nfl-yd-mark {
+  font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.6);
+  position: relative; z-index: 1;
+}
+.nfl-field-msg {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 700;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  padding: 0 8px; text-align: center; z-index: 2;
+}
+.nfl-ball-marker {
+  position: absolute; top: 50%; transform: translate(-50%,-50%);
+  font-size: 14px; z-index: 3;
+}
+
+/* Header row */
+.nfl-gc-header-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.nfl-gc-quarter { font-size: 13px; font-weight: 700; color: var(--text2); }
+.nfl-gc-winpct {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--text2);
+}
+.nfl-gc-winpct-logo { width: 16px; height: 16px; }
+.nfl-gc-lastplay { font-size: 12px; color: var(--text); line-height: 1.4; margin-bottom: 10px; }
+
+/* Drive cards */
+.nfl-drive-cards { display: flex; gap: 8px; }
+.nfl-drive-card {
+  flex: 1; background: var(--bg3); border-radius: 8px; padding: 8px 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.nfl-drive-card-logo { width: 24px; height: 24px; flex-shrink: 0; }
+.nfl-drive-card-team { font-size: 12px; font-weight: 800; color: var(--text); }
+.nfl-drive-card-stats { font-size: 10px; color: var(--text2); margin-top: 1px; }
+
+/* Scoring plays */
+.nfl-scoring-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.nfl-scoring-row:last-child { border-bottom: none; }
+.nfl-scoring-meta { font-size: 11px; color: var(--text2); flex-shrink: 0; width: 60px; }
+.nfl-scoring-text { flex: 1; font-size: 12px; color: var(--text); line-height: 1.4; }
+.nfl-scoring-score { font-size: 12px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+
+/* Leaders */
+.nfl-leaders-header, .nfl-teamstats-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 6px;
+}
+.nfl-leaders-team, .nfl-teamstats-team {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 800; color: var(--text);
+}
+.nfl-leaders-team-right, .nfl-teamstats-team-right { flex-direction: row-reverse; }
+.nfl-leaders-logo { width: 22px; height: 22px; }
+.nfl-leader-row {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  gap: 8px; align-items: center; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.nfl-leader-row:last-child { border-bottom: none; }
+.nfl-leader-player { display: flex; flex-direction: column; align-items: flex-start; }
+.nfl-leader-player-right { align-items: flex-end; }
+.nfl-leader-headshot-wrap { display: flex; align-items: center; gap: 8px; }
+.nfl-leader-player-right .nfl-leader-headshot-wrap { flex-direction: row-reverse; }
+.nfl-leader-headshot {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  object-position: top; background: var(--bg3); flex-shrink: 0;
+}
+.nfl-leader-headshot-empty { background: var(--bg3); }
+.nfl-leader-val { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing: -1px; }
+.nfl-leader-name { font-size: 11px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.nfl-leader-pos { font-size: 10px; color: var(--text2); }
+.nfl-leader-label { font-size: 11px; font-weight: 700; color: var(--text2); text-align: center; white-space: nowrap; }
+.nfl-leader-empty { font-size: 13px; color: var(--text2); }
+
+/* Team stats */
+.nfl-teamstat-row {
+  display: grid; grid-template-columns: 72px 1fr 72px;
+  gap: 8px; align-items: center; padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.nfl-teamstat-row:last-child { border-bottom: none; }
+.nfl-teamstat-val { font-size: 15px; font-weight: 800; color: var(--text); }
+.nfl-teamstat-val-right { text-align: right; }
+.nfl-teamstat-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.nfl-teamstat-label { font-size: 11px; font-weight: 700; color: var(--text2); text-align: center; }
+.nfl-statbar {
+  width: 100%; height: 4px; background: #3b82f6; border-radius: 2px; overflow: hidden;
+}
+.nfl-statbar-away { height: 100%; background: var(--text2); border-radius: 2px; }
+
+/* ── NFL Gamecast (old) ────────────────────────────────── */
 .nfl-sit-bar {
   background: #0f0f13;
   border-bottom: 1px solid var(--border);

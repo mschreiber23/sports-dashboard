@@ -1706,6 +1706,44 @@ function MlbGamecast({ data, rosters, situation, competitors, status, mlbGamePk,
 }
 
 /* ─── NFL GAMECAST ──────────────────────────────────── */
+/* ── Extract top NFL player per stat category ────────── */
+function getNflLeaders(boxPlayers) {
+  const byTeam = {};
+  for (const teamData of boxPlayers || []) {
+    const teamId = String(teamData.team?.id || '');
+    const teamInfo = teamData.team || {};
+    for (const sg of teamData.statistics || []) {
+      const grpName = (sg.name || '').toLowerCase();
+      const labels  = sg.labels || [];
+      const ydsIdx  = labels.indexOf('YDS');
+      const totIdx  = labels.indexOf('TOT');   // tackles
+      const sckIdx  = labels.indexOf('SACKS'); // sacks in defensive
+      for (const ath of sg.athletes || []) {
+        const stats = ath.stats || [];
+        const sm = {};
+        labels.forEach((l, i) => { sm[l] = stats[i]; });
+        const player = ath.athlete || {};
+        const entry = { player, sm, teamId, teamInfo };
+        const push = (cat, val) => {
+          const v = parseFloat(String(val || '0').split('/')[0]) || 0;
+          if (!byTeam[cat]) byTeam[cat] = {};
+          const cur = byTeam[cat][teamId];
+          if (!cur || v > (parseFloat(String(cur.val || '0').split('/')[0]) || 0))
+            byTeam[cat][teamId] = { ...entry, val: String(val || '0') };
+        };
+        if (grpName === 'passing' && ydsIdx !== -1) push('passing', stats[ydsIdx]);
+        if (grpName === 'rushing' && ydsIdx !== -1) push('rushing', stats[ydsIdx]);
+        if (grpName === 'receiving' && ydsIdx !== -1) push('receiving', stats[ydsIdx]);
+        if (grpName === 'defensive') {
+          if (sckIdx !== -1) push('sacks', stats[sckIdx]);
+          if (totIdx !== -1) push('tackles', stats[totIdx]);
+        }
+      }
+    }
+  }
+  return byTeam;
+}
+
 function NflGamecast({ data, situation, competitors, status }) {
   const isLive  = status?.type?.state === 'in';
   const isFinal = status?.type?.state === 'post';
@@ -1730,7 +1768,7 @@ function NflGamecast({ data, situation, competitors, status }) {
   const awayHasBall = possTeamId && possTeamId === away?.team?.id;
   const homeHasBall = possTeamId && possTeamId === home?.team?.id;
 
-  // Drives from summary — extract all plays
+  // Drives from summary
   const drives = data?.drives || {};
   const currentDrive = drives.current;
   const allDrivePlays = [
@@ -1745,151 +1783,227 @@ function NflGamecast({ data, situation, competitors, status }) {
   const getTeamStats = (teamId) => {
     const t = bsTeams.find(t => t.team?.id === String(teamId));
     const sm = {};
-    (t?.statistics || []).forEach(cat => {
-      (cat.stats || []).forEach(s => { sm[s.name] = s.displayValue; });
-    });
+    (t?.statistics || []).forEach(s => { sm[s.name] = s.displayValue; });
     return sm;
   };
   const awayStats = getTeamStats(away?.team?.id);
   const homeStats = getTeamStats(home?.team?.id);
-  const statHasData = (sm) => Object.values(sm).some(v => v && v !== '0' && v !== '0.0' && v !== '--' && v !== '0/0');
 
-  const STAT_ROWS = [
-    { key: 'totalYards',        label: 'Total Yards' },
-    { key: 'netPassingYards',   label: 'Pass Yds' },
-    { key: 'rushingYards',      label: 'Rush Yds' },
-    { key: 'completionAttempts',label: 'Comp/Att' },
-    { key: 'thirdDownEff',      label: '3rd Down' },
-    { key: 'turnovers',         label: 'Turnovers' },
-    { key: 'totalPenaltiesYards', label: 'Penalties' },
-    { key: 'possessionTime',    label: 'Poss. Time' },
+  // Player leaders
+  const leaders = getNflLeaders(data?.boxscore?.players);
+
+  const TEAM_STAT_ROWS = [
+    { key:'totalYards',          label:'Total Yards' },
+    { key:'turnovers',           label:'Turnovers' },
+    { key:'firstDowns',          label:'1st Downs' },
+    { key:'totalPenaltiesYards', label:'Penalties' },
+    { key:'thirdDownEff',        label:'3rd Down' },
+    { key:'fourthDownEff',       label:'4th Down' },
+    { key:'redZoneAttempts',     label:'Red Zone' },
+    { key:'possessionTime',      label:'Possession' },
   ];
 
-  const timeoutDots = (n) => Array.from({length:3}).map((_,i) => (
-    <span key={i} className={`nfl-timeout-dot${i < n ? ' nfl-timeout-active' : ''}`} />
-  ));
+  const LEADER_ROWS = [
+    { key:'passing',   label:'Passing Yards',   sub:(sm)=>`${sm['C/ATT']||''}${sm['TD']&&sm['TD']!=='0'?`, ${sm['TD']} TD`:''}` },
+    { key:'rushing',   label:'Rushing Yards',   sub:(sm)=>`${sm['CAR']||''} CAR` },
+    { key:'receiving', label:'Receiving Yards', sub:(sm)=>`${sm['REC']||''} REC` },
+    { key:'sacks',     label:'Sacks',           sub:(sm)=>'' },
+    { key:'tackles',   label:'Tackles',         sub:(sm)=>`${sm['SOLO']||''} SOLO` },
+  ];
+
+  // Stat bar comparison
+  const parseNum = (v) => parseFloat(String(v||'0').replace(/[^0-9.]/g,'')) || 0;
+  const statBar = (av, hv) => {
+    const a = parseNum(av), h = parseNum(hv), total = a + h;
+    if (!total) return null;
+    const awayPct = Math.round((a / total) * 100);
+    return (
+      <div className="nfl-statbar">
+        <div className="nfl-statbar-away" style={{width:`${awayPct}%`}} />
+      </div>
+    );
+  };
 
   return (
-    <div className="gamecast-wrap">
+    <div className="gamecast-wrap nfl-gamecast">
 
-      {/* ── Live situation bar ── */}
-      {isLive && (
-        <div className="nfl-sit-bar">
-          <div className="nfl-sit-top">
-            <div className="nfl-sit-quarter">
-              {isRedZone && <span className="nfl-rz-badge">🔴 RED ZONE</span>}
-              <span className="nfl-sit-detail">{shortDetail}</span>
-            </div>
+      {/* ── 1. Current drive / field ── */}
+      <div className="nfl-gc-section">
+        {/* Field visualization */}
+        <div className="nfl-field-wrap">
+          {/* End zones */}
+          <div className="nfl-ez nfl-ez-away" style={{background: away?.team?.color ? `#${away.team.color}` : '#1a1a2e'}}>
+            <span className="nfl-ez-name">{away?.team?.shortDisplayName || away?.team?.abbreviation}</span>
           </div>
-          {downText && (
-            <div className="nfl-sit-down">
-              <span className="nfl-sit-down-text">{downText}</span>
-              {fieldPos && <span className="nfl-sit-field">{fieldPos}</span>}
+          <div className="nfl-field-center">
+            {/* Yard markers */}
+            {[20,50,20].map((n,i) => <span key={i} className="nfl-yd-mark">{n}</span>)}
+            {/* Drive message */}
+            <div className="nfl-field-msg">
+              {(isLive && downText) ? `${downText}${fieldPos ? ` · ${fieldPos}` : ''}` :
+               (isLive && shortDetail) ? shortDetail :
+               isFinal ? 'Final' :
+               shortDetail || 'Halftime'}
             </div>
-          )}
-
-          {/* Possession + timeouts */}
-          <div className="nfl-sit-possession-row">
-            <div className={`nfl-team-possession${awayHasBall ? ' nfl-has-ball' : ''}`}>
-              <div className="nfl-timeout-row">{timeoutDots(awayTimeouts)}</div>
-              <span className="nfl-team-abbr">{away?.team?.abbreviation}</span>
-              {awayHasBall && <span className="nfl-ball-icon">🏈</span>}
-            </div>
-            <div className={`nfl-team-possession nfl-team-possession-right${homeHasBall ? ' nfl-has-ball' : ''}`}>
-              {homeHasBall && <span className="nfl-ball-icon">🏈</span>}
-              <span className="nfl-team-abbr">{home?.team?.abbreviation}</span>
-              <div className="nfl-timeout-row">{timeoutDots(homeTimeouts)}</div>
-            </div>
+            {/* Ball position indicator */}
+            {isLive && sit.yardLine && (() => {
+              const awayHas = possTeamId && possTeamId === away?.team?.id;
+              const pct = awayHas ? (100 - sit.yardLine) : sit.yardLine;
+              return <div className="nfl-ball-marker" style={{left:`${pct}%`}}>🏈</div>;
+            })()}
           </div>
+          <div className="nfl-ez nfl-ez-home" style={{background: home?.team?.color ? `#${home.team.color}` : '#1a1a2e'}}>
+            <span className="nfl-ez-name">{home?.team?.shortDisplayName || home?.team?.abbreviation}</span>
+          </div>
+        </div>
 
-          {/* Win probability bar */}
-          {winPct && (winPct.homeWinPercentage > 0 || winPct.awayWinPercentage > 0) && (() => {
-            const awayPct = Math.round((winPct.awayWinPercentage || 0) * 100);
-            const homePct = Math.round((winPct.homeWinPercentage || 0) * 100);
+        {/* Quarter + win prob */}
+        <div className="nfl-gc-header-row">
+          <span className="nfl-gc-quarter">{shortDetail}</span>
+          {winPct && (() => {
+            const pct = Math.round((winPct.homeWinPercentage || 0) * 100);
+            const awayPct = 100 - pct;
+            const leader = pct > awayPct ? home : away;
             return (
-              <div className="nfl-winprob-wrap">
-                <span className="nfl-winprob-pct">{awayPct}%</span>
-                <div className="nfl-winprob-bar">
-                  <div className="nfl-winprob-away" style={{width:`${awayPct}%`}} />
-                </div>
-                <span className="nfl-winprob-pct">{homePct}%</span>
-              </div>
+              <span className="nfl-gc-winpct">
+                Win %: <LogoImg team={leader?.team} className="nfl-gc-winpct-logo" /> {Math.max(pct, awayPct)}
+              </span>
             );
           })()}
         </div>
-      )}
 
-      {/* ── Current drive / last play ── */}
-      {isLive && (lastPlayText || driveDesc) && (
-        <div className="nfl-lastplay-section">
-          {currentDrive && (
-            <div className="nfl-drive-header">
-              <span className="nfl-drive-team">{currentDrive.team?.abbreviation}</span>
-              <span className="nfl-drive-desc">{currentDrive.description}</span>
-            </div>
-          )}
-          {lastPlayText && (
-            <div className="nfl-lastplay-text">{lastPlayText}</div>
-          )}
-        </div>
-      )}
+        {/* Last play text */}
+        {lastPlayText && <div className="nfl-gc-lastplay">{lastPlayText}</div>}
 
-      {/* ── Scoring plays ── */}
-      {scoringPlays.length > 0 && (
-        <div className="gc-plays-section">
-          <div className="gc-section-label">Scoring Plays</div>
-          {scoringPlays.map((p, i) => (
-            <div key={i} className="gc-play-row gc-play-scoring">
-              <div className="gc-play-period">{p.period?.displayValue}</div>
-              <div className="gc-play-text">{p.text}</div>
-              <div className="gc-play-score">{p.awayScore}–{p.homeScore}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Recent plays when live and no scoring plays yet */}
-      {isLive && scoringPlays.length === 0 && plays.length > 0 && (
-        <div className="gc-plays-section">
-          <div className="gc-section-label">Recent Plays</div>
-          {plays.slice(-6).reverse().map((p, i) => (
-            <div key={i} className={`gc-play-row ${p.scoringPlay ? 'gc-play-scoring' : ''}`}>
-              <div className="gc-play-period">{p.period?.displayValue}</div>
-              <div className="gc-play-text">{p.text}</div>
-              {p.scoringPlay && <div className="gc-play-score">{p.awayScore}–{p.homeScore}</div>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Team stats ── */}
-      {(statHasData(awayStats) || statHasData(homeStats)) && (
-        <div className="gc-plays-section">
-          <div className="gc-section-label">Team Stats</div>
-          <div className="nfl-stats-table">
-            <div className="nfl-stats-row nfl-stats-header">
-              <span>{away?.team?.abbreviation}</span>
-              <span />
-              <span>{home?.team?.abbreviation}</span>
-            </div>
-            {STAT_ROWS.map(({key, label}) => {
-              const av = awayStats[key]; const hv = homeStats[key];
-              if (!av && !hv) return null;
-              return (
-                <div key={key} className="nfl-stats-row">
-                  <span className="nfl-stats-val">{av || '—'}</span>
-                  <span className="nfl-stats-lbl">{label}</span>
-                  <span className="nfl-stats-val">{hv || '—'}</span>
+        {/* Team drive summary cards */}
+        {(awayStats.totalYards || homeStats.totalYards) && (
+          <div className="nfl-drive-cards">
+            {[
+              { comp: away, stats: awayStats },
+              { comp: home, stats: homeStats },
+            ].map(({ comp, stats }) => (
+              <div key={comp?.team?.id} className="nfl-drive-card">
+                <LogoImg team={comp?.team} className="nfl-drive-card-logo" />
+                <div className="nfl-drive-card-info">
+                  <div className="nfl-drive-card-team">{comp?.team?.abbreviation}</div>
+                  <div className="nfl-drive-card-stats">
+                    {stats.totalYards && `${stats.totalYards} YDS`}
+                    {stats.turnovers != null && `, ${stats.turnovers} T/O`}
+                    {stats.possessionTime && `, ${stats.possessionTime} TOP`}
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
+        )}
+      </div>
+
+      {/* ── 2. Scoring plays ── */}
+      {scoringPlays.length > 0 && (
+        <div className="nfl-gc-section">
+          <div className="nfl-gc-section-title">Scoring Plays</div>
+          {scoringPlays.map((p, i) => (
+            <div key={i} className="nfl-scoring-row">
+              <div className="nfl-scoring-meta">Q{p.period?.number} {p.clock?.displayValue}</div>
+              <div className="nfl-scoring-text">{p.text}</div>
+              <div className="nfl-scoring-score">{p.awayScore}–{p.homeScore}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── 3. Game Leaders ── */}
+      {Object.keys(leaders).length > 0 && (
+        <div className="nfl-gc-section">
+          <div className="nfl-gc-section-title">Game Leaders</div>
+          <div className="nfl-leaders-header">
+            <div className="nfl-leaders-team">
+              <LogoImg team={away?.team} className="nfl-leaders-logo" />
+              <span>{away?.team?.abbreviation}</span>
+            </div>
+            <div className="nfl-leaders-team nfl-leaders-team-right">
+              <span>{home?.team?.abbreviation}</span>
+              <LogoImg team={home?.team} className="nfl-leaders-logo" />
+            </div>
+          </div>
+          {LEADER_ROWS.map(({ key, label, sub }) => {
+            const awayLdr = leaders[key]?.[String(away?.team?.id)];
+            const homeLdr = leaders[key]?.[String(home?.team?.id)];
+            if (!awayLdr && !homeLdr) return null;
+            return (
+              <div key={key} className="nfl-leader-row">
+                {/* Away leader */}
+                <div className="nfl-leader-player">
+                  {awayLdr ? (
+                    <>
+                      <div className="nfl-leader-headshot-wrap">
+                        {awayLdr.player.headshot?.href
+                          ? <img src={awayLdr.player.headshot.href} alt="" className="nfl-leader-headshot" onError={e=>e.target.style.display='none'} />
+                          : <div className="nfl-leader-headshot nfl-leader-headshot-empty" />}
+                        <span className="nfl-leader-val">{awayLdr.val}</span>
+                      </div>
+                      <div className="nfl-leader-name">{awayLdr.player.shortName || awayLdr.player.displayName}</div>
+                      <div className="nfl-leader-pos">{awayLdr.player.position?.abbreviation} · {sub(awayLdr.sm)}</div>
+                    </>
+                  ) : <div className="nfl-leader-empty">—</div>}
+                </div>
+                {/* Stat label */}
+                <div className="nfl-leader-label">{label}</div>
+                {/* Home leader */}
+                <div className="nfl-leader-player nfl-leader-player-right">
+                  {homeLdr ? (
+                    <>
+                      <div className="nfl-leader-headshot-wrap">
+                        <span className="nfl-leader-val">{homeLdr.val}</span>
+                        {homeLdr.player.headshot?.href
+                          ? <img src={homeLdr.player.headshot.href} alt="" className="nfl-leader-headshot" onError={e=>e.target.style.display='none'} />
+                          : <div className="nfl-leader-headshot nfl-leader-headshot-empty" />}
+                      </div>
+                      <div className="nfl-leader-name">{homeLdr.player.shortName || homeLdr.player.displayName}</div>
+                      <div className="nfl-leader-pos">{homeLdr.player.position?.abbreviation} · {sub(homeLdr.sm)}</div>
+                    </>
+                  ) : <div className="nfl-leader-empty">—</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── 4. Team Stats ── */}
+      {(awayStats.totalYards || homeStats.totalYards) && (
+        <div className="nfl-gc-section">
+          <div className="nfl-gc-section-title">Team Stats</div>
+          <div className="nfl-teamstats-header">
+            <div className="nfl-teamstats-team">
+              <LogoImg team={away?.team} className="nfl-leaders-logo" />
+              <span>{away?.team?.abbreviation}</span>
+            </div>
+            <div className="nfl-teamstats-team nfl-teamstats-team-right">
+              <span>{home?.team?.abbreviation}</span>
+              <LogoImg team={home?.team} className="nfl-leaders-logo" />
+            </div>
+          </div>
+          {TEAM_STAT_ROWS.map(({ key, label }) => {
+            const av = awayStats[key], hv = homeStats[key];
+            if (av == null && hv == null) return null;
+            return (
+              <div key={key} className="nfl-teamstat-row">
+                <span className="nfl-teamstat-val">{av ?? '—'}</span>
+                <div className="nfl-teamstat-center">
+                  <span className="nfl-teamstat-label">{label}</span>
+                  {statBar(av, hv)}
+                </div>
+                <span className="nfl-teamstat-val nfl-teamstat-val-right">{hv ?? '—'}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Empty state */}
-      {!isLive && !isFinal && scoringPlays.length === 0 && (
-        <div className="gc-plays-section" style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>
+      {!isLive && !isFinal && scoringPlays.length === 0 && !awayStats.totalYards && (
+        <div style={{padding:32, textAlign:'center', color:'var(--text2)', fontSize:13}}>
           Game hasn't started yet.
         </div>
       )}
