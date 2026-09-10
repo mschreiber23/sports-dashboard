@@ -1744,6 +1744,329 @@ function getNflLeaders(boxPlayers) {
   return byTeam;
 }
 
+/* ─── NFL helpers ────────────────────────────────────── */
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/** Look up a player's game stats from boxscore.players by athlete id */
+function getNflPlayerStats(athleteId, boxscorePlayers) {
+  if (!athleteId || !boxscorePlayers) return null;
+  const id = String(athleteId);
+  for (const team of boxscorePlayers) {
+    for (const sg of (team.statistics || [])) {
+      const labels = sg.labels || [];
+      const found = (sg.athletes || []).find(a => String(a.athlete?.id) === id);
+      if (found) {
+        const sm = {};
+        (found.stats || []).forEach((v, i) => { if (labels[i]) sm[labels[i]] = v; });
+        return { group: sg.name, sm };
+      }
+    }
+  }
+  return null;
+}
+
+/** Return display stat triplet for player card */
+function getNflStatTriplet(group, sm) {
+  if (group === 'passing')   return [['C/ATT', sm['C/ATT']], ['YDS', sm['YDS']], ['TD', sm['TD']]];
+  if (group === 'rushing')   return [['CAR', sm['CAR']], ['YDS', sm['YDS']], ['TD', sm['TD']]];
+  if (group === 'receiving') return [['REC', sm['REC']], ['YDS', sm['YDS']], ['TD', sm['TD']]];
+  if (group === 'defensive') return [['TOT', sm['TOT']], ['SOLO', sm['SOLO']], ['SACKS', sm['SACKS']]];
+  if (group === 'kicking')   return [['FG', sm['FG/FGA']], ['LONG', sm['LONG']], ['XP', sm['XP/XPA']]];
+  return Object.entries(sm).slice(0, 3);
+}
+
+/** Derive short play-type label like "0-yd Run" or "12-yd Pass" */
+function nflPlayLabel(play) {
+  if (!play) return '';
+  const type = (play.type?.text || '').toLowerCase();
+  const yds = play.statYardage ?? 0;
+  if (/rush|run/i.test(type))               return `${yds}-yd Run`;
+  if (/pass completion/i.test(type))         return `${yds}-yd Pass`;
+  if (/pass incompletion|incomplete/i.test(type)) return 'Incomplete Pass';
+  if (/sack/i.test(type))                   return `${Math.abs(yds)}-yd Sack`;
+  if (/touchdown/i.test(type))              return 'Touchdown';
+  if (/field goal good/i.test(type))        return 'Field Goal';
+  if (/field goal no good/i.test(type))     return 'Missed FG';
+  if (/punt/i.test(type))                   return 'Punt';
+  if (/kickoff/i.test(type))                return 'Kickoff';
+  if (/penalty/i.test(type))                return 'Penalty';
+  if (/timeout/i.test(type))                return 'Timeout';
+  if (/two.point/i.test(type))              return '2-Pt Conversion';
+  return play.type?.text || '';
+}
+
+/** Pick the primary "ball carrier / featured" participant from a play */
+function nflPrimaryParticipant(play) {
+  const participants = play?.participants || [];
+  if (!participants.length) return null;
+  const type = (play?.type?.text || '').toLowerCase();
+  const priority = /rush|run/i.test(type)               ? ['rusher', 'runner']
+                 : /pass completion/i.test(type)         ? ['receiver', 'rusher']
+                 : /pass incompletion|incomplete/i.test(type) ? ['passer']
+                 : /sack/i.test(type)                    ? ['rusher', 'passer']
+                 : /field goal|kick/i.test(type)         ? ['kicker']
+                 : /punt/i.test(type)                    ? ['punter']
+                 : [];
+  for (const t of priority) {
+    const p = participants.find(x => x.type === t);
+    if (p) return p;
+  }
+  return participants[0];
+}
+
+/* ─── NFL Field SVG ──────────────────────────────────── */
+function NflFieldSvg({ away, home, ballPct, startPct, fdPct, awayDriving }) {
+  const W = 360, H = 90, EZW = 32, FW = W - EZW * 2;
+  const awayColor = away?.team?.color ? `#${away.team.color}` : '#1a4aee';
+  const homeColor = home?.team?.color ? `#${home.team.color}` : '#003366';
+  const awayAbbr  = (away?.team?.abbreviation || '').toUpperCase();
+  const homeAbbr  = (home?.team?.abbreviation || '').toUpperCase();
+
+  const pctX = (p) => EZW + clamp(p, 0, 100) / 100 * FW;
+  const ballX = ballPct != null ? pctX(ballPct) : null;
+  const fdX   = fdPct   != null ? pctX(fdPct)   : null;
+  const startX = startPct != null ? pctX(startPct) : null;
+
+  const stripes = [0,1,2,3,4,5,6,7,8,9].map(i => ({
+    x: EZW + i * FW / 10, fill: i % 2 === 0 ? '#d4d4d4' : '#c8c8c8',
+  }));
+  const yardLines = [1,2,3,4,5,6,7,8,9].map(i => EZW + i * FW / 10);
+  const yardLabels = [10,20,30,40,50,40,30,20,10];
+
+  /* Pin shape: M cx,top+24  arc top  point bottom  */
+  const pinPath = (cx, top) =>
+    `M ${cx},${top+24} C ${cx-10},${top+14} ${cx-13},${top+6} ${cx-13},${top} `+
+    `A 13 13 0 1 1 ${cx+13},${top} `+
+    `C ${cx+13},${top+6} ${cx+10},${top+14} ${cx},${top+24} Z`;
+
+  const pinTop = H * 0.08;
+
+  return (
+    <div className="nfl-field-svg-outer">
+      <div className="nfl-field-perspective-wrap">
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="nfl-arr" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(0,0,0,0.55)" />
+            </marker>
+          </defs>
+
+          {/* End zones */}
+          <rect x={0}      y={0} width={EZW} height={H} fill={awayColor} />
+          <rect x={W-EZW} y={0} width={EZW} height={H} fill={homeColor} />
+
+          {/* Field stripes */}
+          {stripes.map((s, i) => <rect key={i} x={s.x} y={0} width={FW/10} height={H} fill={s.fill} />)}
+
+          {/* Yard lines */}
+          {yardLines.map((x, i) => (
+            <line key={i} x1={x} y1={0} x2={x} y2={H} stroke="rgba(255,255,255,0.65)" strokeWidth="0.5" />
+          ))}
+
+          {/* First down line (yellow) */}
+          {fdX != null && (
+            <line x1={fdX} y1={0} x2={fdX} y2={H} stroke="#FFD600" strokeWidth="2.5" />
+          )}
+
+          {/* Play direction arrow */}
+          {startX != null && ballX != null && Math.abs(startX - ballX) > 6 && (
+            <line
+              x1={startX} y1={H * 0.72}
+              x2={ballX + (awayDriving ? -5 : 5)} y2={H * 0.72}
+              stroke="rgba(0,0,0,0.5)" strokeWidth="2"
+              markerEnd="url(#nfl-arr)"
+            />
+          )}
+
+          {/* Ball position dashed line */}
+          {ballX != null && (
+            <line x1={ballX} y1={0} x2={ballX} y2={H} stroke="rgba(0,0,0,0.18)" strokeWidth="1" strokeDasharray="3,2" />
+          )}
+
+          {/* Ball pin marker */}
+          {ballX != null && (
+            <g>
+              <path d={pinPath(ballX, pinTop)} fill="white" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
+              <circle cx={ballX} cy={pinTop + 13} r="10"
+                fill={awayDriving ? awayColor : homeColor} />
+            </g>
+          )}
+
+          {/* Goal posts – away (left) */}
+          <rect x={5}   y={16}   width={2} height={H - 32} fill="#FFD600" />
+          <rect x={2}   y={26}   width={8} height={2}      fill="#FFD600" />
+          <rect x={2}   y={H-28} width={8} height={2}      fill="#FFD600" />
+
+          {/* Goal posts – home (right) */}
+          <rect x={W-7}  y={16}   width={2} height={H - 32} fill="#FFD600" />
+          <rect x={W-10} y={26}   width={8} height={2}      fill="#FFD600" />
+          <rect x={W-10} y={H-28} width={8} height={2}      fill="#FFD600" />
+
+          {/* End zone team names */}
+          <text x={EZW/2} y={H/2} textAnchor="middle" dominantBaseline="central"
+            fontSize="6" fontWeight="900" fill="rgba(255,255,255,0.9)" letterSpacing="1.5"
+            transform={`rotate(-90, ${EZW/2}, ${H/2})`}>
+            {awayAbbr}
+          </text>
+          <text x={W-EZW/2} y={H/2} textAnchor="middle" dominantBaseline="central"
+            fontSize="6" fontWeight="900" fill="rgba(255,255,255,0.9)" letterSpacing="1.5"
+            transform={`rotate(90, ${W-EZW/2}, ${H/2})`}>
+            {homeAbbr}
+          </text>
+        </svg>
+      </div>
+      {/* Yard labels row */}
+      <div className="nfl-field-yard-row">
+        <span className="nfl-yd-abbr">{awayAbbr}</span>
+        {yardLabels.map((y, i) => <span key={i} className="nfl-yd-num">{y}</span>)}
+        <span className="nfl-yd-abbr">{homeAbbr}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── NFL Current Drive Section ─────────────────────── */
+function NflCurrentDriveView({ drive, lastPlay, away, home, winProbEntry, boxscorePlayers, situation }) {
+  const driveTeamAbbr = drive?.team?.abbreviation;
+  const awayAbbr = away?.team?.abbreviation;
+  const homeAbbr = home?.team?.abbreviation;
+  const awayDriving = driveTeamAbbr && driveTeamAbbr === awayAbbr;
+  const drivingComp = awayDriving ? away : home;
+
+  const sit = lastPlay?.start || {};
+  const end = lastPlay?.end   || {};
+
+  // Down & distance — prefer start (what was on the board when play was called),
+  // fall back to end (for special teams plays like kickoffs where start is sparse)
+  const downText   = sit.shortDownDistanceText || end.shortDownDistanceText || situation?.downDistanceText || '';
+  const ballOnText = sit.possessionText || end.possessionText || '';
+
+  // Field positions — use end for ball position (where ball is NOW), start for origin
+  const yte  = sit.yardsToEndzone ?? end.yardsToEndzone;  // at snap (or fallback to end)
+  const dist = sit.distance ?? end.distance ?? 0;
+  const endYte = end.yardsToEndzone ?? yte;
+
+  // Ball position % from left (away=0, home=100)
+  const ballPct  = endYte  != null ? (awayDriving ? 100 - endYte  : endYte)  : null;
+  const startPct = yte     != null ? (awayDriving ? 100 - yte     : yte)     : null;
+  const fdYte    = yte != null && dist > 0 ? yte - dist : null;
+  const fdPct    = fdYte   != null ? (awayDriving ? 100 - fdYte   : fdYte)   : null;
+
+  // Win probability
+  const wp = winProbEntry;
+  const homePct = wp?.homeWinPercentage;
+  let wpTeam = null, wpVal = null;
+  if (homePct != null) {
+    const hp = Math.round(homePct * 100);
+    const ap = 100 - hp;
+    wpTeam = hp >= ap ? home : away;
+    wpVal  = Math.max(hp, ap);
+  }
+
+  // Primary player
+  const primaryPart = nflPrimaryParticipant(lastPlay);
+  const athlete = primaryPart?.athlete;
+  const partType = primaryPart?.type || '';
+  const groupHint = /passer|qb/i.test(partType)   ? 'passing'
+                  : /rusher|runner/i.test(partType) ? 'rushing'
+                  : /receiver/i.test(partType)       ? 'receiving'
+                  : null;
+  const playerResult = athlete ? getNflPlayerStats(athlete.id, boxscorePlayers) : null;
+  const displayGroup = playerResult?.group || groupHint;
+  const statTriplet  = playerResult ? getNflStatTriplet(displayGroup, playerResult.sm) : [];
+
+  const playLabel = nflPlayLabel(lastPlay);
+  const driveDesc = drive?.description || '';
+
+  return (
+    <div className="nfl-cd-wrap">
+      {/* Header: team logo + "CURRENT DRIVE" + drive description */}
+      <div className="nfl-cd-header">
+        <div className="nfl-cd-header-left">
+          <LogoImg team={drivingComp?.team} className="nfl-cd-logo" />
+          <div>
+            <div className="nfl-cd-title">CURRENT DRIVE</div>
+            {driveDesc && <div className="nfl-cd-desc">{driveDesc}</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Down & Ball on */}
+      {(downText || ballOnText) && (
+        <div className="nfl-cd-situation">
+          <div className="nfl-cd-sit-cell">
+            <div className="nfl-cd-sit-label">Down</div>
+            <div className="nfl-cd-sit-val">{downText || '—'}</div>
+          </div>
+          <div className="nfl-cd-sit-divider" />
+          <div className="nfl-cd-sit-cell">
+            <div className="nfl-cd-sit-label">Ball on</div>
+            <div className="nfl-cd-sit-val">{ballOnText || '—'}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Field */}
+      <NflFieldSvg
+        away={away} home={home}
+        ballPct={ballPct} startPct={startPct} fdPct={fdPct}
+        awayDriving={awayDriving}
+      />
+
+      {/* Play type row: label + win% + Last Play badge */}
+      <div className="nfl-cd-play-row">
+        <span className="nfl-cd-play-label">{playLabel}</span>
+        <div className="nfl-cd-play-right">
+          {wpTeam && (
+            <span className="nfl-cd-wp">
+              Win %:&nbsp;<LogoImg team={wpTeam?.team} className="nfl-cd-wp-logo" />&nbsp;{wpVal}
+            </span>
+          )}
+          {playLabel && <span className="nfl-cd-last-badge">Last Play</span>}
+        </div>
+      </div>
+
+      {/* Play text */}
+      {lastPlay?.text && (
+        <div className="nfl-cd-play-text">{lastPlay.text}</div>
+      )}
+
+      {/* Player card */}
+      {athlete && (
+        <div className="nfl-cd-player-card">
+          {athlete.headshot?.href
+            ? <img src={athlete.headshot.href} alt="" className="nfl-cd-headshot" onError={e => e.target.style.display='none'} />
+            : <div className="nfl-cd-headshot nfl-cd-headshot-empty" />}
+          <div className="nfl-cd-player-info">
+            <div className="nfl-cd-player-name">{athlete.displayName}</div>
+            <div className="nfl-cd-player-meta">
+              {[athlete.team?.abbreviation, athlete.position?.abbreviation, athlete.jersey ? `#${athlete.jersey}` : null]
+                .filter(Boolean).join(', ')}
+            </div>
+          </div>
+        </div>
+      )}
+      {athlete && statTriplet.length > 0 && (
+        <div className="nfl-cd-stats-row">
+          {statTriplet.map(([lbl, val]) => val != null && val !== '—' ? (
+            <div key={lbl} className="nfl-cd-stat-cell">
+              <div className="nfl-cd-stat-label">{lbl}</div>
+              <div className="nfl-cd-stat-val">{val}</div>
+            </div>
+          ) : null)}
+        </div>
+      )}
+
+      {/* Next down (after play) */}
+      {end.shortDownDistanceText && (
+        <div className="nfl-cd-next-down">
+          {end.shortDownDistanceText}{end.possessionText ? ` at ${end.possessionText}` : ''}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NflGamecast({ data, situation, competitors, status }) {
   const isLive  = status?.type?.state === 'in';
   const isFinal = status?.type?.state === 'post';
@@ -1824,79 +2147,54 @@ function NflGamecast({ data, situation, competitors, status }) {
     );
   };
 
+  // Get the most recent play for the current drive view
+  const currDrivePlays = currentDrive?.plays || [];
+  const prevDrives     = drives.previous || [];
+  // Use current drive if it has plays; else fall back to last previous drive
+  const activeDrive = currDrivePlays.length > 0 ? currentDrive
+    : (prevDrives.length > 0 ? prevDrives[prevDrives.length - 1] : null);
+  const activeDrivePlays = activeDrive?.plays || [];
+  const lastDrivePlay = activeDrivePlays[activeDrivePlays.length - 1] || null;
+
+  // Win probability: from data.winprobability array or scoreboard situation
+  const winProbs = data?.winprobability || [];
+  const latestWP = winProbs.length > 0 ? winProbs[winProbs.length - 1]
+    : (winPct ? { homeWinPercentage: winPct.homeWinPercentage } : null);
+
   return (
     <div className="gamecast-wrap nfl-gamecast">
 
-      {/* ── 1. Current drive / field ── */}
-      <div className="nfl-gc-section">
-        {/* Field visualization */}
-        <div className="nfl-field-wrap">
-          {/* End zones */}
-          <div className="nfl-ez nfl-ez-away" style={{background: away?.team?.color ? `#${away.team.color}` : '#1a1a2e'}}>
-            <span className="nfl-ez-name">{away?.team?.shortDisplayName || away?.team?.abbreviation}</span>
-          </div>
-          <div className="nfl-field-center">
-            {/* Yard markers */}
-            {[20,50,20].map((n,i) => <span key={i} className="nfl-yd-mark">{n}</span>)}
-            {/* Drive message */}
-            <div className="nfl-field-msg">
-              {(isLive && downText) ? `${downText}${fieldPos ? ` · ${fieldPos}` : ''}` :
-               (isLive && shortDetail) ? shortDetail :
-               isFinal ? 'Final' :
-               shortDetail || 'Halftime'}
-            </div>
-            {/* Ball position indicator */}
-            {isLive && sit.yardLine && (() => {
-              const awayHas = possTeamId && possTeamId === away?.team?.id;
-              const pct = awayHas ? (100 - sit.yardLine) : sit.yardLine;
-              return <div className="nfl-ball-marker" style={{left:`${pct}%`}}>🏈</div>;
+      {/* ── 0. Current Drive (live only) ── */}
+      {isLive && activeDrive && lastDrivePlay && (
+        <NflCurrentDriveView
+          drive={activeDrive}
+          lastPlay={lastDrivePlay}
+          away={away}
+          home={home}
+          winProbEntry={latestWP}
+          boxscorePlayers={data?.boxscore?.players}
+          situation={sit}
+        />
+      )}
+
+      {/* ── Quarter status bar for non-live ── */}
+      {!isLive && (
+        <div className="nfl-gc-section">
+          <div className="nfl-gc-header-row">
+            <span className="nfl-gc-quarter">{shortDetail}</span>
+            {winPct && (() => {
+              const pct = Math.round((winPct.homeWinPercentage || 0) * 100);
+              const awayPct = 100 - pct;
+              const leader = pct > awayPct ? home : away;
+              return (
+                <span className="nfl-gc-winpct">
+                  Win %: <LogoImg team={leader?.team} className="nfl-gc-winpct-logo" /> {Math.max(pct, awayPct)}
+                </span>
+              );
             })()}
           </div>
-          <div className="nfl-ez nfl-ez-home" style={{background: home?.team?.color ? `#${home.team.color}` : '#1a1a2e'}}>
-            <span className="nfl-ez-name">{home?.team?.shortDisplayName || home?.team?.abbreviation}</span>
-          </div>
         </div>
-
-        {/* Quarter + win prob */}
-        <div className="nfl-gc-header-row">
-          <span className="nfl-gc-quarter">{shortDetail}</span>
-          {winPct && (() => {
-            const pct = Math.round((winPct.homeWinPercentage || 0) * 100);
-            const awayPct = 100 - pct;
-            const leader = pct > awayPct ? home : away;
-            return (
-              <span className="nfl-gc-winpct">
-                Win %: <LogoImg team={leader?.team} className="nfl-gc-winpct-logo" /> {Math.max(pct, awayPct)}
-              </span>
-            );
-          })()}
-        </div>
-
-        {/* Last play text */}
-        {lastPlayText && <div className="nfl-gc-lastplay">{lastPlayText}</div>}
-
-        {/* Team drive summary cards */}
-        {(awayStats.totalYards || homeStats.totalYards) && (
-          <div className="nfl-drive-cards">
-            {[
-              { comp: away, stats: awayStats },
-              { comp: home, stats: homeStats },
-            ].map(({ comp, stats }) => (
-              <div key={comp?.team?.id} className="nfl-drive-card">
-                <LogoImg team={comp?.team} className="nfl-drive-card-logo" />
-                <div className="nfl-drive-card-info">
-                  <div className="nfl-drive-card-team">{comp?.team?.abbreviation}</div>
-                  <div className="nfl-drive-card-stats">
-                    {stats.totalYards && `${stats.totalYards} YDS`}
-                    {stats.turnovers != null && `, ${stats.turnovers} T/O`}
-                    {stats.possessionTime && `, ${stats.possessionTime} TOP`}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── 2. Scoring plays ── */}
       {scoringPlays.length > 0 && (
