@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
 import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* Format a stat value:
    - Rate stats (.265, 0.923, 1.023, 48.4%) → keep 3 decimals for baseball rates, 1 decimal for % rates
@@ -100,10 +101,8 @@ function RecentABTracker({ gamelog }) {
   ];
 
   return (
-    <div className="pp-stats-section">
+    <div className="pp-flat-section">
       <div className="ab-tracker-inner">
-        <div className="pp-stats-title">Recent AB Tracker</div>
-
         {/* Mode tabs + search input */}
         <div className="ab-tracker-search-row">
           <div className="ab-tracker-mode-tabs">
@@ -111,13 +110,13 @@ function RecentABTracker({ gamelog }) {
               className={`ab-tracker-mode-tab ${searchMode === 'games' ? 'ab-tracker-mode-active' : ''}`}
               onClick={() => setSearchMode('games')}
             >
-              🔍 Games
+              🔍 Recent Games
             </button>
             <button
               className={`ab-tracker-mode-tab ${searchMode === 'ab' ? 'ab-tracker-mode-active' : ''}`}
               onClick={() => setSearchMode('ab')}
             >
-              🔍 ABs
+              🔍 Recent ABs
             </button>
           </div>
           <div className="ab-tracker-input-wrap">
@@ -548,8 +547,12 @@ export default function PlayerPage() {
   const athlete = bio?.athlete || {};
   const summary = athlete.statsSummary?.statistics || [];
   const teamLogo = athlete.team?.logos?.[0]?.href || athlete.team?.logo;
-  const teamColor = athlete.team?.color ? `#${athlete.team.color}` : null;
-  const teamAltColor = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
+  const teamColorRaw = athlete.team?.color ? `#${athlete.team.color}` : null;
+  const teamAltColorRaw = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
+  // Adapt color so very dark team colors (e.g. Eagles, Tigers, Yankees) are visible on dark bg.
+  // Keeps null when the athlete has no team color so conditional guards below still work.
+  const teamColor = teamColorRaw ? adaptColorForDarkBg(teamColorRaw, teamAltColorRaw) : null;
+  const teamAltColor = teamAltColorRaw;
 
   const careerTotals = (() => {
     if (!seasons.length) return {};
@@ -645,7 +648,32 @@ export default function PlayerPage() {
 
       {!loading && athlete.displayName && (
         <>
-          <div className="pp-header">
+          <div className="pp-header" style={{ position: 'relative' }}>
+            {/* Favorite star — top-right corner */}
+            {(() => {
+              const isFav = favorites.players.some((p) => p.id === playerId);
+              return (
+                <button
+                  className={`pp-star-btn ${isFav ? 'pp-star-btn-on' : ''}`}
+                  onClick={() => isFav ? removePlayer(playerId) : addPlayer({
+                    id: playerId, sport,
+                    displayName: athlete.displayName,
+                    headshot: typeof athlete.headshot === 'object' ? athlete.headshot?.href : athlete.headshot,
+                    team: athlete.team,
+                    position: athlete.position,
+                    _position: athlete.position?.abbreviation || '',
+                  })}
+                  aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24"
+                    fill={isFav ? 'currentColor' : 'none'}
+                    stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+              );
+            })()}
             {/* Colored top strip using team color */}
             {teamColor && (
               <div className="pp-team-stripe" style={{ background: teamColor }} />
@@ -662,8 +690,17 @@ export default function PlayerPage() {
                   <span className="pp-lastname"> {athlete.lastName}</span>
                 </div>
                 <div className="pp-team-row">
-                  <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
-                  <span className="pp-team-name">{athlete.team?.displayName}</span>
+                  {athlete.team?.id ? (
+                    <Link to={`/team/${sport}/${athlete.team.id}`} className="pp-team-identity tr-team-link">
+                      <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
+                      <span className="pp-team-name">{athlete.team?.displayName}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      <img src={darkUrl(teamLogo)} onError={(e)=>{if(e.target.src!==teamLogo){e.target.onerror=null;e.target.src=teamLogo;}}} alt="" className="pp-team-logo" />
+                      <span className="pp-team-name">{athlete.team?.displayName}</span>
+                    </>
+                  )}
                   {athlete.displayJersey && <span className="pp-meta"> · {athlete.displayJersey}</span>}
                   {athlete.position?.abbreviation && <span className="pp-meta"> · {athlete.position.abbreviation}</span>}
                 </div>
@@ -685,6 +722,12 @@ export default function PlayerPage() {
                     <div className="pp-detail-row"><span className="pp-detail-label">DRAFT</span><span>{athlete.displayDraft}</span></div>
                   )}
                 </div>
+                {/* Statcast inline button — MLB batters only */}
+                {sport === 'mlb' && sportKey === 'mlb_batting' && (
+                  <Link to={`/statcast/mlb/${playerId}`} className="pp-statcast-inline">
+                    ⚡ Statcast
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -706,39 +749,11 @@ export default function PlayerPage() {
             )}
           </div>
 
-          {/* Statcast button — MLB batters only */}
-          {sport === 'mlb' && sportKey === 'mlb_batting' && (
-            <Link to={`/statcast/mlb/${playerId}`} className="pp-statcast-btn">
-              <span className="pp-statcast-icon">⚡</span>
-              View Statcast Data
-              <span className="pp-statcast-badge">Powered by Baseball Savant</span>
-            </Link>
-          )}
 
-          {/* Add / Remove from My Players */}
-          {(()=>{
-            const isFav = favorites.players.some((p) => p.id === playerId);
-            return (
-              <button
-                className={`pp-fav-btn ${isFav ? 'pp-fav-btn-remove' : 'pp-fav-btn-add'}`}
-                onClick={() => isFav ? removePlayer(playerId) : addPlayer({
-                  id: playerId, sport,
-                  displayName: athlete.displayName,
-                  headshot: athlete.headshot,
-                  team: athlete.team,
-                  position: athlete.position,
-                  _position: athlete.position?.abbreviation || '',
-                })}
-              >
-                {isFav ? '✕  Remove from My Players' : '＋  Add to My Players'}
-              </button>
-            );
-          })()}
 
           {/* Career stats table */}
-          <div className="pp-stats-section">
+          <div className="pp-flat-section">
             <div className="pp-career-header">
-              <div className="pp-stats-title">{careerTitle}</div>
               {/* RHP/LHP tabs — MLB batters only */}
               {sport === 'mlb' && sportKey === 'mlb_batting' && Object.keys(splitsBySeason).length > 0 && (
                 <div className="pp-career-tabs">
@@ -834,8 +849,7 @@ export default function PlayerPage() {
 
           {/* Game Log */}
           {gamelog.length > 0 && (
-            <div className="pp-stats-section">
-              <div className="pp-stats-title">Last 25 Games</div>
+            <div className="pp-flat-section">
               <div className="pp-table-wrap">
                 <table className="pp-table">
                   <thead>

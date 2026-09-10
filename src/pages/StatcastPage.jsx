@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPlayerBio } from '../api/espn';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* ── CSV parser ──────────────────────────────────────────────────────── */
 function parseCSV(text) {
@@ -307,8 +308,11 @@ export default function StatcastPage() {
     });
   }, [playerId]);
 
-  const athlete   = bio?.athlete || {};
-  const teamColor = athlete.team?.color ? `#${athlete.team.color}` : '#7c3aed';
+  const athlete        = bio?.athlete || {};
+  const teamColorRaw   = athlete.team?.color ? `#${athlete.team.color}` : null;
+  const teamAltColorRaw = athlete.team?.alternateColor ? `#${athlete.team.alternateColor}` : null;
+  // Adapt color so very dark team colors are visible on the dark background
+  const teamColor = adaptColorForDarkBg(teamColorRaw, teamAltColorRaw);
   const teamLogo  = athlete.team?.logos?.find((l) => l.rel?.includes('dark'))?.href
                   || athlete.team?.logos?.[0]?.href || athlete.team?.logo;
   const slug      = athlete.displayName?.toLowerCase().replace(/\s+/g, '-') || 'player';
