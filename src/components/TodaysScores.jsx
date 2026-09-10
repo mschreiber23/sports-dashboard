@@ -369,14 +369,25 @@ function readSbCache(sport, dateStr) {
   return null;
 }
 
+const SPORT_KEY = 'ticker_last_sport_v1';
+
 export default function TodaysScores({ compact = false, onCollapse }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
   const defaultSport = sportOrder[0] || 'mlb';
   const todayDateStr = toDateStr(new Date());
 
-  const [activeSport, setActiveSport] = useState(defaultSport);
+  // Restore last-selected sport from localStorage, fall back to sportOrder default
+  const [activeSport, setActiveSport] = useState(() => {
+    try { return localStorage.getItem(SPORT_KEY) || defaultSport; } catch { return defaultSport; }
+  });
+
+  const handleSetActiveSport = (sport) => {
+    try { localStorage.setItem(SPORT_KEY, sport); } catch {}
+    setActiveSport(sport);
+  };
+
   // Seed rawGames from cache immediately — zero flicker on remount
-  const [rawGames, setRawGames] = useState(() => readSbCache(defaultSport, todayDateStr) || []);
+  const [rawGames, setRawGames] = useState(() => readSbCache(activeSport, todayDateStr) || []);
   const [mlbScores, setMlbScores] = useState({});
   const [nhlScores, setNhlScores] = useState({});
   const [loading, setLoading] = useState(() => !readSbCache(defaultSport, todayDateStr));
@@ -471,7 +482,7 @@ export default function TodaysScores({ compact = false, onCollapse }) {
           <select
             className="ts-sport-select"
             value={activeSport}
-            onChange={(e) => { setActiveSport(e.target.value); setRawGames([]); }}
+            onChange={(e) => { handleSetActiveSport(e.target.value); setRawGames([]); }}
           >
             {sportOrder.map((s) => (
               <option key={s} value={s}>{SPORTS[s]?.label}</option>
