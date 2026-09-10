@@ -130,8 +130,20 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
       </div>
       <div className="ticker-bottom ticker-bottom-live">
         <div className="ticker-situation">
-          <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
-          {outs !== null && <span className="ticker-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>}
+          {sport === 'nfl' ? (
+            sit.downDistanceText
+              ? <span className="ticker-down-dist">{sit.isRedZone ? '🔴 ' : '🏈 '}{sit.downDistanceText}</span>
+              : null
+          ) : sport === 'nba' ? (
+            sit.possessionText
+              ? <span className="ticker-down-dist">🏀 {sit.possessionText}</span>
+              : null
+          ) : (
+            <>
+              <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
+              {outs !== null && <span className="ticker-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>}
+            </>
+          )}
         </div>
       </div>
     </button>

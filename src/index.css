@@ -1729,6 +1729,7 @@ body {
 .mini-base { fill: var(--bg3); stroke: rgba(255,255,255,0.2); stroke-width: 1.5; }
 .mini-base-on { fill: #f59e0b; stroke: #fbbf24; }
 .ticker-outs { font-size: 9px; color: var(--text2); font-weight: 300; white-space: nowrap; }
+.ticker-down-dist { font-size: 10px; font-weight: 700; color: var(--text2); white-space: nowrap; }
 .ticker-broadcast-bottom { font-size: 9px; color: var(--text2); }
 
 .ticker-skeleton {
@@ -2939,6 +2940,7 @@ body {
 .pbp-play-scoring { background: color-mix(in srgb, var(--live) 5%, transparent); }
 .pbp-play-icon { font-size: 12px; flex-shrink: 0; padding-top: 1px; opacity: 0.6; }
 .pbp-play-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+.pbp-play-clock { font-size: 11px; font-weight: 700; color: var(--text2); margin-right: 4px; }
 
 /* ── Box Score Page ── */
 .bsp-page { display: flex; flex-direction: column; gap: 0; width: 100%; }

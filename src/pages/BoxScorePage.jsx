@@ -1730,12 +1730,14 @@ function NflGamecast({ data, situation, competitors, status }) {
   const awayHasBall = possTeamId && possTeamId === away?.team?.id;
   const homeHasBall = possTeamId && possTeamId === home?.team?.id;
 
-  // Drives from summary
+  // Drives from summary — extract all plays
   const drives = data?.drives || {};
   const currentDrive = drives.current;
-
-  // Plays from summary
-  const plays = data?.plays || [];
+  const allDrivePlays = [
+    ...(drives.previous || []).flatMap(d => d.plays || []),
+    ...(drives.current?.plays || []),
+  ];
+  const plays = allDrivePlays.length > 0 ? allDrivePlays : (data?.plays || []);
   const scoringPlays = plays.filter(p => p.scoringPlay).reverse();
 
   // Team stats from boxscore
@@ -1932,6 +1934,57 @@ function GenericGamecast({ data, situation, competitors, status, sport }) {
 }
 
 /* ─── PLAY BY PLAY TAB ──────────────────────────────── */
+/* ── NFL PBP: extract all plays from drives ─────────── */
+function NflPlayByPlay({ data, competitors }) {
+  const [showScoring, setShowScoring] = useState(false);
+  const away = competitors?.find(c => c.homeAway === 'away') || competitors?.[0];
+  const home = competitors?.find(c => c.homeAway === 'home') || competitors?.[1];
+
+  const drives = data?.drives || {};
+  const allDrives = [...(drives.previous || []), ...(drives.current ? [drives.current] : [])];
+  const scoringPlay = (p) => p.scoringPlay;
+
+  if (!allDrives.length) return <div className="tp-loading">Play-by-play not available.</div>;
+
+  const displayDrives = allDrives.slice().reverse();
+
+  return (
+    <div className="pbp-wrap">
+      <div className="pbp-toggle">
+        <button className={`pbp-tog-btn ${!showScoring ? 'pbp-tog-active' : ''}`} onClick={() => setShowScoring(false)}>All Plays</button>
+        <button className={`pbp-tog-btn ${showScoring ? 'pbp-tog-active' : ''}`} onClick={() => setShowScoring(true)}>Scoring Plays</button>
+      </div>
+      {displayDrives.map((drive, di) => {
+        const plays = (drive.plays || []).filter(p => p.text);
+        const filtered = showScoring ? plays.filter(scoringPlay) : plays;
+        if (showScoring && !plays.some(scoringPlay)) return null;
+        const teamComp = competitors?.find(c => c.team?.id === drive.team?.id);
+        const lastPlay = plays[plays.length - 1];
+        return (
+          <div key={drive.id || di} className="pbp-group">
+            <div className="pbp-group-header">
+              <LogoImg team={teamComp?.team} className="pbp-team-logo" />
+              <span className="pbp-group-label">{drive.team?.abbreviation} · {drive.description}</span>
+              {lastPlay && <span className="pbp-score">{away?.team?.abbreviation} {lastPlay.awayScore} · {home?.team?.abbreviation} {lastPlay.homeScore}</span>}
+            </div>
+            {filtered.map((p, pi) => (
+              <div key={p.id || pi} className={`pbp-play ${p.scoringPlay ? 'pbp-play-scoring' : ''}`}>
+                <div className="pbp-play-icon">
+                  {p.scoringPlay ? '🏈' : '·'}
+                </div>
+                <div className="pbp-play-text">
+                  <span className="pbp-play-clock">Q{p.period?.number} {p.clock?.displayValue}</span>
+                  {' '}{p.text}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PlayByPlay({ data, competitors, sport }) {
   const [showScoring, setShowScoring] = useState(false);
   const plays = data?.plays || [];
@@ -2007,9 +2060,9 @@ const COLS = {
   mlb_batting:  ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'],
   mlb_pitching: ['IP','H','R','ER','BB','K','ERA','PC'],
   nba:          ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','+/-'],
-  nfl_passing:  ['C/ATT','YDS','TD','INT','RTG'],
-  nfl_rushing:  ['CAR','YDS','AVG','TD'],
-  nfl_receiving:['REC','YDS','AVG','TD'],
+  nfl_passing:  ['C/ATT','YDS','AVG','TD','INT','RTG'],
+  nfl_rushing:  ['CAR','YDS','AVG','TD','LONG'],
+  nfl_receiving:['REC','YDS','AVG','TD','LONG','TGTS'],
   nhl:          ['G','A','PTS','+/-','SOG','TOI'],
 };
 const HL = { mlb: ['H','HR','RBI','ERA'], nba: ['PTS','REB','AST'], nfl: ['YDS','TD'], nhl: ['G','A','PTS'] };
@@ -2252,6 +2305,8 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
             <th className="bsp-th bsp-th-player">
               {sport === 'mlb'
                 ? (type === 'pitching' ? `Pitchers` : `Batters`) + (teamAbbr ? ` - ${teamAbbr}` : '')
+                : sport === 'nfl'
+                ? `${type.charAt(0).toUpperCase()}${type.slice(1)}${teamAbbr ? ` - ${teamAbbr}` : ''}`
                 : (type === 'pitching' ? 'PITCHERS' : 'HITTERS')}
             </th>
             {cols.map((c) => <th key={c.label} className="bsp-th">{c.label}</th>)}
@@ -2344,8 +2399,24 @@ function MLBGameNotes({ details }) {
 }
 
 function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, teamColor, teamAltColor }) {
-  const team    = group?.team || {};
-  const stats   = group?.statistics || [];
+  const team  = group?.team || {};
+  const stats = group?.statistics || [];
+
+  if (sport === 'nfl') {
+    // NFL: show passing, rushing, receiving groups separately
+    const NFL_GROUPS = ['passing','rushing','receiving','defensive','kicking','punting','kickReturns','puntReturns'];
+    const groups = NFL_GROUPS.map(n => stats.find(s => (s.type||s.name) === n)).filter(Boolean);
+    return (
+      <div className="bs-team-stats">
+        {groups.map((sg, i) => (
+          <div key={sg.name || i} className="bs-stat-section" style={{marginTop: i > 0 ? 14 : 0}}>
+            <StatsTable statGroup={sg} sport={sport} teamAbbr={team.abbreviation} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const batting  = stats.find((s) => (s.type||s.name) === 'batting')  || stats[0];
   const pitching = stats.find((s) => (s.type||s.name) === 'pitching') || stats[1];
   return (
@@ -2780,6 +2851,8 @@ export default function BoxScorePage() {
                     teamColor={home?.team?.color}
                     teamAltColor={home?.team?.alternateColor}
                   />
+                : sport === 'nfl'
+                ? <NflPlayByPlay data={data} competitors={comps} />
                 : <PlayByPlay data={data} competitors={comps} sport={sport} />
             )}
           </div>
