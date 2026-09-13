@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl } from '../api/milb';
+import { idbStorage } from '../lib/idbStorage';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -610,9 +611,38 @@ const SPORT_BADGE_COLORS = {
 
 /* ── Main Page ────────────────────────────────────────── */
 export default function PlayerCardsPage() {
+  // Start with localStorage for an instant first paint (no flash), then upgrade
+  // to IndexedDB which survives iOS PWA force-close (localStorage does not).
   const [cards, setCards] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
   });
+  const [storageReady, setStorageReady] = useState(false);
+
+  // On mount: load from IDB. Use whichever source has more cards (IDB is authoritative
+  // once any save has happened; localStorage is the fallback for first-ever open).
+  useEffect(() => {
+    idbStorage.getItem(STORAGE_KEY)
+      .then(val => {
+        if (val) {
+          try {
+            const idbCards = JSON.parse(val);
+            // IDB wins if it has data (it's the durable store)
+            if (idbCards.length > 0) setCards(idbCards);
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => setStorageReady(true));
+  }, []);
+
+  // Save to IDB (+ localStorage backup) whenever cards change, but only after the
+  // initial load so we never overwrite IDB with the stale localStorage initial state.
+  useEffect(() => {
+    if (!storageReady) return;
+    idbStorage.setItem(STORAGE_KEY, JSON.stringify(cards)).catch(() => {});
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); } catch {}
+  }, [cards, storageReady]);
+
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
   const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
   const shiftDate = (n) => setSelectedDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; });
@@ -624,13 +654,6 @@ export default function PlayerCardsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
-  // Guard: skip saving on the initial render so a parse error can't overwrite stored data
-  const didMountRef = useRef(false);
-
-  useEffect(() => {
-    if (!didMountRef.current) { didMountRef.current = true; return; }
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); } catch {}
-  }, [cards]);
 
   useEffect(() => {
     if (showSearch) setTimeout(() => inputRef.current?.focus(), 80);
