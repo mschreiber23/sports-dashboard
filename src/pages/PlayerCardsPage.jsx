@@ -247,7 +247,8 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
 
 /* ── Individual player card ───────────────────────────── */
 export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, editMode,
-  onDragStart, onDragEnter, onDragEnd, onTouchStart, isDragOver }) {
+  onDragStart, onDragEnter, onDragEnd, onTouchStart, isDragOver,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown }) {
   const navigate = useNavigate();
   const [gameData, setGameData] = useState(null); // { game, summary, statMap }
   const [loading, setLoading] = useState(true);
@@ -384,7 +385,12 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
         {headshotUrl && <img src={headshotUrl} alt="" className="pc-edit-headshot" onError={e=>e.target.style.display='none'}/>}
         <span className="pc-edit-name">{player.displayName}</span>
         {posAbb && <span className="pc-edit-pos">{posAbb}</span>}
-        <button className="pc-ctrl-btn pc-ctrl-remove" style={{marginLeft:'auto'}} onClick={() => onRemove(player.id)}>✕</button>
+        {/* ↑↓ tap buttons — reliable on mobile */}
+        <div className="pc-move-btns">
+          <button className="pc-move-btn" disabled={!canMoveUp}   onClick={onMoveUp}>↑</button>
+          <button className="pc-move-btn" disabled={!canMoveDown} onClick={onMoveDown}>↓</button>
+        </div>
+        <button className="pc-ctrl-btn pc-ctrl-remove" onClick={() => onRemove(player.id)}>✕</button>
       </div>
   ) : (
     <div
@@ -766,7 +772,7 @@ export default function PlayerCardsPage() {
   const [dragFrom, setDragFrom] = useState(null);
   const [dragOver, setDragOver] = useState(null);
 
-  const removeCard = (id) => setCards(prev => prev.filter(c => c.id !== id));
+  const removeCard = (id, sport) => setCards(prev => prev.filter(c => !(c.id === id && c.sport === sport)));
   const updateCard = (id, patch) => setCards(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
 
   const commitDrag = (fromIdx, toIdx) => {
@@ -775,6 +781,18 @@ export default function PlayerCardsPage() {
       const next = [...prev];
       const [item] = next.splice(fromIdx, 1);
       next.splice(toIdx, 0, item);
+      return next;
+    });
+  };
+
+  // Move a card up or down by one position (tap-friendly reorder)
+  const moveCard = (idx, dir) => {
+    const target = idx + dir;
+    if (target < 0 || target >= cards.length) return;
+    setCards(prev => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.splice(target, 0, item);
       return next;
     });
   };
@@ -899,19 +917,30 @@ export default function PlayerCardsPage() {
         onTouchMove={editMode ? handleTouchMove : undefined}
         onTouchEnd={editMode ? handleTouchEnd : undefined}
       >
-        {cards.filter(p => p.sport !== 'milb').map((player, idx) => (
-          <div key={`${player.id}-${dateStr}`} data-card-idx={idx}>
-            <PlayerGameCard player={player}
-              onRemove={removeCard} dateStr={dateStr} onUpdatePlayer={updateCard}
-              editMode={editMode}
-              isDragOver={dragOver === idx && dragFrom !== idx}
-              onDragStart={() => { setDragFrom(idx); setDragOver(idx); }}
-              onDragEnter={() => setDragOver(idx)}
-              onDragEnd={() => { commitDrag(dragFrom, dragOver); setDragFrom(null); setDragOver(null); }}
-              onTouchStart={handleTouchStart(idx)}
-            />
-          </div>
-        ))}
+        {cards.filter(p => p.sport !== 'milb').map((player) => {
+          // Use the actual index in the full cards array so drag/move works correctly
+          const idx = cards.findIndex(c => c.id === player.id && c.sport === player.sport);
+          const nonMilbCards = cards.filter(p => p.sport !== 'milb');
+          const displayIdx = nonMilbCards.findIndex(c => c.id === player.id && c.sport === player.sport);
+          return (
+            <div key={`${player.sport}-${player.id}-${dateStr}`} data-card-idx={idx}>
+              <PlayerGameCard player={player}
+                onRemove={(id) => removeCard(id, player.sport)}
+                dateStr={dateStr} onUpdatePlayer={updateCard}
+                editMode={editMode}
+                isDragOver={dragOver === idx && dragFrom !== idx}
+                onDragStart={() => { setDragFrom(idx); setDragOver(idx); }}
+                onDragEnter={() => setDragOver(idx)}
+                onDragEnd={() => { commitDrag(dragFrom, dragOver); setDragFrom(null); setDragOver(null); }}
+                onTouchStart={handleTouchStart(idx)}
+                canMoveUp={displayIdx > 0}
+                canMoveDown={displayIdx < nonMilbCards.length - 1}
+                onMoveUp={() => moveCard(idx, -1)}
+                onMoveDown={() => moveCard(idx, 1)}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -7279,6 +7279,19 @@ thead .dfs-sticky-player {
 .pc-drag-handle:hover { color: var(--text); background: var(--bg3); }
 .pc-drag-handle:active { cursor: grabbing; }
 
+/* ↑↓ reorder buttons in edit mode */
+.pc-move-btns {
+  display: flex; flex-direction: column; gap: 2px; margin-left: auto;
+}
+.pc-move-btn {
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); font-size: 12px; line-height: 1;
+  padding: 3px 7px; border-radius: 4px; cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.pc-move-btn:not(:disabled):hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pc-move-btn:disabled { opacity: 0.3; cursor: default; }
+
 /* Edit mode: force single column so vertical drag works predictably */
 .pc-grid-edit {
   grid-template-columns: 1fr !important;
