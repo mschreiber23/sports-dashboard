@@ -7219,14 +7219,11 @@ thead .dfs-sticky-player {
 /* Cards grid — 1 col mobile, 3 col desktop */
 .pc-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-@media (min-width: 640px) {
-  .pc-grid { grid-template-columns: repeat(2, 1fr); }
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 @media (min-width: 1024px) {
-  .pc-grid { grid-template-columns: repeat(3, 1fr); }
+  .pc-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 /* Individual card — matches mlbc-card style */
@@ -7344,14 +7341,14 @@ thead .dfs-sticky-player {
 .pc-game-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px 6px;
-  font-size: 11px;
+  gap: 5px;
+  padding: 6px 10px 4px;
+  font-size: 10px;
   flex-wrap: wrap;
 }
 .pc-no-game { color: var(--text2); font-style: italic; }
 .pc-matchup { font-weight: 700; color: var(--text); }
-.pc-score { font-weight: 800; color: var(--text); font-size: 12px; display: flex; align-items: center; }
+.pc-score { font-weight: 800; color: var(--text); font-size: 11px; display: flex; align-items: center; }
 .pc-score-live { color: var(--live); }
 .pc-status { color: var(--text2); }
 .pc-status-live { color: var(--live); font-weight: 700; }
@@ -7361,16 +7358,16 @@ thead .dfs-sticky-player {
 .pc-player-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+  gap: 7px;
+  padding: 6px 10px;
   cursor: pointer;
   border-top: 1px solid var(--border);
   transition: background 0.1s;
 }
 .pc-player-row:hover { background: var(--bg3); }
 .pc-headshot {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   object-fit: cover;
   object-position: top center;
@@ -7378,24 +7375,24 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
 }
 .pc-headshot-placeholder {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--bg3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--text2);
   flex-shrink: 0;
 }
 .pc-player-info { flex: 1; min-width: 0; }
-.pc-player-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pc-player-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
-.pc-pos { font-size: 11px; color: var(--text2); font-weight: 700; }
-.pc-jersey { font-size: 11px; color: var(--text2); font-weight: 600; }
-.pc-team-abbr { font-size: 11px; color: var(--text2); font-weight: 600; }
+.pc-player-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-player-meta { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.pc-pos { font-size: 10px; color: var(--text2); font-weight: 700; }
+.pc-jersey { font-size: 10px; color: var(--text2); font-weight: 600; }
+.pc-team-abbr { font-size: 10px; color: var(--text2); font-weight: 600; }
 
 /* Stats grid — single scrollable row */
 .pc-stats-grid {
@@ -7406,30 +7403,30 @@ thead .dfs-sticky-player {
   scrollbar-width: none;
   gap: 0;
   border-top: 1px solid var(--border);
-  padding: 8px 10px 10px;
+  padding: 6px 6px 8px;
 }
 .pc-stats-grid::-webkit-scrollbar { display: none; }
 .pc-stat-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 8px;
+  padding: 3px 6px;
   flex-shrink: 0;
 }
 .pc-stat-cell-dk {
   background: color-mix(in srgb, #22c55e 12%, transparent);
-  border-radius: 6px;
+  border-radius: 5px;
   border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
 }
 .pc-stat-val {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .pc-stat-lbl {
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 600;
   color: var(--text2);
   text-transform: uppercase;
@@ -7450,33 +7447,33 @@ thead .dfs-sticky-player {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-top: 1px solid var(--border);
-  gap: 8px;
+  gap: 4px;
 }
 .pc-matchup-team {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--text);
 }
-.pc-team-logo { width: 24px; height: 24px; object-fit: contain; }
+.pc-team-logo { width: 20px; height: 20px; object-fit: contain; }
 .pc-matchup-vs {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
 }
-.pc-game-time { font-size: 11px; color: var(--text2); white-space: nowrap; font-weight: 600; }
+.pc-game-time { font-size: 9px; color: var(--text2); white-space: nowrap; font-weight: 600; }
 .pc-season-label {
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text2);
-  padding: 4px 14px 0;
+  padding: 4px 10px 0;
 }
 
 /* ── Generic Sport Cards (NFL/NBA/NHL) ───────────────── */
