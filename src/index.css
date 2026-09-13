@@ -7388,30 +7388,25 @@ thead .dfs-sticky-player {
   flex-shrink: 0;
 }
 .pc-player-info { flex: 1; min-width: 0; }
-.pc-player-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-player-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .pc-player-meta { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
 .pc-pos { font-size: 10px; color: var(--text2); font-weight: 700; }
 .pc-jersey { font-size: 10px; color: var(--text2); font-weight: 600; }
 .pc-team-abbr { font-size: 10px; color: var(--text2); font-weight: 600; }
 
-/* Stats grid — single scrollable row */
+/* Stats grid — wraps to multiple rows so nothing gets clipped */
 .pc-stats-grid {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 4px 0;
   border-top: 1px solid var(--border);
   padding: 6px 6px 8px;
 }
-.pc-stats-grid::-webkit-scrollbar { display: none; }
 .pc-stat-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3px 6px;
-  flex-shrink: 0;
+  padding: 3px 4px;
 }
 .pc-stat-cell-dk {
   background: color-mix(in srgb, #22c55e 12%, transparent);
@@ -7419,14 +7414,14 @@ thead .dfs-sticky-player {
   border: 1px solid color-mix(in srgb, #22c55e 30%, transparent);
 }
 .pc-stat-val {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .pc-stat-lbl {
-  font-size: 7.5px;
+  font-size: 7px;
   font-weight: 600;
   color: var(--text2);
   text-transform: uppercase;
