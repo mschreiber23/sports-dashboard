@@ -139,6 +139,12 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
             sit.possessionText
               ? <span className="ticker-down-dist">🏀 {sit.possessionText}</span>
               : null
+          ) : sport === 'nhl' ? (
+            nhlScore?.ppTeam
+              ? <span className="ticker-down-dist">⚡ PP – {nhlScore.ppTeam}</span>
+              : nhlScore?.clock
+              ? <span className="ticker-outs">{nhlScore.clock} left</span>
+              : null
           ) : (
             <>
               <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
@@ -239,8 +245,18 @@ function GridCard({ game, sport, myTeamIds, mlbScore }) {
         ))}
       </div>
       <div className="grid-card-bottom grid-card-bottom-right">
-        <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
-        {outs !== null && <span className="grid-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>}
+        {sport === 'nhl' ? (
+          nhlScore?.ppTeam
+            ? <span className="grid-outs">⚡ PP – {nhlScore.ppTeam}</span>
+            : nhlScore?.clock
+            ? <span className="grid-outs">{nhlScore.clock} left</span>
+            : null
+        ) : (
+          <>
+            <MiniDiamond onFirst={onFirst} onSecond={onSecond} onThird={onThird} />
+            {outs !== null && <span className="grid-outs">{outs} Out{outs !== 1 ? 's' : ''}</span>}
+          </>
+        )}
       </div>
     </button>
   );
