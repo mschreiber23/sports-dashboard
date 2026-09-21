@@ -92,6 +92,9 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
     return () => clearInterval(id);
   }, [fetchScoreboard, refreshInterval, dateStr]);
 
-  const hasUpcomingGame = nextGame === undefined ? undefined : nextGame !== null;
+  // NFL: always show during the active season — bye weeks shouldn't auto-hide a team
+  const hasUpcomingGame = (isNfl && nflWeekInfo !== null)
+    ? true
+    : (nextGame === undefined ? undefined : nextGame !== null);
   return { game, loading, error, hasUpcomingGame, nextGame };
 }
