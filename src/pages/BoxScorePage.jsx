@@ -3238,7 +3238,7 @@ export default function BoxScorePage() {
               (sport === 'mlb' || isMiLB)
                 ? <MlbGamecast data={data} rosters={rosters} situation={situation} competitors={comps} status={status} mlbGamePk={mlbGamePk} homeTeam={home} />
                 : sport === 'nhl'
-                ? <NhlGamecast espnGame={{ competitions: [comp], date: comp?.date || data?.header?.competitions?.[0]?.date }} sport={sport} />
+                ? <NhlGamecast data={data} comp={comp} competitors={comps} status={status} />
                 : sport === 'nfl'
                 ? <NflGamecast data={data} situation={situation} competitors={comps} status={status} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
@@ -3314,7 +3314,7 @@ export default function BoxScorePage() {
                 : sport === 'nfl'
                 ? <NflPlayByPlay data={data} competitors={comps} />
                 : sport === 'nhl'
-                ? <NhlPbpTab espnGame={{ competitions: [comp], date: comp?.date || data?.header?.competitions?.[0]?.date }} />
+                ? <NhlPbpTab data={data} competitors={comps} status={status} />
                 : <PlayByPlay data={data} competitors={comps} sport={sport} />
             )}
           </div>
