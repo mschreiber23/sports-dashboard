@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import useBoxScore from '../hooks/useBoxScore';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import useMlbLiveFeed, { mlbHeadshot } from '../hooks/useMlbLiveFeed';
-import NhlGamecast from './NhlGamecast';
+import NhlGamecast, { NhlPbpTab } from './NhlGamecast';
 import { buildMiLBComp, levelShort } from '../api/milb';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
@@ -3313,6 +3313,8 @@ export default function BoxScorePage() {
                   />
                 : sport === 'nfl'
                 ? <NflPlayByPlay data={data} competitors={comps} />
+                : sport === 'nhl'
+                ? <NhlPbpTab espnGame={{ competitions: [comp], date: comp?.date || data?.header?.competitions?.[0]?.date }} />
                 : <PlayByPlay data={data} competitors={comps} sport={sport} />
             )}
           </div>
