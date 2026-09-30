@@ -5,6 +5,8 @@ import { useFavorites } from '../context/FavoritesContext';
 import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard, NhlFinalCard, NhlLiveCard } from '../components/TeamRow';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
+import useSportsDaySelection from '../hooks/useSportsDay';
+import { formatSportsDateLabel, sportsDayDate, sportsDayStr, toDateStr, toIsoDate } from '../utils/sportsDay';
 const SPORT_LABELS = Object.fromEntries(Object.entries(SPORTS).map(([k,v]) => [k, v.label]));
 
 /* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
@@ -38,24 +40,6 @@ async function fetchMlbScoreMap(dateStr, espnGames) {
     return map;
   } catch { return {}; }
 }
-
-function toDateStr(d) {
-  return d.getFullYear().toString()
-    + String(d.getMonth()+1).padStart(2,'0')
-    + String(d.getDate()).padStart(2,'0');
-}
-
-function formatDateLabel(date) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(date); d.setHours(0,0,0,0);
-  const diff = Math.round((d - today) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === -1) return 'Yesterday';
-  if (diff === 1) return 'Tomorrow';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
 const NHL_SCORE_PROXY = 'https://api.allorigins.win/raw?url=';
 const nhlScoreUrl = (path) => `${NHL_SCORE_PROXY}${encodeURIComponent(`https://api-web.nhle.com${path}`)}`;
@@ -97,10 +81,10 @@ export default function ScoresPage() {
     setActiveSport(sport);
   };
 
-  const [selectedDate, setSelectedDate] = useState(todayMidnight);
+  const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
   const [rawGames, setRawGames] = useState(() => {
     // Seed from cache immediately so switching back shows data at once
-    const ck = `${localStorage.getItem(SCORES_SPORT_KEY)||'mlb'}-${toDateStr(new Date())}`;
+    const ck = `${localStorage.getItem(SCORES_SPORT_KEY)||'mlb'}-${sportsDayStr()}`;
     return _sbCache[ck]?.events || [];
   });
   const [mlbScoreMap, setMlbScoreMap] = useState({});
@@ -108,7 +92,6 @@ export default function ScoresPage() {
   const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
 
-  const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
   const shiftDate = (n) => setSelectedDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; });
   const dateStr = toDateStr(selectedDate);
 
@@ -168,7 +151,7 @@ export default function ScoresPage() {
       pollRef.current = setInterval(load, 30000);
     }
     return () => clearInterval(pollRef.current);
-  }, [activeSport, dateStr]);
+  }, [activeSport, dateStr, isToday]);
 
   const availableSports = ['mlb','nba','nfl','nhl'];
 
@@ -180,17 +163,17 @@ export default function ScoresPage() {
         <div className="sp-date-nav">
           <button className="sp-date-btn" onClick={() => shiftDate(-1)}>‹</button>
           <label className="sp-date-label">
-            {formatDateLabel(selectedDate)}
+            {formatSportsDateLabel(selectedDate, sportsToday)}
             <input
               type="date"
               className="sp-date-input"
-              value={selectedDate.toISOString().slice(0, 10)}
+              value={toIsoDate(selectedDate)}
               onChange={e => setSelectedDate(new Date(e.target.value + 'T12:00:00'))}
             />
           </label>
           <button className="sp-date-btn" onClick={() => shiftDate(1)}>›</button>
           {!isToday && (
-            <button className="sp-date-today" onClick={() => setSelectedDate(todayMidnight())}>↩</button>
+            <button className="sp-date-today" onClick={() => setSelectedDate(sportsDayDate())}>↩</button>
           )}
         </div>
       </div>
@@ -215,7 +198,7 @@ export default function ScoresPage() {
       {!loading && games.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">🏟</div>
-          <p>No {SPORT_LABELS[activeSport] || activeSport.toUpperCase()} games on {formatDateLabel(selectedDate).toLowerCase()}.</p>
+          <p>No {SPORT_LABELS[activeSport] || activeSport.toUpperCase()} games on {formatSportsDateLabel(selectedDate, sportsToday).toLowerCase()}.</p>
         </div>
       )}
       {!loading && games.length > 0 && (

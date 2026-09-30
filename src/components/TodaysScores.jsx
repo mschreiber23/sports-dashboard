@@ -4,6 +4,8 @@ import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/
 import { useFavorites } from '../context/FavoritesContext';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { getNflWeekGames, getNflWeekInfo, getNflWeekLabel } from '../api/nfl';
+import useSportsDaySelection from '../hooks/useSportsDay';
+import { formatSportsDateLabel, sportsDayStr, toDateStr } from '../utils/sportsDay';
 
 function getScore(c) {
   const s = c?.score;
@@ -25,21 +27,6 @@ function LogoImg({ team, className }) {
   );
 }
 
-function toDateStr(date) {
-  return date.getFullYear().toString()
-    + String(date.getMonth() + 1).padStart(2, '0')
-    + String(date.getDate()).padStart(2, '0');
-}
-
-function formatDateLabel(date) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(date); d.setHours(0,0,0,0);
-  const diff = Math.round((d - today) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === -1) return 'Yesterday';
-  if (diff === 1) return 'Tomorrow';
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
 
 /* ── Mini base diamond ───────────────────────────────── */
 function MiniDiamond({ onFirst, onSecond, onThird }) {
@@ -390,7 +377,7 @@ const SPORT_KEY = 'ticker_last_sport_v1';
 export default function TodaysScores({ compact = false, onCollapse }) {
   const { favorites, sportOrder, reorderSport } = useFavorites();
   const defaultSport = sportOrder[0] || 'mlb';
-  const todayDateStr = toDateStr(new Date());
+  const todayDateStr = sportsDayStr();
 
   // Restore last-selected sport from localStorage, fall back to sportOrder default
   const [activeSport, setActiveSport] = useState(() => {
@@ -411,10 +398,8 @@ export default function TodaysScores({ compact = false, onCollapse }) {
   const [editOrder, setEditOrder] = useState(false);
   const pollRef = useRef(null);
 
-  // Date navigation
-  const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
-  const [selectedDate, setSelectedDate] = useState(todayMidnight);
-  const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
+  // Date navigation. "Today" is the previous slate until noon Eastern.
+  const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
   const shiftDate = (n) => setSelectedDate((d) => { const next = new Date(d); next.setDate(next.getDate() + n); return next; });
 
   const myTeamIds = favorites.teams.filter((t) => t.sport === activeSport).map((t) => t.team.id);
@@ -510,8 +495,8 @@ export default function TodaysScores({ compact = false, onCollapse }) {
             <button className="ts-date-btn" onClick={() => shiftDate(activeSport === 'nfl' ? -7 : -1)}>‹</button>
             <span className="ts-date-label">
               {activeSport === 'nfl'
-                ? (getNflWeekLabel(getNflWeekInfo(selectedDate)) || formatDateLabel(selectedDate))
-                : formatDateLabel(selectedDate)}
+                ? (getNflWeekLabel(getNflWeekInfo(selectedDate)) || formatSportsDateLabel(selectedDate, sportsToday))
+                : formatSportsDateLabel(selectedDate, sportsToday)}
             </span>
             <button className="ts-date-btn" onClick={() => shiftDate(activeSport === 'nfl' ? 7 : 1)}>›</button>
           </div>
@@ -543,7 +528,7 @@ export default function TodaysScores({ compact = false, onCollapse }) {
         <div className="ts-expanded">
           <div className="ts-expanded-header">
             <span className="ts-expanded-title">
-              {SPORTS[activeSport]?.label} · {activeSport === 'nfl' ? (getNflWeekLabel(getNflWeekInfo(selectedDate)) || formatDateLabel(selectedDate)) : formatDateLabel(selectedDate)}
+              {SPORTS[activeSport]?.label} · {activeSport === 'nfl' ? (getNflWeekLabel(getNflWeekInfo(selectedDate)) || formatSportsDateLabel(selectedDate, sportsToday)) : formatSportsDateLabel(selectedDate, sportsToday)}
               {liveCount > 0 && <span className="ts-live-badge" style={{marginLeft:8}}><span className="ts-live-dot" />{liveCount} Live</span>}
             </span>
             <button className="btn-ghost btn-sm" onClick={() => setExpanded(false)}>Close</button>

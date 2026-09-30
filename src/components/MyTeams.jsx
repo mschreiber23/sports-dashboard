@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
 import TeamRow from './TeamRow';
 import { SPORTS } from '../api/espn';
+import useSportsDaySelection from '../hooks/useSportsDay';
+import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const SLUG_TO_SPORT = { mlb:'mlb', nba:'nba', nfl:'nfl', nhl:'nhl', baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl' };
 const SPORT_COLORS  = { mlb:'#e74c3c', nba:'#f39c12', nfl:'#27ae60', nhl:'#3498db' };
@@ -12,29 +14,12 @@ function extractTeamId(uid = '') {
   return m ? m[1] : null;
 }
 
-function toDateStr(date) {
-  return date.toISOString().slice(0, 10).replace(/-/g, '');
-}
-function formatDisplay(date) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const d = new Date(date);
-  d.setHours(0,0,0,0);
-  const diff = Math.round((d - today) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === -1) return 'Yesterday';
-  if (diff === 1) return 'Tomorrow';
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
 export default function MyTeams({ editMode = false, setEditMode }) {
   const { favorites, addTeam, removeTeam, reorderTeam } = useFavorites();
   const [showPicker, setShowPicker] = useState(false);
 
-  // Date navigation
-  const todayMidnight = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
-  const [selectedDate, setSelectedDate] = useState(todayMidnight);
-  const isToday = toDateStr(selectedDate) === toDateStr(todayMidnight());
+  // Date navigation. "Today" keeps the previous slate until noon Eastern.
+  const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
   const dateStr = isToday ? null : toDateStr(selectedDate);
 
   const shiftDate = (days) => setSelectedDate((d) => {
@@ -147,17 +132,17 @@ export default function MyTeams({ editMode = false, setEditMode }) {
             <div className="mt-date-inline">
               <button className="mt-date-btn" onClick={() => shiftDate(-1)}>‹</button>
               <label className="mt-date-display">
-                {formatDisplay(selectedDate)}
+                {formatSportsDateLabel(selectedDate, sportsToday, { weekday: true })}
                 <input
                   type="date"
                   className="mt-date-input"
-                  value={selectedDate.toISOString().slice(0, 10)}
+                  value={toIsoDate(selectedDate)}
                   onChange={(e) => setSelectedDate(new Date(e.target.value + 'T12:00:00'))}
                 />
               </label>
               <button className="mt-date-btn" onClick={() => shiftDate(1)}>›</button>
               {!isToday && (
-                <button className="mt-date-today" onClick={() => setSelectedDate(todayMidnight())}>
+                <button className="mt-date-today" onClick={() => setSelectedDate(sportsDayDate())}>
                   ↩
                 </button>
               )}

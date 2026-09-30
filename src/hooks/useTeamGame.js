@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getScoreboard, getTeamSchedule } from '../api/espn';
 import { getNflWeekGames, getNflWeekInfo } from '../api/nfl';
+import { sportsDayStr } from '../utils/sportsDay';
 
 const CACHE_TTL = 60 * 1000; // 60 seconds — show cached data instantly, refresh in background
 
@@ -20,18 +21,23 @@ function writeCache(key, data) {
   try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
 }
 
+function ymdToLocalDate(ymd) {
+  return new Date(
+    Number(ymd.slice(0, 4)),
+    Number(ymd.slice(4, 6)) - 1,
+    Number(ymd.slice(6, 8)),
+    12, 0, 0, 0,
+  );
+}
+
 export default function useTeamGame(sport, teamId, refreshInterval = 30000, dateStr = null) {
-  const todayStr = (() => {
-    const d = new Date();
-    return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
-  })();
+  // Null date means the today view: previous slate until noon Eastern.
+  const todayStr = sportsDayStr();
   const effectiveDateStr = dateStr || todayStr;
 
   // For NFL: use the week as the cache key so all dates in the same week share cache
   const isNfl = sport === 'nfl';
-  const nflWeekInfo = isNfl ? getNflWeekInfo(
-    new Date(effectiveDateStr.slice(0,4)+'-'+effectiveDateStr.slice(4,6)+'-'+effectiveDateStr.slice(6,8))
-  ) : null;
+  const nflWeekInfo = isNfl ? getNflWeekInfo(ymdToLocalDate(effectiveDateStr)) : null;
   const ckSuffix = isNfl && nflWeekInfo
     ? `nfl_week_${nflWeekInfo.week}_${nflWeekInfo.seasontype}`
     : effectiveDateStr;
@@ -48,9 +54,7 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
       let events;
       if (isNfl && nflWeekInfo) {
         // NFL: fetch the entire week's games
-        events = await getNflWeekGames(
-          new Date(effectiveDateStr.slice(0,4)+'-'+effectiveDateStr.slice(4,6)+'-'+effectiveDateStr.slice(6,8))
-        );
+        events = await getNflWeekGames(ymdToLocalDate(effectiveDateStr));
       } else {
         events = await getScoreboard(sport, effectiveDateStr);
       }
