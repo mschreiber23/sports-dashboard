@@ -2523,7 +2523,7 @@ const COLS = {
   nfl_passing:  ['C/ATT','YDS','AVG','TD','INT','RTG'],
   nfl_rushing:  ['CAR','YDS','AVG','TD','LONG'],
   nfl_receiving:['REC','YDS','AVG','TD','LONG','TGTS'],
-  nhl_skater:   ['G','A','+/-','SOG','S','SM','HT','BS','TK','GV','PIM','SHFT','TOI'],
+  nhl_skater:   ['G','A','+/-','S','SM','HT','BS','TK','GV','PIM','SHFT','TOI'],
   nhl_goalie:   ['SV','GA','SA','SV%','TOI','PIM'],
 };
 const HL = { mlb: ['H','HR','RBI','ERA'], nba: ['PTS','REB','AST'], nfl: ['YDS','TD'], nhl: ['G','A','SOG'] };
