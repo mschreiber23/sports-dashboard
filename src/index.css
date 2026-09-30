@@ -7595,8 +7595,18 @@ thead .dfs-sticky-player {
   font-size: 10px; font-weight: 700; color: var(--text2);
   white-space: nowrap; min-width: 54px; flex-shrink: 0;
 }
+.nhl-card-goal-info {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+}
 .nhl-card-goal-scorer {
-  flex: 1; color: var(--text); font-weight: 600; min-width: 0;
+  color: var(--text); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nhl-card-goal-count {
+  font-weight: 400; color: var(--text2); font-size: 11px;
+}
+.nhl-card-goal-assists {
+  font-size: 10px; color: var(--text2); font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .nhl-card-goal-score {

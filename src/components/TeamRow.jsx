@@ -1148,15 +1148,25 @@ async function fetchNhlGameSummary(gameId) {
   const goals = plays
     .filter(p => p.type?.text === 'Goal')
     .map(p => {
-      const ath    = p.participants?.[0]?.athlete;
+      const scorer  = p.participants?.find(x => x.type === 'scorer')?.athlete
+                   || p.participants?.[0]?.athlete;
+      const assists = p.participants
+        ?.filter(x => x.type === 'assister' || x.type === 'firstAssist' || x.type === 'secondAssist')
+        .map(x => x.athlete?.shortName || x.athlete?.displayName || '')
+        .filter(Boolean) || [];
+      // Goal count: extract "(7)" from "McDavid Goal (7) Snap Shot, assists: ..."
+      const goalCountMatch = p.text?.match(/Goal\s*\((\d+)\)/i);
+      const goalCount = goalCountMatch?.[1] || null;
       const teamId = String(p.team?.id || '');
       return {
         period:    p.period?.number || '?',
         time:      p.clock?.displayValue || '',
-        scorer:    ath?.shortName || ath?.displayName || '?',
-        headshot:  ath?.headshot?.href || espnNhlHeadshot(ath?.id),
+        scorer:    scorer?.shortName || scorer?.displayName || '?',
+        headshot:  scorer?.headshot?.href || espnNhlHeadshot(scorer?.id),
         teamLogo:  teamLogos[teamId] || null,
-        espnId:    ath?.id,
+        espnId:    scorer?.id,
+        goalCount,
+        assists,
         awayScore: p.awayScore ?? 0,
         homeScore: p.homeScore ?? 0,
         teamId,
@@ -1221,7 +1231,14 @@ function NhlFinalCard({ game, navigate, accentColor }) {
                 {g.headshot
                   ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
                   : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <span className="nhl-card-goal-scorer">{g.scorer}</span>
+                <div className="nhl-card-goal-info">
+                  <span className="nhl-card-goal-scorer">
+                    {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
+                  </span>
+                  {g.assists.length > 0 && (
+                    <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
+                  )}
+                </div>
                 {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
                 <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
               </div>
@@ -1309,7 +1326,14 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
                 {g.headshot
                   ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
                   : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <span className="nhl-card-goal-scorer">{g.scorer}</span>
+                <div className="nhl-card-goal-info">
+                  <span className="nhl-card-goal-scorer">
+                    {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
+                  </span>
+                  {g.assists.length > 0 && (
+                    <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
+                  )}
+                </div>
                 {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
                 <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
               </div>
