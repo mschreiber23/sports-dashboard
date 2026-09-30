@@ -101,15 +101,22 @@ function IceRink({ homeLogo, awayLogo }) {
   );
 }
 
+/* ─── Team logo helper ───────────────────────────────── */
+function teamLogo(team) {
+  return team?.logo || team?.logos?.[0]?.href || null;
+}
+function teamById(competitors, id) {
+  if (!id) return null;
+  return competitors?.find(c => String(c.team?.id) === String(id)) || null;
+}
+
 /* ─── Recent play row (Gamecast) ─────────────────────── */
-function RecentRow({ play, away, home }) {
+function RecentRow({ play, away, home, competitors }) {
   const typeText  = play.type?.text || '';
   const isGoal    = typeText === 'Goal';
   const isSpecial = HIDE_TYPES.has(typeText) || typeText === 'Stoppage';
-  const isHome    = play.team?.id && play.team.id === home?.team?.id;
-  const isAway    = play.team?.id && play.team.id === away?.team?.id;
-  const teamComp  = isHome ? home : (isAway ? away : null);
-  const logo      = teamComp?.team?.logo;
+  const teamComp  = teamById(competitors, play.team?.id);
+  const logo      = teamLogo(teamComp?.team);
 
   return (
     <div className={`nhl-recent-row${isGoal?' nhl-recent-row-goal':''}${isSpecial?' nhl-recent-row-special':''}`}>
@@ -124,13 +131,11 @@ function RecentRow({ play, away, home }) {
 }
 
 /* ─── PBP row ────────────────────────────────────────── */
-function PbpRow({ play, away, home }) {
+function PbpRow({ play, away, home, competitors }) {
   const typeText = play.type?.text || '';
   const badge    = getBadge(play);
-  const isHome   = play.team?.id && play.team.id === home?.team?.id;
-  const isAway   = play.team?.id && play.team.id === away?.team?.id;
-  const teamComp = isHome ? home : (isAway ? away : null);
-  const logo     = teamComp?.team?.logo;
+  const teamComp = teamById(competitors, play.team?.id);
+  const logo     = teamLogo(teamComp?.team);
   const isGoal   = typeText === 'Goal';
   const periodStr = (play.period?.displayValue || '').toUpperCase();
 
@@ -176,7 +181,7 @@ export function NhlPbpTab({ data, competitors, status }) {
 
   return (
     <div className="nhl-pbp-wrap">
-      {plays.map((p,i) => <PbpRow key={p.id||i} play={p} away={away} home={home}/>)}
+      {plays.map((p,i) => <PbpRow key={p.id||i} play={p} away={away} home={home} competitors={competitors}/>)}
     </div>
   );
 }
@@ -210,8 +215,8 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
   const recent = [...plays].reverse().filter(p => !HIDE_TYPES.has(p.type?.text)).slice(0, 10);
   const lastPlay = recent[0];
 
-  const homeLogo = home?.team?.logo;
-  const awayLogo = away?.team?.logo;
+  const homeLogo = teamLogo(home?.team);
+  const awayLogo = teamLogo(away?.team);
 
   if (!data && !comp) return <div className="tp-loading">Loading game data…</div>;
 
@@ -262,10 +267,11 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
         {/* Ice rink */}
         <IceRink homeLogo={homeLogo} awayLogo={awayLogo}/>
 
+
         {/* Recent plays */}
         {recent.length > 0 && (
           <div className="nhl-recent-plays">
-            {recent.map((p,i) => <RecentRow key={p.id||i} play={p} away={away} home={home}/>)}
+            {recent.map((p,i) => <RecentRow key={p.id||i} play={p} away={away} home={home} competitors={competitors}/>)}
           </div>
         )}
 
