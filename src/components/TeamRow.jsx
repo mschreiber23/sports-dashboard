@@ -1120,6 +1120,15 @@ async function fetchNhlGameSummary(gameId) {
     if (id) teamLogos[id] = c.team?.logos?.[0]?.href || c.team?.logo || null;
   }
 
+  // Team-level stats (shots, hits) keyed by homeAway
+  const teamStats = {};
+  for (const t of d.boxscore?.teams || []) {
+    const ha = t.homeAway;
+    const sm = {};
+    for (const s of t.statistics || []) sm[s.name] = s.displayValue;
+    if (ha) teamStats[ha] = sm;
+  }
+
   // One goalie row per team (primary = first listed)
   const goalies = [];
   for (const team of players) {
@@ -1173,7 +1182,59 @@ async function fetchNhlGameSummary(gameId) {
       };
     });
 
-  return { goalies, goals };
+  return { goalies, goals, teamStats };
+}
+
+/* ── NHL team rows with shots + hits ────────────────── */
+function NhlTeamRows({ away, home, showScore, finalLabel, liveLabel, awayScoreOverride, homeScoreOverride, teamStats = {} }) {
+  const rec   = (c) => c?.records?.[0]?.summary || '';
+  const score = (c) => {
+    if (c?.homeAway === 'away' && awayScoreOverride != null) return awayScoreOverride;
+    if (c?.homeAway === 'home' && homeScoreOverride != null) return homeScoreOverride;
+    const s = c?.score;
+    if (s == null) return '—';
+    return typeof s === 'object' ? s.displayValue : String(s);
+  };
+  return (
+    <div className="mlbc-teams">
+      {showScore && (
+        <div className="mlbc-rhe-header">
+          {finalLabel ? <span className="mlbc-final-label">{finalLabel}</span>
+          : liveLabel  ? liveLabel
+          : <span className="mlbc-rhe-spacer" />}
+          <span style={{width:40,textAlign:'right',fontSize:11,color:'var(--text2)'}}>PTS</span>
+        </div>
+      )}
+      {[away, home].filter(Boolean).map((c) => {
+        const ha  = c.homeAway;
+        const ts  = teamStats[ha] || {};
+        const sog = ts.shotsTotal;
+        const hit = ts.hits;
+        return (
+          <div key={c.team?.id} className="mlbc-team-row">
+            <LogoImg team={c.team} className="mlbc-logo" />
+            <div className="mlbc-team-info">
+              <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
+              <div className="nhl-team-meta-row">
+                <span className="mlbc-rec">{rec(c)}</span>
+                {(sog || hit) && (
+                  <span className="nhl-team-game-stats">
+                    {sog && <span>{sog} SOG</span>}
+                    {hit && <span>{hit} HIT</span>}
+                  </span>
+                )}
+              </div>
+            </div>
+            {showScore && (
+              <span className={`mlbc-stat${c.winner ? ' mlbc-winner' : ''}`} style={{width:40}}>
+                {score(c)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /* ── NHL Final card ──────────────────────────────────── */
@@ -1189,12 +1250,12 @@ function NhlFinalCard({ game, navigate, accentColor }) {
     fetchNhlGameSummary(game.id).then(setNhlData).catch(() => {});
   }, [game.id]);
 
-  const { goalies = [], goals = [] } = nhlData || {};
+  const { goalies = [], goals = [], teamStats = {} } = nhlData || {};
 
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
       <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
-        <GenericTeamRows away={away} home={home} sport="nhl" showScore finalLabel="FINAL" />
+        <NhlTeamRows away={away} home={home} showScore finalLabel="FINAL" teamStats={teamStats} />
       </div>
 
       {/* Goalie stats — like pitcher decisions in MLB */}
@@ -1282,7 +1343,7 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
     return () => clearInterval(timerRef.current);
   }, [game.id]);
 
-  const { goalies = [], goals = [] } = nhlData || {};
+  const { goalies = [], goals = [], teamStats = {} } = nhlData || {};
 
   const liveLabel = (
     <span className="mlbc-live-inline">
@@ -1294,8 +1355,8 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
       <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
-        <GenericTeamRows away={away} home={home} sport="nhl" showScore liveLabel={liveLabel}
-          awayScoreOverride={awayScore} homeScoreOverride={homeScore} />
+        <NhlTeamRows away={away} home={home} showScore liveLabel={liveLabel}
+          awayScoreOverride={awayScore} homeScoreOverride={homeScore} teamStats={teamStats} />
       </div>
 
       {goalies.length > 0 && (

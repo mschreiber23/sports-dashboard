@@ -7553,6 +7553,18 @@ thead .dfs-sticky-player {
 
 /* ── Generic Sport Cards (NFL/NBA/NHL) ───────────────── */
 /* ── NHL card: goalie stats + goal scorers ─────────── */
+/* NHL team meta row: record + shots/hits */
+.nhl-team-meta-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.nhl-team-game-stats {
+  display: flex; gap: 5px; align-items: center;
+  font-size: 10px; color: var(--text2); font-weight: 600;
+}
+.nhl-team-game-stats span {
+  background: var(--bg3); border-radius: 3px; padding: 0 4px;
+}
+
 .nhl-card-headshot {
   width: 28px; height: 28px; border-radius: 50%;
   object-fit: cover; object-position: top; flex-shrink: 0;
