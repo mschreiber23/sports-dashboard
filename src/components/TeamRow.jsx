@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import useLiveSituation from '../hooks/useLiveSituation';
@@ -1099,6 +1099,202 @@ function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, 
   );
 }
 
+/* ── NHL game summary fetch ──────────────────────────── */
+async function fetchNhlGameSummary(gameId) {
+  const r = await fetch(
+    `https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/summary?event=${gameId}`
+  );
+  const d = await r.json();
+
+  const players = d.boxscore?.players || [];
+  const plays   = d.plays || [];
+
+  // One goalie row per team (primary = first listed)
+  const goalies = [];
+  for (const team of players) {
+    const abbr = team.team?.abbreviation || '';
+    const gg   = (team.statistics || []).find(sg => sg.name === 'goalies');
+    if (!gg?.athletes?.length) continue;
+    const labels = gg.labels || [];
+    const gaIdx  = labels.indexOf('GA');
+    const svIdx  = labels.indexOf('SV');
+    const svpIdx = labels.indexOf('SV%');
+    const ath    = gg.athletes[0];          // primary goalie (most TOI / first listed)
+    const stats  = ath.stats || [];
+    goalies.push({
+      abbr,
+      name:  ath.athlete?.shortName || ath.athlete?.displayName || '',
+      espnId: ath.athlete?.id,
+      ga:    stats[gaIdx]  ?? '—',
+      sv:    stats[svIdx]  ?? '—',
+      svp:   stats[svpIdx] || '',
+    });
+  }
+
+  // All goals in chronological order
+  const goals = plays
+    .filter(p => p.type?.text === 'Goal')
+    .map(p => ({
+      period:    p.period?.number || '?',
+      time:      p.clock?.displayValue || '',
+      scorer:    p.participants?.[0]?.athlete?.shortName || p.participants?.[0]?.athlete?.displayName || '?',
+      espnId:    p.participants?.[0]?.athlete?.id,
+      awayScore: p.awayScore ?? 0,
+      homeScore: p.homeScore ?? 0,
+      teamId:    String(p.team?.id || ''),
+    }));
+
+  return { goalies, goals };
+}
+
+/* ── NHL Final card ──────────────────────────────────── */
+function NhlFinalCard({ game, navigate, accentColor }) {
+  const [nhlData, setNhlData] = useState(null);
+  const comp        = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[1];
+
+  useEffect(() => {
+    if (!game.id) return;
+    fetchNhlGameSummary(game.id).then(setNhlData).catch(() => {});
+  }, [game.id]);
+
+  const { goalies = [], goals = [] } = nhlData || {};
+
+  return (
+    <div className="mlbc-card" style={accentStyle(accentColor)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
+        <GenericTeamRows away={away} home={home} sport="nhl" showScore finalLabel="FINAL" />
+      </div>
+
+      {/* Goalie stats — like pitcher decisions in MLB */}
+      {goalies.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="nhl-card-goalies">
+            {goalies.map((g, i) => (
+              <div key={i} className="nhl-card-goalie-row"
+                style={{ cursor: g.espnId ? 'pointer' : 'default' }}
+                onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
+                <span className="nhl-card-goalie-abbr">{g.abbr}</span>
+                <span className="nhl-card-goalie-name">{g.name}</span>
+                <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Goal scorers — like top performers in MLB */}
+      {goals.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="nhl-card-goals">
+            {goals.map((g, i) => (
+              <div key={i} className="nhl-card-goal-row"
+                style={{ cursor: g.espnId ? 'pointer' : 'default' }}
+                onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
+                <span className="nhl-card-goal-period">P{g.period} {g.time}</span>
+                <span className="nhl-card-goal-scorer">{g.scorer}</span>
+                <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="mlbc-divider" />
+      <div className="mlbc-actions">
+        <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } }); }}>Gamecast</span>
+        <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Box Score' } }); }}>Box Score</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── NHL Live card ───────────────────────────────────── */
+function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
+  const [nhlData, setNhlData] = useState(null);
+  const timerRef    = useRef(null);
+  const comp        = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
+  const home = competitors.find(c => c.homeAway === 'home') || competitors[1];
+  const broadcast   = comp?.broadcasts?.[0]?.names?.[0] || '';
+
+  const nhlPeriod = nhlScore?.period;
+  const nhlPType  = nhlScore?.periodType || 'REG';
+  const nhlPLabel = nhlPeriod ? (nhlPType === 'OT' ? 'OT' : `P${nhlPeriod}`) : '';
+  const espnStr   = comp?.status?.type?.shortDetail || '';
+  const liveStr   = nhlPLabel && nhlScore?.clock ? `${nhlPLabel} ${nhlScore.clock}` : espnStr;
+  const awayScore = nhlScore?.awayScore != null ? String(nhlScore.awayScore) : null;
+  const homeScore = nhlScore?.homeScore != null ? String(nhlScore.homeScore) : null;
+
+  useEffect(() => {
+    if (!game.id) return;
+    const load = () => fetchNhlGameSummary(game.id).then(setNhlData).catch(() => {});
+    load();
+    timerRef.current = setInterval(load, 60000);
+    return () => clearInterval(timerRef.current);
+  }, [game.id]);
+
+  const { goalies = [], goals = [] } = nhlData || {};
+
+  const liveLabel = (
+    <span className="mlbc-live-inline">
+      <span className="mlbc-inning-live">{liveStr}</span>
+      {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+    </span>
+  );
+
+  return (
+    <div className="mlbc-card" style={accentStyle(accentColor)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
+        <GenericTeamRows away={away} home={home} sport="nhl" showScore liveLabel={liveLabel}
+          awayScoreOverride={awayScore} homeScoreOverride={homeScore} />
+      </div>
+
+      {goalies.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="nhl-card-goalies">
+            {goalies.map((g, i) => (
+              <div key={i} className="nhl-card-goalie-row">
+                <span className="nhl-card-goalie-abbr">{g.abbr}</span>
+                <span className="nhl-card-goalie-name">{g.name}</span>
+                <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {goals.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="nhl-card-goals">
+            {goals.map((g, i) => (
+              <div key={i} className="nhl-card-goal-row">
+                <span className="nhl-card-goal-period">P{g.period} {g.time}</span>
+                <span className="nhl-card-goal-scorer">{g.scorer}</span>
+                <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {nhlScore?.ppTeam && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="sport-sit-line">⚡ {nhlScore.ppTeam} Power Play</div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SportPreCard({ game, sport, navigate, accentColor }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -1307,8 +1503,16 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
 
   // NFL / NBA / NHL — generic sport cards
   if (!game) return <SportNoGameCard team={team} sport={sport} accentColor={accentColor} />;
-  if (isLive) return <SportLiveCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   const st2 = game.competitions?.[0]?.status?.type?.state;
+
+  // NHL gets dedicated cards with goalie stats + goal scorers
+  if (sport === 'nhl') {
+    if (isLive)       return <NhlLiveCard  game={game} navigate={navigate} accentColor={accentColor} />;
+    if (st2 === 'post') return <NhlFinalCard game={game} navigate={navigate} accentColor={accentColor} />;
+    return <SportPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
+  }
+
+  if (isLive) return <SportLiveCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   if (st2 === 'post') return <SportFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   return <SportPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
 }
@@ -1409,4 +1613,4 @@ export function MiLBGameCard({ game, navigate }) {
 }
 
 // Named exports for use in ScoresPage and elsewhere
-export { MlbPreCard, MlbLiveCard, MlbFinalCard, fetchMlbDecisions, SportPreCard, SportLiveCard, SportFinalCard };
+export { MlbPreCard, MlbLiveCard, MlbFinalCard, fetchMlbDecisions, SportPreCard, SportLiveCard, SportFinalCard, NhlFinalCard, NhlLiveCard };

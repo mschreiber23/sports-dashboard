@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
-import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard } from '../components/TeamRow';
+import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard, NhlFinalCard, NhlLiveCard } from '../components/TeamRow';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 const SPORT_LABELS = Object.fromEntries(Object.entries(SPORTS).map(([k,v]) => [k, v.label]));
@@ -236,9 +236,14 @@ export default function ScoresPage() {
               if (st === 'post') return <MlbFinalCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
               return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
             }
+            if (activeSport === 'nhl') {
+              if (st === 'post') return <NhlFinalCard key={game.id} game={game} navigate={navigate} accentColor={accentColor} />;
+              if (st === 'in')   return <NhlLiveCard  key={game.id} game={game} navigate={navigate} accentColor={accentColor} nhlScore={nhlScoreMap[game.id]} />;
+              return <SportPreCard key={game.id} game={game} sport="nhl" navigate={navigate} accentColor={accentColor} />;
+            }
             if (st === 'pre')  return <SportPreCard   key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
             if (st === 'post') return <SportFinalCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
-            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} nhlScore={activeSport === 'nhl' ? nhlScoreMap[game.id] : null} />;
+            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
           })}
         </div>
       )}

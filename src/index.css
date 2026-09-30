@@ -7552,6 +7552,52 @@ thead .dfs-sticky-player {
 }
 
 /* ── Generic Sport Cards (NFL/NBA/NHL) ───────────────── */
+/* ── NHL card: goalie stats + goal scorers ─────────── */
+.nhl-card-goalies {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 14px;
+}
+.nhl-card-goalie-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; padding: 1px 0;
+}
+.nhl-card-goalie-abbr {
+  font-size: 10px; font-weight: 800; color: var(--text2);
+  text-transform: uppercase; min-width: 28px; flex-shrink: 0;
+}
+.nhl-card-goalie-name {
+  flex: 1; color: var(--text); font-weight: 600; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nhl-card-goalie-stats {
+  font-size: 11px; color: var(--text2); flex-shrink: 0; font-variant-numeric: tabular-nums;
+}
+
+.nhl-card-goals {
+  display: flex; flex-direction: column; gap: 0;
+  padding: 4px 0;
+}
+.nhl-card-goal-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 14px; font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.nhl-card-goal-row:last-child { border-bottom: none; }
+.nhl-card-goal-row:hover { background: var(--bg3); }
+.nhl-card-goal-period {
+  font-size: 10px; font-weight: 700; color: var(--text2);
+  white-space: nowrap; min-width: 58px; flex-shrink: 0;
+}
+.nhl-card-goal-scorer {
+  flex: 1; color: var(--text); font-weight: 600; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nhl-card-goal-score {
+  font-size: 11px; font-weight: 800; color: var(--text);
+  flex-shrink: 0; font-variant-numeric: tabular-nums;
+}
+
 .sport-sit-line {
   padding: 7px 14px;
   font-size: 11px;
