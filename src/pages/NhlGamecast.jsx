@@ -7,16 +7,55 @@
 
 /* ─── Badge config (keyed by ESPN play type text) ──── */
 const BADGES = {
-  'Shot on Goal':  { label: 'SHOT ON GOAL',  bg: '#14532d', color: '#4ade80' },
-  'Blocked Shot':  { label: 'SHOT BLOCKED',  bg: '#7c2d12', color: '#fb923c' },
-  'Missed Shot':   { label: 'MISSED SHOT',   bg: '#1f2937', color: '#9ca3af' },
+  'Shot':          { label: 'SHOT ON GOAL',  bg: '#14532d', color: '#4ade80' },
+  'Blocked':       { label: 'SHOT BLOCKED',  bg: '#7c2d12', color: '#fb923c' },
+  'Missed':        { label: 'MISSED SHOT',   bg: '#1f2937', color: '#9ca3af' },
   'Goal':          { label: 'GOAL',          bg: '#7f1d1d', color: '#f87171' },
   'Hit':           { label: 'HIT',           bg: '#3b0764', color: '#c4b5fd' },
   'Giveaway':      { label: 'GIVEAWAY',      bg: '#78350f', color: '#fbbf24' },
   'Takeaway':      { label: 'TAKEAWAY',      bg: '#134e4a', color: '#2dd4bf' },
   'Face Off':      { label: 'FACE-OFF',      bg: '#1e3a5f', color: '#60a5fa' },
-  'Penalty':       { label: 'PENALTY',       bg: '#7f1d1d', color: '#fbbf24' },
 };
+const PENALTY_BADGE = { label: 'PENALTY', bg: '#7f1d1d', color: '#fbbf24' };
+
+/** Resolve a badge for any ESPN play (handles named penalty types too) */
+function getBadge(play) {
+  const t = play.type?.text || '';
+  if (BADGES[t]) return BADGES[t];
+  // ESPN uses the penalty name as type text (Tripping, Hooking, Fighting, etc.)
+  if (play.type?.penaltyType || play.type?.penaltyMinutes ||
+      play.participants?.some(p => p.penaltyCodes?.length)) return PENALTY_BADGE;
+  // Fall back: if play has participants and a non-noise type, show penalty badge
+  // (catches Tripping/Hooking/etc. where penaltyType field may be missing)
+  if (play.participants?.length && !HIDE_TYPES.has(t) && t !== 'Stoppage' && t !== '') {
+    return PENALTY_BADGE;
+  }
+  return null;
+}
+
+/* ─── Bold participant names in play text ────────────── */
+function boldNames(text, participants) {
+  if (!text || !participants?.length) return text;
+  const names = participants
+    .map(p => p.athlete?.displayName)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length); // longest first avoids partial matches
+  let parts = [text];
+  for (const name of names) {
+    const next = [];
+    for (const part of parts) {
+      if (typeof part !== 'string') { next.push(part); continue; }
+      const idx = part.indexOf(name);
+      if (idx === -1) { next.push(part); continue; }
+      if (idx > 0) next.push(part.slice(0, idx));
+      next.push(<strong key={name + idx}>{name}</strong>);
+      const after = part.slice(idx + name.length);
+      if (after) next.push(after);
+    }
+    parts = next;
+  }
+  return parts;
+}
 
 /* Plays to hide from feed (noise) */
 const HIDE_TYPES = new Set(['Period Start', 'Period End', 'Game Start', 'Game End']);
@@ -66,7 +105,7 @@ function IceRink({ homeLogo, awayLogo }) {
 function RecentRow({ play, away, home }) {
   const typeText  = play.type?.text || '';
   const isGoal    = typeText === 'Goal';
-  const isSpecial = HIDE_TYPES.has(typeText);
+  const isSpecial = HIDE_TYPES.has(typeText) || typeText === 'Stoppage';
   const isHome    = play.team?.id && play.team.id === home?.team?.id;
   const isAway    = play.team?.id && play.team.id === away?.team?.id;
   const teamComp  = isHome ? home : (isAway ? away : null);
@@ -78,7 +117,7 @@ function RecentRow({ play, away, home }) {
       {logo
         ? <img src={logo} alt="" className="nhl-recent-logo" onError={e=>e.target.style.display='none'}/>
         : <span className="nhl-recent-logo-placeholder">🏒</span>}
-      <span className="nhl-recent-desc">{play.text}</span>
+      <span className="nhl-recent-desc">{boldNames(play.text, play.participants)}</span>
       {isGoal && <span className="nhl-recent-score">{play.awayScore}–{play.homeScore}</span>}
     </div>
   );
@@ -87,18 +126,17 @@ function RecentRow({ play, away, home }) {
 /* ─── PBP row ────────────────────────────────────────── */
 function PbpRow({ play, away, home }) {
   const typeText = play.type?.text || '';
-  const badge    = BADGES[typeText];
+  const badge    = getBadge(play);
   const isHome   = play.team?.id && play.team.id === home?.team?.id;
   const isAway   = play.team?.id && play.team.id === away?.team?.id;
   const teamComp = isHome ? home : (isAway ? away : null);
   const logo     = teamComp?.team?.logo;
   const isGoal   = typeText === 'Goal';
-
-  // Period label: "3rd" → "3RD"
   const periodStr = (play.period?.displayValue || '').toUpperCase();
 
   if (!badge) {
-    // Stoppages, period starts/ends, etc.
+    // Stoppages, period markers, etc.
+    if (!play.text) return null;
     return (
       <div className="nhl-pbp-special">
         <span className="nhl-pbp-special-text">{play.text}</span>
@@ -118,7 +156,7 @@ function PbpRow({ play, away, home }) {
           <span className="nhl-pbp-time">{play.clock?.displayValue}</span>
           {isGoal && <span className="nhl-pbp-score">{play.awayScore}–{play.homeScore}</span>}
         </div>
-        <div className="nhl-pbp-desc">{play.text}</div>
+        <div className="nhl-pbp-desc">{boldNames(play.text, play.participants)}</div>
       </div>
     </div>
   );
