@@ -1257,7 +1257,7 @@ function SportNoGameCard({ team, sport, accentColor }) {
 
 /* ── Main TeamRow ────────────────────────────────────── */
 export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
-  const { removeTeam } = useFavorites();
+  const { removeTeam, updateTeamColor } = useFavorites();
   const { game, loading, hasUpcomingGame } = useTeamGame(sport, team.id, 30000, dateStr);
   const navigate = useNavigate();
 
@@ -1265,9 +1265,18 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const liveData = useLiveSituation(sport, isLive && sport !== 'mlb' ? game : null);
   // MLB live games use useMlbLiveGame inside MlbLiveCard itself (self-contained)
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
-  // Adapted accent color — visible even for dark team colors (e.g. navy, midnight green)
-  const rawColor = team.color ? `#${team.color}` : null;
-  const rawAlt   = team.alternateColor ? `#${team.alternateColor}` : null;
+
+  // Accent color: prefer stored team color, fall back to live game competitor color
+  // (catches teams added before color fetching was in place, or where API fetch failed)
+  const gameComp = game?.competitions?.[0]?.competitors?.find(
+    c => String(c.team?.id) === String(team.id)
+  );
+  const rawColor = team.color        ? `#${team.color}`
+    : gameComp?.team?.color          ? `#${gameComp.team.color}`
+    : null;
+  const rawAlt   = team.alternateColor      ? `#${team.alternateColor}`
+    : gameComp?.team?.alternateColor        ? `#${gameComp.team.alternateColor}`
+    : null;
   const accentColor = adaptColorForDarkBg(rawColor, rawAlt, '#0092ff');
 
   useEffect(() => {
@@ -1275,6 +1284,13 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
       onHiddenChange?.(team.id, sport, !hasUpcomingGame);
     }
   }, [hasUpcomingGame]);
+
+  // If stored team is missing color but game data has it, patch favorites so future loads are correct
+  useEffect(() => {
+    if (!team.color && gameComp?.team?.color) {
+      updateTeamColor?.(team.id, sport, gameComp.team.color, gameComp.team.alternateColor);
+    }
+  }, [gameComp?.team?.color]);
 
   const goToBoxScore = () => game && navigate(`/boxscore/${sport}/${game.id}`);
 

@@ -111,6 +111,17 @@ export function FavoritesProvider({ children, userId }) {
   const removeTeam = (teamId, sport) =>
     setFavorites((f) => ({ ...f, teams: f.teams.filter((t) => !(t.team.id === teamId && t.sport === sport)) }));
 
+  // Patch color/alternateColor for a stored team (used when game data has fresher colors)
+  const updateTeamColor = (teamId, sport, color, alternateColor) =>
+    setFavorites((f) => ({
+      ...f,
+      teams: f.teams.map((t) =>
+        t.team.id === teamId && t.sport === sport
+          ? { ...t, team: { ...t.team, color, alternateColor } }
+          : t
+      ),
+    }));
+
   const reorderTeam = (from, to) =>
     setFavorites((f) => {
       const teams = [...f.teams];
@@ -147,7 +158,7 @@ export function FavoritesProvider({ children, userId }) {
   return (
     <FavoritesContext.Provider value={{
       favorites, sportOrder,
-      addTeam, removeTeam, reorderTeam,
+      addTeam, removeTeam, reorderTeam, updateTeamColor,
       addPlayer, removePlayer, reorderPlayer, togglePlayerVisibility,
       reorderSport,
     }}>
