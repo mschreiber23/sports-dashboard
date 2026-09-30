@@ -1100,49 +1100,68 @@ function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, 
 }
 
 /* ── NHL game summary fetch ──────────────────────────── */
+const espnNhlHeadshot = (id) =>
+  id ? `https://a.espncdn.com/i/headshots/nhl/players/full/${id}.png` : null;
+
 async function fetchNhlGameSummary(gameId) {
   const r = await fetch(
     `https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/summary?event=${gameId}`
   );
   const d = await r.json();
 
-  const players = d.boxscore?.players || [];
-  const plays   = d.plays || [];
+  const players     = d.boxscore?.players || [];
+  const plays       = d.plays || [];
+  const competitors = d.header?.competitions?.[0]?.competitors || [];
+
+  // Build teamId → logo map from header competitors
+  const teamLogos = {};
+  for (const c of competitors) {
+    const id = String(c.team?.id || '');
+    if (id) teamLogos[id] = c.team?.logos?.[0]?.href || c.team?.logo || null;
+  }
 
   // One goalie row per team (primary = first listed)
   const goalies = [];
   for (const team of players) {
-    const abbr = team.team?.abbreviation || '';
-    const gg   = (team.statistics || []).find(sg => sg.name === 'goalies');
+    const abbr    = team.team?.abbreviation || '';
+    const teamLogo = team.team?.logos?.[0]?.href || team.team?.logo || null;
+    const gg      = (team.statistics || []).find(sg => sg.name === 'goalies');
     if (!gg?.athletes?.length) continue;
-    const labels = gg.labels || [];
-    const gaIdx  = labels.indexOf('GA');
-    const svIdx  = labels.indexOf('SV');
-    const svpIdx = labels.indexOf('SV%');
-    const ath    = gg.athletes[0];          // primary goalie (most TOI / first listed)
-    const stats  = ath.stats || [];
+    const labels  = gg.labels || [];
+    const gaIdx   = labels.indexOf('GA');
+    const svIdx   = labels.indexOf('SV');
+    const ath     = gg.athletes[0];
+    const stats   = ath.stats || [];
+    const espnId  = ath.athlete?.id;
     goalies.push({
       abbr,
-      name:  ath.athlete?.shortName || ath.athlete?.displayName || '',
-      espnId: ath.athlete?.id,
-      ga:    stats[gaIdx]  ?? '—',
-      sv:    stats[svIdx]  ?? '—',
-      svp:   stats[svpIdx] || '',
+      teamLogo,
+      name:     ath.athlete?.shortName || ath.athlete?.displayName || '',
+      headshot: ath.athlete?.headshot?.href || espnNhlHeadshot(espnId),
+      espnId,
+      ga:   stats[gaIdx] ?? '—',
+      sv:   stats[svIdx] ?? '—',
     });
   }
 
   // All goals in chronological order
   const goals = plays
     .filter(p => p.type?.text === 'Goal')
-    .map(p => ({
-      period:    p.period?.number || '?',
-      time:      p.clock?.displayValue || '',
-      scorer:    p.participants?.[0]?.athlete?.shortName || p.participants?.[0]?.athlete?.displayName || '?',
-      espnId:    p.participants?.[0]?.athlete?.id,
-      awayScore: p.awayScore ?? 0,
-      homeScore: p.homeScore ?? 0,
-      teamId:    String(p.team?.id || ''),
-    }));
+    .map(p => {
+      const ath    = p.participants?.[0]?.athlete;
+      const teamId = String(p.team?.id || '');
+      return {
+        period:    p.period?.number || '?',
+        time:      p.clock?.displayValue || '',
+        scorer:    ath?.shortName || ath?.displayName || '?',
+        headshot:  ath?.headshot?.href || espnNhlHeadshot(ath?.id),
+        teamLogo:  teamLogos[teamId] || null,
+        espnId:    ath?.id,
+        awayScore: p.awayScore ?? 0,
+        homeScore: p.homeScore ?? 0,
+        teamId,
+      };
+    });
 
   return { goalies, goals };
 }
@@ -1177,8 +1196,11 @@ function NhlFinalCard({ game, navigate, accentColor }) {
               <div key={i} className="nhl-card-goalie-row"
                 style={{ cursor: g.espnId ? 'pointer' : 'default' }}
                 onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
-                <span className="nhl-card-goalie-abbr">{g.abbr}</span>
+                {g.headshot
+                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
+                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
                 <span className="nhl-card-goalie-name">{g.name}</span>
+                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
                 <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
               </div>
             ))}
@@ -1196,7 +1218,11 @@ function NhlFinalCard({ game, navigate, accentColor }) {
                 style={{ cursor: g.espnId ? 'pointer' : 'default' }}
                 onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
                 <span className="nhl-card-goal-period">P{g.period} {g.time}</span>
+                {g.headshot
+                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
+                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
                 <span className="nhl-card-goal-scorer">{g.scorer}</span>
+                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
                 <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
               </div>
             ))}
@@ -1261,8 +1287,11 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
           <div className="nhl-card-goalies">
             {goalies.map((g, i) => (
               <div key={i} className="nhl-card-goalie-row">
-                <span className="nhl-card-goalie-abbr">{g.abbr}</span>
+                {g.headshot
+                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
+                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
                 <span className="nhl-card-goalie-name">{g.name}</span>
+                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
                 <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
               </div>
             ))}
@@ -1277,7 +1306,11 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
             {goals.map((g, i) => (
               <div key={i} className="nhl-card-goal-row">
                 <span className="nhl-card-goal-period">P{g.period} {g.time}</span>
+                {g.headshot
+                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
+                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
                 <span className="nhl-card-goal-scorer">{g.scorer}</span>
+                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
                 <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
               </div>
             ))}
