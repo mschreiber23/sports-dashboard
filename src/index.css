@@ -7581,16 +7581,23 @@ thead .dfs-sticky-player {
 }
 .nhl-card-goalie-row {
   flex: 1; display: flex; align-items: center; gap: 6px;
-  font-size: 12px; padding: 0 12px;
+  font-size: 12px; padding: 0 10px; min-width: 0;
   border-right: 1px solid var(--border);
 }
 .nhl-card-goalie-row:last-child { border-right: none; }
+.nhl-card-goalie-info {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+}
+.nhl-card-goalie-top {
+  display: flex; align-items: center; gap: 4px; min-width: 0;
+}
 .nhl-card-goalie-name {
-  flex: 1; color: var(--text); font-weight: 600; min-width: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--text); font-weight: 600; min-width: 0;
+  line-height: 1.15;
 }
 .nhl-card-goalie-stats {
-  font-size: 11px; color: var(--text2); flex-shrink: 0; font-variant-numeric: tabular-nums;
+  font-size: 10px; color: var(--text2); font-style: italic;
+  font-variant-numeric: tabular-nums; line-height: 1.2;
 }
 
 .nhl-card-goals {

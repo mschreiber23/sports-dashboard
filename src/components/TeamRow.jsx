@@ -1270,9 +1270,13 @@ function NhlFinalCard({ game, navigate, accentColor }) {
                 {g.headshot
                   ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
                   : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <span className="nhl-card-goalie-name">{g.name}</span>
-                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
-                <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+                <div className="nhl-card-goalie-info">
+                  <div className="nhl-card-goalie-top">
+                    <span className="nhl-card-goalie-name">{g.name}</span>
+                    {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
+                  </div>
+                  <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+                </div>
               </div>
             ))}
           </div>
@@ -1368,9 +1372,13 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
                 {g.headshot
                   ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
                   : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <span className="nhl-card-goalie-name">{g.name}</span>
-                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
-                <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+                <div className="nhl-card-goalie-info">
+                  <div className="nhl-card-goalie-top">
+                    <span className="nhl-card-goalie-name">{g.name}</span>
+                    {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
+                  </div>
+                  <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+                </div>
               </div>
             ))}
           </div>
