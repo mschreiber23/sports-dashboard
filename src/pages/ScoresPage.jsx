@@ -3,70 +3,51 @@ import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
 import { useFavorites } from '../context/FavoritesContext';
 import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard, NhlFinalCard, NhlLiveCard } from '../components/TeamRow';
-import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import useSportsDaySelection from '../hooks/useSportsDay';
 import { formatSportsDateLabel, sportsDayDate, sportsDayStr, toDateStr, toIsoDate } from '../utils/sportsDay';
 const SPORT_LABELS = Object.fromEntries(Object.entries(SPORTS).map(([k,v]) => [k, v.label]));
+const AVAILABLE_SPORTS = ['mlb', 'nba', 'nfl', 'nhl'];
 
-/* ── Fetch MLB live scores for score overlays (batch, no per-game feed) ── */
-async function fetchMlbScoreMap(dateStr, espnGames) {
-  try {
-    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
-    const r = await fetch(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&hydrate=linescore`);
-    const data = await r.json();
-    const mlbGames = data.dates?.[0]?.games || [];
-    const norm = (s) => (s||'').toLowerCase().replace(/[^a-z]/g,'');
-    const map = {};
-    for (const eg of espnGames) {
-      const comps = eg.competitions?.[0]?.competitors || [];
-      const ea = comps.find(c=>c.homeAway==='away')?.team?.displayName;
-      const eh = comps.find(c=>c.homeAway==='home')?.team?.displayName;
-      const mg = mlbGames.find(g => norm(g.teams?.away?.team?.name)===norm(ea) && norm(g.teams?.home?.team?.name)===norm(eh));
-      if (!mg?.linescore) continue;
-      const ls = mg.linescore;
-      const state = mg.status?.abstractGameState;
-      map[eg.id] = {
-        linescoreTotals: { away: ls.teams?.away, home: ls.teams?.home },
-        inningDisplay: ls.currentInning
-          ? `${ls.inningHalf === 'Bottom' ? 'BOT' : 'TOP'} ${ls.currentInning}` : '',
-        raw: state === 'Live' ? {} : null,
-        count: { balls: 0, strikes: 0, outs: ls.outs ?? 0 },
-        onFirst: false, onSecond: false, onThird: false, outs: ls.outs ?? 0,
-        matchup: {}, pitcherGameStats: {}, batterGameStats: {}, batSide: 'R',
-        inningHalf: ls.inningHalf,
-      };
-    }
-    return map;
-  } catch { return {}; }
-}
-
-const NHL_SCORE_PROXY = 'https://api.allorigins.win/raw?url=';
-const nhlScoreUrl = (path) => `${NHL_SCORE_PROXY}${encodeURIComponent(`https://api-web.nhle.com${path}`)}`;
-
-async function fetchNhlScoreMap(dateStr, espnGames) {
-  try {
-    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
-    const r = await fetch(nhlScoreUrl(`/v1/score/${isoDate}`));
-    const data = await r.json();
-    const nhlGames = data.games || [];
-    const map = {};
-    for (const eg of espnGames) {
-      const comps = eg.competitions?.[0]?.competitors || [];
-      const ea = normNhlAbb(comps.find(c => c.homeAway === 'away')?.team?.abbreviation || '');
-      const eh = normNhlAbb(comps.find(c => c.homeAway === 'home')?.team?.abbreviation || '');
-      const ng = nhlGames.find(g => normNhlAbb(g.awayTeam?.abbrev) === ea && normNhlAbb(g.homeTeam?.abbrev) === eh);
-      if (!ng) continue;
-      map[eg.id] = { nhlGameId: ng.id, awayScore: ng.awayTeam?.score, homeScore: ng.homeTeam?.score, period: ng.periodDescriptor?.number || ng.period, periodType: ng.periodDescriptor?.periodType || 'REG', clock: ng.clock?.timeRemaining || '', state: ng.gameState };
-    }
-    return map;
-  } catch { return {}; }
-}
-
-/* ── Module-level cache shared across mounts (survives tab switches) ── */
-const _sbCache = {};          // { [sport-dateStr]: { ts, events, mlbMap, nhlMap } }
-const CACHE_TTL = 60_000;     // show stale data instantly, refresh in background
+/* ── Scoreboard cache: memory + session so a tab switch paints immediately ── */
+const _sbCache = {};
+const _inflight = {};
+const CACHE_TTL = 60_000;
+const SS_KEY = 'scores_sb_v1';
 const SCORES_SPORT_KEY = 'scores_last_sport_v1';
+
+function readSessionCache() {
+  try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '{}'); } catch { return {}; }
+}
+function writeSessionEntry(ck, entry) {
+  try {
+    const all = readSessionCache();
+    all[ck] = { ts: entry.ts, events: entry.events };
+    const keys = Object.keys(all).sort((a, b) => (all[a]?.ts || 0) - (all[b]?.ts || 0));
+    for (const k of keys.slice(0, Math.max(0, keys.length - 12))) delete all[k];
+    sessionStorage.setItem(SS_KEY, JSON.stringify(all));
+  } catch {}
+}
+try {
+  for (const [k, v] of Object.entries(readSessionCache())) {
+    if (v?.events?.length) _sbCache[k] = { ts: v.ts || 0, events: v.events };
+  }
+} catch {}
+
+function fetchScoreboardCached(sport, dateStr) {
+  const ck = `${sport}-${dateStr}`;
+  if (_inflight[ck]) return _inflight[ck];
+  const p = getScoreboard(sport, dateStr)
+    .then((events) => {
+      const entry = { ts: Date.now(), events };
+      _sbCache[ck] = entry;
+      writeSessionEntry(ck, entry);
+      return events;
+    })
+    .finally(() => { delete _inflight[ck]; });
+  _inflight[ck] = p;
+  return p;
+}
 
 export default function ScoresPage() {
   const navigate = useNavigate();
@@ -83,13 +64,13 @@ export default function ScoresPage() {
 
   const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
   const [rawGames, setRawGames] = useState(() => {
-    // Seed from cache immediately so switching back shows data at once
     const ck = `${localStorage.getItem(SCORES_SPORT_KEY)||'mlb'}-${sportsDayStr()}`;
     return _sbCache[ck]?.events || [];
   });
-  const [mlbScoreMap, setMlbScoreMap] = useState({});
-  const [nhlScoreMap, setNhlScoreMap] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const ck = `${localStorage.getItem(SCORES_SPORT_KEY)||'mlb'}-${sportsDayStr()}`;
+    return !_sbCache[ck]?.events?.length;
+  });
   const pollRef = useRef(null);
 
   const shiftDate = (n) => setSelectedDate(d => { const nd = new Date(d); nd.setDate(nd.getDate() + n); return nd; });
@@ -118,42 +99,41 @@ export default function ScoresPage() {
     const ck = `${activeSport}-${dateStr}`;
     const cached = _sbCache[ck];
 
-    if (cached && Date.now() - cached.ts < CACHE_TTL) {
-      // Cache hit: show data immediately with no spinner
+    if (cached?.events) {
+      // Paint whatever we already have, including a stale slate, then refresh.
       setRawGames(cached.events);
-      setMlbScoreMap(cached.mlbMap || {});
-      setNhlScoreMap(cached.nhlMap || {});
       setLoading(false);
     } else {
-      // No cache: clear stale data and show spinner
       setLoading(true);
       setRawGames([]);
-      setMlbScoreMap({});
-      setNhlScoreMap({});
     }
 
+    let cancelled = false;
     const load = async () => {
       try {
-        const evts = await getScoreboard(activeSport, dateStr);
-        let mlbMap = {}, nhlMap = {};
-        if (activeSport === 'mlb') mlbMap = await fetchMlbScoreMap(dateStr, evts);
-        if (activeSport === 'nhl') nhlMap = await fetchNhlScoreMap(dateStr, evts);
-        setRawGames(evts);
-        setMlbScoreMap(mlbMap);
-        setNhlScoreMap(nhlMap);
-        _sbCache[ck] = { ts: Date.now(), events: evts, mlbMap, nhlMap };
+        const evts = await fetchScoreboardCached(activeSport, dateStr);
+        if (!cancelled) setRawGames(evts);
       } catch {}
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
 
     load();
     if (isToday) {
       pollRef.current = setInterval(load, 30000);
     }
-    return () => clearInterval(pollRef.current);
+    return () => { cancelled = true; clearInterval(pollRef.current); };
   }, [activeSport, dateStr, isToday]);
 
-  const availableSports = ['mlb','nba','nfl','nhl'];
+  // Warm the other sport tabs so switching (especially to NHL) is a cache hit.
+  useEffect(() => {
+    for (const sport of AVAILABLE_SPORTS) {
+      if (sport === activeSport) continue;
+      const ck = `${sport}-${dateStr}`;
+      const cached = _sbCache[ck];
+      if (cached && Date.now() - cached.ts < CACHE_TTL) continue;
+      fetchScoreboardCached(sport, dateStr).catch(() => {});
+    }
+  }, [activeSport, dateStr]);
 
   return (
     <div className="page-content">
@@ -180,7 +160,7 @@ export default function ScoresPage() {
 
       {/* Sport selector */}
       <div className="scores-sport-tabs">
-        {availableSports.map((sport) => (
+        {AVAILABLE_SPORTS.map((sport) => (
           <button key={sport}
             className={`ts-tab ${activeSport===sport ? 'ts-tab-active' : ''}`}
             onClick={() => handleSetSport(sport)}>
@@ -221,7 +201,7 @@ export default function ScoresPage() {
             }
             if (activeSport === 'nhl') {
               if (st === 'post') return <NhlFinalCard key={game.id} game={game} navigate={navigate} accentColor={accentColor} />;
-              if (st === 'in')   return <NhlLiveCard  key={game.id} game={game} navigate={navigate} accentColor={accentColor} nhlScore={nhlScoreMap[game.id]} />;
+              if (st === 'in')   return <NhlLiveCard  key={game.id} game={game} navigate={navigate} accentColor={accentColor} />;
               return <SportPreCard key={game.id} game={game} sport="nhl" navigate={navigate} accentColor={accentColor} />;
             }
             if (st === 'pre')  return <SportPreCard   key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} />;
