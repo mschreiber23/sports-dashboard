@@ -9,6 +9,8 @@
 /* Prevent pinch-zoom app-wide */
 html {
   touch-action: pan-x pan-y;
+  overflow-x: clip;
+  max-width: 100%;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
@@ -48,18 +50,22 @@ body {
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 #root { min-height: 100vh; display: flex; flex-direction: column; }
 
 /* ── App Layout ── */
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100%; min-width: 0; }
 
 .main {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px 20px 48px;
   width: 100%;
+  min-width: 0;
+  overflow-x: clip;
   display: flex;
   flex-direction: column;
   gap: 40px;
@@ -1656,6 +1662,7 @@ body {
   display: flex; flex-direction: column; gap: 8px;
   background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
   padding: 8px 10px; overflow: hidden;
+  max-width: 100%; min-width: 0;
 }
 
 .ts-top-row {
@@ -1686,6 +1693,8 @@ body {
 
 .ts-ticker-scroll {
   display: flex; gap: 6px; overflow-x: auto; flex: 1;
+  min-width: 0; max-width: 100%; width: 100%;
+  overscroll-behavior-x: contain;
   scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
 .ts-ticker-scroll::-webkit-scrollbar { display: none; }
@@ -3926,9 +3935,9 @@ body {
 /* ── Navigation ── */
 
 /* App layout with bottom nav */
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100%; min-width: 0; }
 /* Bottom padding = nav height + home-indicator safe area */
-.app-body { flex: 1; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+.app-body { flex: 1; min-width: 0; max-width: 100%; overflow-x: clip; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 
 /* Bottom nav (mobile) */
 .bottom-nav {
@@ -3995,6 +4004,8 @@ body {
   padding-top: env(safe-area-inset-top, 0px); /* clear Dynamic Island / notch */
   z-index: 100;
   background: #0f0f13; /* matches Dynamic Island area color */
+  max-width: 100%;
+  min-width: 0;
   /* Allow absolutely-positioned expanded scores to overflow below */
   overflow: visible;
 }
@@ -4059,7 +4070,11 @@ body {
 }
 
 /* Page content wrapper */
-.page-content { display: flex; flex-direction: column; gap: 20px; }
+.page-content { display: flex; flex-direction: column; gap: 20px; min-width: 0; max-width: 100%; }
+.scores-page {
+  overflow-x: clip;
+  touch-action: pan-y;
+}
 .page-title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
 
 /* Scores page */
@@ -4100,6 +4115,7 @@ body {
   border-radius: 6px;
   white-space: nowrap;
   user-select: none;
+  overflow: hidden;
 }
 .sp-date-label:hover { background: var(--bg3); }
 .sp-date-input {
@@ -4108,6 +4124,8 @@ body {
   opacity: 0;
   cursor: pointer;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 .sp-date-today {
   background: none;
@@ -6774,7 +6792,10 @@ thead .dfs-sticky-player {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
 }
+.teams-grid > * { min-width: 0; max-width: 100%; }
 @media (min-width: 768px) {
   .teams-grid { grid-template-columns: repeat(3, 1fr); }
 }

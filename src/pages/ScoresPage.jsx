@@ -136,7 +136,7 @@ export default function ScoresPage() {
   }, [activeSport, dateStr]);
 
   return (
-    <div className="page-content">
+    <div className="page-content scores-page">
       {/* Header row: title + date nav */}
       <div className="scores-page-header">
         <h1 className="page-title" style={{margin:0}}>Scores</h1>
