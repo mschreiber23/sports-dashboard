@@ -1288,7 +1288,7 @@ function NhlFinalCard({ game, navigate, accentColor }) {
               <div key={i} className="nhl-card-goal-row"
                 style={{ cursor: g.espnId ? 'pointer' : 'default' }}
                 onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
-                <span className="nhl-card-goal-period">P{g.period} {g.time}</span>
+                <span className="nhl-card-goal-period">{g.period > 3 ? 'OT' : `P${g.period}`} {g.time}</span>
                 {g.headshot
                   ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
                   : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
@@ -1383,7 +1383,7 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
           <div className="nhl-card-goals">
             {goals.map((g, i) => (
               <div key={i} className="nhl-card-goal-row">
-                <span className="nhl-card-goal-period">P{g.period} {g.time}</span>
+                <span className="nhl-card-goal-period">{g.period > 3 ? 'OT' : `P${g.period}`} {g.time}</span>
                 {g.headshot
                   ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
                   : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
