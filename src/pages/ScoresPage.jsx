@@ -79,13 +79,30 @@ async function fetchNhlScoreMap(dateStr, espnGames) {
   } catch { return {}; }
 }
 
+/* ── Module-level cache shared across mounts (survives tab switches) ── */
+const _sbCache = {};          // { [sport-dateStr]: { ts, events, mlbMap, nhlMap } }
+const CACHE_TTL = 60_000;     // show stale data instantly, refresh in background
+const SCORES_SPORT_KEY = 'scores_last_sport_v1';
+
 export default function ScoresPage() {
   const navigate = useNavigate();
   const { favorites, sportOrder } = useFavorites();
 
-  const [activeSport, setActiveSport] = useState('mlb');
+  // Restore last-selected sport on mount
+  const [activeSport, setActiveSport] = useState(() => {
+    try { return localStorage.getItem(SCORES_SPORT_KEY) || 'mlb'; } catch { return 'mlb'; }
+  });
+  const handleSetSport = (sport) => {
+    try { localStorage.setItem(SCORES_SPORT_KEY, sport); } catch {}
+    setActiveSport(sport);
+  };
+
   const [selectedDate, setSelectedDate] = useState(todayMidnight);
-  const [rawGames, setRawGames] = useState([]);
+  const [rawGames, setRawGames] = useState(() => {
+    // Seed from cache immediately so switching back shows data at once
+    const ck = `${localStorage.getItem(SCORES_SPORT_KEY)||'mlb'}-${toDateStr(new Date())}`;
+    return _sbCache[ck]?.events || [];
+  });
   const [mlbScoreMap, setMlbScoreMap] = useState({});
   const [nhlScoreMap, setNhlScoreMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -115,26 +132,38 @@ export default function ScoresPage() {
 
   useEffect(() => {
     clearInterval(pollRef.current);
-    setLoading(true);
-    setRawGames([]);
-    setMlbScoreMap({});
+    const ck = `${activeSport}-${dateStr}`;
+    const cached = _sbCache[ck];
 
-    const load = () => getScoreboard(activeSport, dateStr)
-      .then(async (evts) => {
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      // Cache hit: show data immediately with no spinner
+      setRawGames(cached.events);
+      setMlbScoreMap(cached.mlbMap || {});
+      setNhlScoreMap(cached.nhlMap || {});
+      setLoading(false);
+    } else {
+      // No cache: clear stale data and show spinner
+      setLoading(true);
+      setRawGames([]);
+      setMlbScoreMap({});
+      setNhlScoreMap({});
+    }
+
+    const load = async () => {
+      try {
+        const evts = await getScoreboard(activeSport, dateStr);
+        let mlbMap = {}, nhlMap = {};
+        if (activeSport === 'mlb') mlbMap = await fetchMlbScoreMap(dateStr, evts);
+        if (activeSport === 'nhl') nhlMap = await fetchNhlScoreMap(dateStr, evts);
         setRawGames(evts);
-        if (activeSport === 'mlb') {
-          const map = await fetchMlbScoreMap(dateStr, evts);
-          setMlbScoreMap(map);
-        }
-        if (activeSport === 'nhl') {
-          const map = await fetchNhlScoreMap(dateStr, evts);
-          setNhlScoreMap(map);
-        }
-      })
-      .catch(()=>{});
+        setMlbScoreMap(mlbMap);
+        setNhlScoreMap(nhlMap);
+        _sbCache[ck] = { ts: Date.now(), events: evts, mlbMap, nhlMap };
+      } catch {}
+      setLoading(false);
+    };
 
-    load().finally(()=>setLoading(false));
-    // Only poll live data for today
+    load();
     if (isToday) {
       pollRef.current = setInterval(load, 30000);
     }
@@ -171,7 +200,7 @@ export default function ScoresPage() {
         {availableSports.map((sport) => (
           <button key={sport}
             className={`ts-tab ${activeSport===sport ? 'ts-tab-active' : ''}`}
-            onClick={() => setActiveSport(sport)}>
+            onClick={() => handleSetSport(sport)}>
             {SPORT_LABELS[sport] || sport.toUpperCase()}
           </button>
         ))}
