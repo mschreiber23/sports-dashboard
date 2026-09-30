@@ -2523,9 +2523,10 @@ const COLS = {
   nfl_passing:  ['C/ATT','YDS','AVG','TD','INT','RTG'],
   nfl_rushing:  ['CAR','YDS','AVG','TD','LONG'],
   nfl_receiving:['REC','YDS','AVG','TD','LONG','TGTS'],
-  nhl:          ['G','A','PTS','+/-','SOG','TOI'],
+  nhl_skater:   ['G','A','+/-','SOG','S','SM','HT','BS','TK','GV','PIM','SHFT','TOI'],
+  nhl_goalie:   ['SV','GA','SA','SV%','TOI','PIM'],
 };
-const HL = { mlb: ['H','HR','RBI','ERA'], nba: ['PTS','REB','AST'], nfl: ['YDS','TD'], nhl: ['G','A','PTS'] };
+const HL = { mlb: ['H','HR','RBI','ERA'], nba: ['PTS','REB','AST'], nfl: ['YDS','TD'], nhl: ['G','A','SOG'] };
 
 /* ── Convert MLB live boxscore → ESPN-compatible shape for StatsTable ── */
 function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
@@ -2641,7 +2642,7 @@ function buildMlbLiveGroups(mlbBoxscore, awayComp, homeComp, espnGroups) {
 function getColKey(sport, type) {
   if (sport === 'mlb') return type === 'pitching' ? 'mlb_pitching' : 'mlb_batting';
   if (sport === 'nba') return 'nba';
-  if (sport === 'nhl') return 'nhl';
+  if (sport === 'nhl') return type === 'goalies' ? 'nhl_goalie' : 'nhl_skater';
   if (sport === 'nfl') {
     if (type?.includes('pass')) return 'nfl_passing';
     if (type?.includes('rush')) return 'nfl_rushing';
@@ -2767,6 +2768,8 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
                 ? (type === 'pitching' ? `Pitchers` : `Batters`) + (teamAbbr ? ` - ${teamAbbr}` : '')
                 : sport === 'nfl'
                 ? `${type.charAt(0).toUpperCase()}${type.slice(1)}${teamAbbr ? ` - ${teamAbbr}` : ''}`
+                : sport === 'nhl'
+                ? (type === 'goalies' ? 'Goalies' : type === 'defenses' ? 'Defensemen' : 'Forwards') + (teamAbbr ? ` - ${teamAbbr}` : '')
                 : (type === 'pitching' ? 'PITCHERS' : 'HITTERS')}
             </th>
             {cols.map((c) => <th key={c.label} className="bsp-th">{c.label}</th>)}
@@ -2866,6 +2869,21 @@ function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, t
     // NFL: show passing, rushing, receiving groups separately
     const NFL_GROUPS = ['passing','rushing','receiving','defensive','kicking','punting','kickReturns','puntReturns'];
     const groups = NFL_GROUPS.map(n => stats.find(s => (s.type||s.name) === n)).filter(Boolean);
+    return (
+      <div className="bs-team-stats">
+        {groups.map((sg, i) => (
+          <div key={sg.name || i} className="bs-stat-section" style={{marginTop: i > 0 ? 14 : 0}}>
+            <StatsTable statGroup={sg} sport={sport} teamAbbr={team.abbreviation} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (sport === 'nhl') {
+    // NHL: forwards, defensemen, goalies
+    const NHL_GROUPS = ['forwards', 'defenses', 'goalies'];
+    const groups = NHL_GROUPS.map(n => stats.find(s => (s.type||s.name) === n)).filter(Boolean);
     return (
       <div className="bs-team-stats">
         {groups.map((sg, i) => (
