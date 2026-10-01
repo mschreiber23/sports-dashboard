@@ -182,13 +182,27 @@ function contextOf(games) {
   const rows = [];
   let any = false;
   for (const game of games) {
-    const shots = field(game.stats, 'shotsTotal');
-    const toi = field(game.stats, 'timeOnIcePerGame');
-    const pp = sumFields(game.stats, ['powerPlayGoals', 'powerPlayAssists']);
-    const goals = field(game.stats, 'goals');
-    const assists = field(game.stats, 'assists');
-    if (shots != null || toi != null || pp != null || goals != null || assists != null) any = true;
-    rows.push({ shots, toi, pp, goals, assists });
+    const row = {
+      shots: field(game.stats, 'shotsTotal'),
+      toi: field(game.stats, 'timeOnIcePerGame'),
+      pp: sumFields(game.stats, ['powerPlayGoals', 'powerPlayAssists']),
+      goals: field(game.stats, 'goals'),
+      assists: field(game.stats, 'assists'),
+      passAtt: field(game.stats, 'passingAttempts'),
+      passYds: field(game.stats, 'passingYards'),
+      passTd: field(game.stats, 'passingTouchdowns'),
+      completions: field(game.stats, 'completions'),
+      ints: field(game.stats, 'interceptions'),
+      rushAtt: field(game.stats, 'rushingAttempts'),
+      rushYds: field(game.stats, 'rushingYards'),
+      rushTd: field(game.stats, 'rushingTouchdowns'),
+      targets: field(game.stats, 'receivingTargets'),
+      rec: field(game.stats, 'receptions'),
+      recYds: field(game.stats, 'receivingYards'),
+      recTd: field(game.stats, 'receivingTouchdowns'),
+    };
+    if (Object.values(row).some((value) => value != null)) any = true;
+    rows.push(row);
   }
   return any ? rows : null;
 }

@@ -7,6 +7,7 @@ import {
 import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
 import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN, NHL_P_MIN } from '../utils/nhlEdge';
+import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -107,10 +108,12 @@ function likelyBoard(games, logs) {
       const log = logs[`${game.league}|${sample.player}|${sample.gameStart}`];
       const recent = log?.series?.[sample.type];
       if (!recent || recent.length < LIKELY_MIN_GAMES) continue;
-      const modeled = sample.type === 'hockey_player_goals' || sample.type === 'hockey_player_points';
-      if (modeled) {
+      const edgeFn = (sample.type === 'hockey_player_goals' || sample.type === 'hockey_player_points')
+        ? nhlPropEdge
+        : (game.league === 'nfl' && nflModeled(sample.type) ? nflPropEdge : null);
+      if (edgeFn) {
         for (const line of lines) {
-          const model = nhlPropEdge({
+          const model = edgeFn({
             type: sample.type,
             line: line.line,
             recent,
@@ -241,6 +244,21 @@ const FACTOR_KEY = [
   ['Rest', 'Days since the last regular-season game. A gap under 36 hours is a back-to-back.'],
 ];
 
+const NFL_FACTOR_KEY = [
+  ['Model', 'Our read of the chance this line hits, after shrinking the recent record and applying the nudges below.'],
+  ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record.'],
+  ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
+  ['Attempts, carries, targets', 'Average usage over the last five games. Passing props use attempts, rushing props use carries, and receiving props use targets.'],
+  ['Prior attempts, carries, targets', 'The same usage number in the earlier games. The model compares the two.'],
+  ['Y/A, YPC, catch rate', 'Efficiency pulled toward a typical NFL rate, so a short hot or cold stretch does not take over. Touchdowns use a per-attempt or per-target rate.'],
+  ['Volume', 'The chance that usage and efficiency imply at this exact line.'],
+  ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent.'],
+  ['Game total', 'The game total priced closest to 50/50. The model compares that number with 45 points.'],
+  ['Side', 'Whether this player’s team is the favorite or the underdog, and that team’s price.'],
+  ['Rest', 'Days since the last game. Under six days is a short week. Ten days or more, a bye included, counts as rested.'],
+];
+
 const FACTOR_TAGS = {
   'shot volume': 'volume',
   chances: 'volume',
@@ -257,6 +275,15 @@ const FACTOR_TAGS = {
   favorite: 'side',
   underdog: 'side',
   'back to back': 'rest',
+  'attempts up': 'usage',
+  'attempts down': 'usage',
+  'carries up': 'usage',
+  'carries down': 'usage',
+  'targets up': 'usage',
+  'targets down': 'usage',
+  'short week': 'rest',
+  rested: 'rest',
+  volume: 'volume',
 };
 
 function shortOpp(name, abbr) {
@@ -378,7 +405,7 @@ function PlayerPropBoard({ rows, league, slate }) {
         </select>
       </div>
 
-      {league === 'nhl' && (
+      {(league === 'nhl' || league === 'nfl') && (
         <>
           <button type="button" className="pp-key-btn" aria-expanded={keyOpen} onClick={() => setKeyOpen((open) => !open)}>
             {keyOpen ? 'Hide stat key' : 'Stat key'}
@@ -386,7 +413,7 @@ function PlayerPropBoard({ rows, league, slate }) {
           {keyOpen && (
             <div className="pp-key">
               <p>Blue numbers are the inputs that moved the model for the line selected on that player. Yes and No stay the contract price.</p>
-              {FACTOR_KEY.map(([label, text]) => (
+              {(league === 'nfl' ? NFL_FACTOR_KEY : FACTOR_KEY).map(([label, text]) => (
                 <div key={label} className="pp-key-row">
                   <div className="pp-key-label">{label}</div>
                   <div className="pp-key-text">{text}</div>
@@ -431,8 +458,10 @@ function PlayerPropBoard({ rows, league, slate }) {
             favoriteYes: slate?.favoriteYes,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
           };
-          const factors = league === 'nhl' ? nhlFactorLines(factorInput) : [];
-          const model = factors.length ? nhlPropEdge({ ...factorInput, marketYes: group.current.yes }) : null;
+          const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : null);
+          const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : null);
+          const factors = factorFn ? factorFn(factorInput) : [];
+          const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes }) : null;
           const moved = new Set((model?.tags || []).map((tag) => FACTOR_TAGS[tag]).filter(Boolean));
           return (
             <div key={group.key} className="pp-player">
@@ -779,7 +808,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume and assists, recent ice time, power-play points, the games against this opponent, the game total, which side is favored, and a back-to-back. Other props stay when they hit in 70% or more of the last 10. This is a simple read of the log, not tonight’s goalie or power-play unit.
+                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL props do the same with attempts, carries, and targets, plus the total, the favorite, and a short week or a bye. Other props stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>
