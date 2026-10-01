@@ -48,10 +48,11 @@ export function probOverLine(avg, line, type) {
 }
 
 function bookQuality(liquidity, spread) {
-  const liq = Math.max(0, liquidity || 0);
   const spr = Number.isFinite(spread) ? Math.max(0, spread) : 1;
-  const liqQ = Math.min(1, Math.log10(1 + liq) / Math.log10(1 + 8000));
   const spreadQ = clamp01(1 - spr / 0.4);
+  if (liquidity == null) return 0.45 + 0.55 * spreadQ;
+  const liq = Math.max(0, liquidity || 0);
+  const liqQ = Math.min(1, Math.log10(1 + liq) / Math.log10(1 + 8000));
   return liqQ * (0.4 + 0.6 * spreadQ);
 }
 

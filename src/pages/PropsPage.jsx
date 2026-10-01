@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  loadPlayerProps, formatGameTime, formatLiquidity, compareProps,
+  loadPlayerProps, loadNhlPropsForSlugs, mergePropRows,
+  formatGameTime, formatLiquidity, compareProps,
   easternDay, shiftDay, formatDayLabel,
 } from '../api/polymarket';
 import { attachSeasonStats, formatAvg } from '../api/propStats';
@@ -43,7 +44,7 @@ function PropCard({ row }) {
         <span>Market {pct(row.marketP)}</span>
         <span>{bookLabel(row.quality)}</span>
         {spread && <span>{spread} spread</span>}
-        <span>{formatLiquidity(row.liquidity)}</span>
+        {row.liquidity != null && <span>{formatLiquidity(row.liquidity)}</span>}
       </div>
       {row.seasonAvg != null && row.statP != null && (
         <div className="props-season">
@@ -63,6 +64,7 @@ export default function PropsPage() {
   const [day, setDay] = useState(() => easternDay(Date.now()));
   const [gameKey, setGameKey] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [propsLoading, setPropsLoading] = useState(false);
 
   useEffect(() => {
     let cancel = false;
@@ -76,7 +78,10 @@ export default function PropsPage() {
         const withStats = await attachSeasonStats(list);
         if (cancel) return;
         withStats.sort(compareProps);
-        setRows(withStats);
+        setRows((prev) => {
+          const extras = (prev || []).filter((row) => String(row.id).startsWith('us:'));
+          return mergePropRows(withStats, extras);
+        });
         setStatsNote(withStats.some((row) => row.seasonAvg != null));
       })
       .catch((err) => {
@@ -84,6 +89,31 @@ export default function PropsPage() {
       });
     return () => { cancel = true; };
   }, [reloadKey]);
+
+  const nhlSlugKey = useMemo(() => {
+    const slugs = new Set();
+    for (const row of rows || []) {
+      if (row.sport !== 'NHL' || !row.eventSlug) continue;
+      if (easternDay(row.gameStart) !== day) continue;
+      slugs.add(row.eventSlug);
+    }
+    return [...slugs].sort().join('|');
+  }, [rows, day]);
+
+  useEffect(() => {
+    const slugs = nhlSlugKey ? nhlSlugKey.split('|') : [];
+    if (!slugs.length) return undefined;
+    let cancel = false;
+    setPropsLoading(true);
+    loadNhlPropsForSlugs(slugs)
+      .then((extra) => {
+        if (cancel) return;
+        setRows((prev) => (prev ? mergePropRows(prev, extra) : prev));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancel) setPropsLoading(false); });
+    return () => { cancel = true; };
+  }, [nhlSlugKey]);
 
   const games = useMemo(() => {
     const map = new Map();
@@ -206,6 +236,9 @@ export default function PropsPage() {
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>
           </div>
+          {openGame.sport === 'NHL' && propsLoading && (
+            <div className="loading-text">Loading player props…</div>
+          )}
           <div className="props-list">
             {openGame.rows.map((row) => <PropCard key={row.id} row={row} />)}
           </div>

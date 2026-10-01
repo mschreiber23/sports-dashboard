@@ -1,8 +1,14 @@
 import { scoreProp } from '../utils/propHit';
 
 const GAMMA = 'https://gamma-api.polymarket.com';
+const US_GATEWAY = 'https://web.polymarket.us';
 const CACHE_KEY = 'props_markets_v7';
 const NHL_SERIES = '10346';
+const NHL_PROP_TYPES = new Set([
+  'hockey_player_points',
+  'hockey_player_goals',
+  'hockey_team_saves',
+]);
 const CACHE_MS = 3 * 60 * 1000;
 
 export const PLAYER_PROP_TYPES = [
@@ -54,6 +60,9 @@ const TYPE_LABEL = {
   moneyline: 'moneyline',
   spreads: 'spread',
   totals: 'total',
+  hockey_player_points: 'points',
+  hockey_player_goals: 'goals',
+  hockey_team_saves: 'saves',
 };
 
 const LEAGUE_TO_SPORT = {
@@ -272,6 +281,105 @@ async function fetchNhlGameMarkets() {
     if (events.length < 50) break;
   }
   return markets;
+}
+
+function yesQuote(market) {
+  const bid = Number(market.bestBidQuote?.value);
+  const ask = Number(market.bestAskQuote?.value);
+  const hasBid = Number.isFinite(bid) && bid >= 0 && bid <= 1;
+  const hasAsk = Number.isFinite(ask) && ask >= 0 && ask <= 1;
+  if (hasBid && hasAsk && ask >= bid) {
+    const yes = (bid + ask) / 2;
+    if (!(yes > 0) || yes > 1) return null;
+    return { yes, no: 1 - yes, spread: ask - bid };
+  }
+  const yes = hasAsk && ask > 0 ? ask : (hasBid && bid > 0 ? bid : null);
+  if (yes == null || yes > 1) return null;
+  return { yes, no: 1 - yes, spread: null };
+}
+
+function normalizeNhlProp(market, event) {
+  if (!NHL_PROP_TYPES.has(market.sportsMarketType)) return null;
+  if (market.hidden || market.closed || market.active === false) return null;
+  if (market.status && market.status !== 'MARKET_STATUS_OPEN') return null;
+  const quote = yesQuote(market);
+  const gameStart = parseGameStart(market.gameStartTime || event.startTime);
+  if (!quote || gameStart == null) return null;
+  const label = TYPE_LABEL[market.sportsMarketType] || 'prop';
+  const line = market.line == null || market.line === '' ? null : Number(market.line);
+  const playerName = market.metadata?.playerName || '';
+  const lineText = Number.isFinite(line) ? `${line}+ ${label}` : label;
+  const teamTitle = String(market.title || '').replace(/\s+\d+\+\s+\S.*$/, '').trim();
+  const scored = scoreProp({
+    yes: quote.yes,
+    no: quote.no,
+    liquidity: null,
+    spread: quote.spread,
+    ou: false,
+  });
+  if (!scored) return null;
+  return {
+    id: `us:${market.id}`,
+    player: playerName || teamTitle || market.title || market.question,
+    sideText: lineText,
+    question: market.question || '',
+    propLabel: label,
+    type: market.sportsMarketType,
+    line: Number.isFinite(line) ? line : null,
+    ou: false,
+    sport: 'NHL',
+    league: 'nhl',
+    eventTitle: event.title || '',
+    eventSlug: event.slug,
+    gameStart,
+    yes: quote.yes,
+    no: quote.no,
+    liquidity: null,
+    spread: quote.spread,
+    url: `https://polymarket.us/sports/nhl/${event.slug}`,
+    ...scored,
+    side: 'Yes',
+  };
+}
+
+async function fetchNhlEventProps(slug) {
+  const res = await fetch(`${US_GATEWAY}/gateway.events.v1.EventsService/GetEventBySlug`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'connect-protocol-version': '1',
+      'poly-platform': 'web',
+    },
+    body: JSON.stringify({ slug }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  const event = data.event;
+  if (!event?.markets) return [];
+  return event.markets.map((market) => normalizeNhlProp(market, event)).filter(Boolean);
+}
+
+const nhlPropPromises = new Map();
+
+export function loadNhlPropsForSlugs(slugs) {
+  const todo = [...new Set(slugs.filter(Boolean))];
+  return mapPool(todo, 4, (slug) => {
+    if (!nhlPropPromises.has(slug)) {
+      nhlPropPromises.set(slug, fetchNhlEventProps(slug).catch(() => {
+        nhlPropPromises.delete(slug);
+        return [];
+      }));
+    }
+    return nhlPropPromises.get(slug);
+  }).then((lists) => lists.flat());
+}
+
+export function mergePropRows(rows, extra) {
+  if (!extra?.length) return rows;
+  const ids = new Set(rows.map((row) => row.id));
+  const add = extra.filter((row) => !ids.has(row.id));
+  if (!add.length) return rows;
+  return [...rows, ...add].sort(compareProps);
 }
 
 function readCache(now) {
