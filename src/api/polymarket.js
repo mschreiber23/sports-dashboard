@@ -1,7 +1,7 @@
 import { scoreProp } from '../utils/propHit';
 
 const GAMMA = 'https://gamma-api.polymarket.com';
-const CACHE_KEY = 'props_markets_v4';
+const CACHE_KEY = 'props_markets_v5';
 const CACHE_MS = 3 * 60 * 1000;
 
 export const PLAYER_PROP_TYPES = [
@@ -155,8 +155,8 @@ export function normalizeMarket(m) {
     liquidity: Number(m.liquidityNum ?? m.liquidity) || 0,
     spread: Number.isFinite(Number(m.spread)) ? Number(m.spread) : null,
     url: event?.slug
-      ? `https://polymarket.com/event/${event.slug}`
-      : `https://polymarket.com/market/${m.slug}`,
+      ? `https://polymarket.us/event/${event.slug}`
+      : `https://polymarket.us/event/${m.slug}`,
     ...scored,
   };
 }
