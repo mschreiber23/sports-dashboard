@@ -52,7 +52,7 @@ function likelyAgrees(model, yes, league) {
   if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN && model.edge <= 0.15)) return false;
   if (model.rate / 100 + 0.02 < yes) return false;
   if (model.rate / 100 + 0.08 < model.p) return false;
-  if (model.tags.some((tag) => tag.endsWith(' down'))) return false;
+  if (model.tags.some((tag) => tag.endsWith(' down') || tag.endsWith(' back'))) return false;
   if (league === 'nfl' && model.tags.includes('low volume')) return false;
   return true;
 }
@@ -134,6 +134,18 @@ function slateContext(rows) {
   return { total, favorite, favoriteYes, spreadLine, spreadLabel };
 }
 
+function teammateLogs(entries) {
+  const mates = [];
+  const seen = new Set();
+  for (const entry of entries) {
+    if (!entry?.name || seen.has(entry.name)) continue;
+    seen.add(entry.name);
+    if (!entry.recent && !entry.prior) continue;
+    mates.push({ name: entry.name, recent: entry.recent || null, prior: entry.prior || null });
+  }
+  return mates;
+}
+
 function likelyBoard(games, logs) {
   const picks = [];
   for (const game of games) {
@@ -179,6 +191,12 @@ function likelyBoard(games, logs) {
             favoriteYes: slate.favoriteYes,
             spreadLine: slate.spreadLine,
             spreadLabel: slate.spreadLabel,
+            teammates: game.league === 'nfl' ? teammateLogs(game.rows.filter((row) => (
+              row.section === 'player' && row.player !== sample.player && row.teamName && row.teamName === sample.teamName
+            )).map((row) => {
+              const mate = logs[`${game.league}|${row.player}|${row.gameStart}`];
+              return { name: row.player, recent: mate?.context, prior: mate?.priorContext };
+            })) : undefined,
           });
           if (!model) continue;
           if (ranked && !likelyAgrees(model, line.yes, game.league)) continue;
@@ -300,6 +318,7 @@ const NFL_FACTOR_KEY = [
   ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead. Touchdown props give this a little more weight.'],
   ['Attempts, carries, targets', 'Average usage over the last five games. This is the main input. Passing props use attempts, rushing props use carries, and receiving props use targets. Receptions then use catch rate. Receiving yards use yards per target.'],
   ['Prior attempts, carries, targets', 'The same usage number in the earlier games. Expected usage is about two thirds the last five and one third this longer rate.'],
+  ['Role', 'When a high-usage teammate missed games and this player’s targets, carries, or attempts jumped, and that teammate is in the lineup tonight, the read uses the games they played together. The chip names who is back. Those props stay off Likely.'],
   ['Y/A, YPC, catch rate', 'Efficiency pulled toward a typical NFL rate, so a short hot or cold stretch does not take over. Touchdowns use a per-attempt or per-target rate.'],
   ['Volume', 'The chance that tonight’s expected usage and that efficiency imply at this exact line. This is most of the model percent.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent. A small nudge, and only with at least three of those games.'],
@@ -515,12 +534,19 @@ function PlayerPropBoard({ rows, league, slate }) {
             spreadLine: slate?.spreadLine,
             spreadLabel: slate?.spreadLabel,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
+            teammates: league === 'nfl' ? teammateLogs(groups.filter((other) => (
+              other.player !== group.player && other.teamName && other.teamName === group.teamName
+            )).map((other) => ({
+              name: other.player,
+              recent: logs[other.player]?.context,
+              prior: logs[other.player]?.priorContext,
+            }))) : undefined,
           };
           const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : null);
           const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : null);
           const factors = factorFn ? factorFn(factorInput) : [];
           const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes }) : null;
-          const moved = new Set((model?.tags || []).map((tag) => FACTOR_TAGS[tag]).filter(Boolean));
+          const moved = new Set((model?.tags || []).map((tag) => FACTOR_TAGS[tag] || (String(tag).endsWith(' back') ? 'usage' : null)).filter(Boolean));
           return (
             <div key={group.key} className="pp-player">
               <div className="pp-row">
@@ -880,7 +906,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL and NFL keep the line closest to 50/50 when recent usage agrees with it. Token lines and gaps the recent games do not support stay off the list. Other props stay when they hit in 70% or more of the last 10.
+                Sorted by the gap between our read and the contract price. NHL and NFL keep the line closest to 50/50 when recent usage agrees with it. Token lines and gaps the recent games do not support stay off the list. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other props stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>

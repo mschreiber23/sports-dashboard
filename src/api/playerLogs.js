@@ -183,6 +183,7 @@ function contextOf(games) {
   let any = false;
   for (const game of games) {
     const row = {
+      date: game.date || '',
       shots: field(game.stats, 'shotsTotal'),
       toi: field(game.stats, 'timeOnIcePerGame'),
       pp: sumFields(game.stats, ['powerPlayGoals', 'powerPlayAssists']),
@@ -201,7 +202,7 @@ function contextOf(games) {
       recYds: field(game.stats, 'receivingYards'),
       recTd: field(game.stats, 'receivingTouchdowns'),
     };
-    if (Object.values(row).some((value) => value != null)) any = true;
+    if (Object.entries(row).some(([key, value]) => key !== 'date' && value != null)) any = true;
     rows.push(row);
   }
   return any ? rows : null;
