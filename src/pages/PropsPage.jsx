@@ -6,7 +6,7 @@ import {
 } from '../api/polymarket';
 import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
-import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN, NHL_P_MIN } from '../utils/nhlEdge';
+import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
 import { nflWeekSpan } from '../api/nfl';
 
@@ -45,6 +45,17 @@ function last10Hit(values, line) {
 
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
+const LIKELY_PRICE_MIN = 0.43;
+const LIKELY_PRICE_MAX = 0.66;
+
+function likelyAgrees(model, yes, league) {
+  if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN && model.edge <= 0.15)) return false;
+  if (model.rate / 100 + 0.02 < yes) return false;
+  if (model.rate / 100 + 0.08 < model.p) return false;
+  if (model.tags.some((tag) => tag.endsWith(' down'))) return false;
+  if (league === 'nfl' && model.tags.includes('low volume')) return false;
+  return true;
+}
 const NFL_LIKELY_SKIP = new Set([
   'football_player_interceptions_thrown',
   'football_player_longest_reception',
@@ -145,10 +156,11 @@ function likelyBoard(games, logs) {
         ? nhlPropEdge
         : (game.league === 'nfl' && nflModeled(sample.type) ? nflPropEdge : null);
       if (edgeFn) {
-        const nfl = game.league === 'nfl';
-        const candidates = nfl ? [mainLine(lines)].filter(Boolean) : lines;
+        const ranked = game.league === 'nfl' || game.league === 'nhl';
+        const candidates = ranked ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
-          if (nfl && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]) || line.yes < 0.43 || line.yes > 0.66)) continue;
+          if (ranked && (line.yes < LIKELY_PRICE_MIN || line.yes > LIKELY_PRICE_MAX)) continue;
+          if (game.league === 'nfl' && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]))) continue;
           const model = edgeFn({
             type: sample.type,
             line: line.line,
@@ -169,15 +181,7 @@ function likelyBoard(games, logs) {
             spreadLabel: slate.spreadLabel,
           });
           if (!model) continue;
-          if (nfl) {
-            if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN && model.edge <= 0.15)) continue;
-            if (model.rate / 100 + 0.02 < line.yes) continue;
-            if (model.rate / 100 + 0.08 < model.p) continue;
-            if (model.tags.some((tag) => tag === 'low volume' || tag.endsWith(' down'))) continue;
-          } else {
-            const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
-            if (!priced && model.rate < LIKELY_MIN_RATE) continue;
-          }
+          if (ranked && !likelyAgrees(model, line.yes, game.league)) continue;
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
             hits: model.hits,
@@ -277,8 +281,8 @@ const FACTOR_KEY = [
   ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
   ['TOI', 'Average ice time over the last five games.'],
   ['Prior TOI', 'Average ice time in the games before those five. The model compares the two.'],
-  ['Shots', 'Average shots over the last five games.'],
-  ['Prior shots', 'Average shots in the earlier games. The model compares the two.'],
+  ['Shots', 'Average shots over the last five games. A sharp drop or jump in the last three games becomes the shot rate.'],
+  ['Prior shots', 'Average shots in the earlier games. The model compares that with the recent rate.'],
   ['Shooting', 'Shooting percentage, pulled toward a typical NHL rate so a short hot or cold stretch does not take over.'],
   ['Assists', 'Assists per game on a points prop, pulled toward a typical rate. Goals rows leave this off.'],
   ['Volume', 'The chance implied by the shot rate at this line. Points props fold in the assist rate as well.'],
@@ -875,12 +879,12 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL keeps the line closest to 50/50 when recent usage agrees with it. Token lines and gaps the recent games do not support stay off the list. Other props stay when they hit in 70% or more of the last 10.
+                Sorted by the gap between our read and the contract price. NHL and NFL keep the line closest to 50/50 when recent usage agrees with it. Token lines and gaps the recent games do not support stay off the list. Other props stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>
               {likelyPicks.length === 0 && gamesLoaded === games.length && logDone >= logJob.length && (
-                <div className="empty-state"><p>No props cleared the last-10 bar or an NHL price gap.</p></div>
+                <div className="empty-state"><p>No props cleared the list for this slate.</p></div>
               )}
               <div className="props-list">
                 {likelyPicks.map((item) => (

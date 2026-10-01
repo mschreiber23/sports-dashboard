@@ -1,7 +1,8 @@
 // NHL goals and points. Shrink the last-10 hit rate toward a longer sample, blend
-// in shot volume (and assists for points), then nudge for ice time, recent shots,
-// power-play points, the games against this opponent, the game total, which side
-// is favored, and a back-to-back. Edge is that probability minus the yes price.
+// in shot volume (and assists for points). Shot rate follows the recent games,
+// and a sharp drop or jump in the last three becomes the rate. Then nudge for
+// ice time, power-play points, the opponent, the game total, the favorite, and
+// a back-to-back. Edge is that probability minus the yes price.
 
 const GOALS = 'hockey_player_goals';
 const POINTS = 'hockey_player_points';
@@ -83,18 +84,31 @@ function volumeParts(type, line, recentContext, priorContext) {
       assistGames += 1;
     }
   }
-  const priorShots = (priorContext || []).filter((row) => typeof row?.shots === 'number');
-  const recentShots = (recentContext || []).filter((row) => typeof row?.shots === 'number');
-  const shotSource = priorShots.length >= 5 ? priorShots : recentShots;
   const shooting = shotGames >= 8 && shots > 0 ? (goals + 0.105 * 80) / (shots + 80) : null;
   const assistRate = assistGames >= 8 ? (assists + 0.35 * 15) / (assistGames + 15) : null;
+  const shotsPer = expectedShots(priorContext, recentContext);
   let p = null;
-  if (shooting != null && shotSource.length >= 5) {
-    const shotsPer = shotSource.reduce((sum, row) => sum + row.shots, 0) / shotSource.length;
+  if (shooting != null && shotsPer != null) {
     if (type === GOALS) p = poissonAtLeast(shotsPer * shooting, line);
     else if (assistRate != null) p = poissonAtLeast(shotsPer * shooting + assistRate, line);
   }
   return { shooting, assists: assistRate, p };
+}
+
+function expectedShots(priorContext, recentContext) {
+  const older = seriesMean(priorContext, 'shots');
+  const last3 = seriesMean(recentContext, 'shots', 3);
+  const last5 = seriesMean(recentContext, 'shots', 5);
+  if (last3.n >= 3 && older.n >= 5 && older.mean > 0) {
+    const ratio = last3.mean / older.mean;
+    if (ratio <= 0.55 || ratio >= 1.75) return last3.mean;
+  }
+  if (last5.n >= 3 && older.n >= 5 && last5.mean != null && older.mean != null) {
+    return last5.mean * 0.65 + older.mean * 0.35;
+  }
+  if (older.n >= 5 && older.mean != null) return older.mean;
+  if (last5.n >= 5 && last5.mean != null) return last5.mean;
+  return null;
 }
 
 function volumeProbability(type, line, recentContext, priorContext) {
@@ -235,8 +249,9 @@ export function nhlPropEdge({
   const recentShots = seriesMean(recentContext, 'shots', 5);
   const priorShots = seriesMean(priorContext, 'shots');
   if (recentShots.n >= 3 && priorShots.n >= 5 && recentShots.mean != null && priorShots.mean != null) {
-    const shift = nudge(recentShots.mean - priorShots.mean, goals ? 0.012 : 0.018);
-    p = applyShift(p, tags, shift, 'shots up', 'shots down');
+    const delta = recentShots.mean - priorShots.mean;
+    if (delta >= 1) tags.push('shots up');
+    else if (delta <= -1) tags.push('shots down');
   }
 
   const recentPp = seriesMean(recentContext, 'pp');
