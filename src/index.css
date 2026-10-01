@@ -8369,6 +8369,21 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .props-day-label { font-size: 14px; font-weight: 800; min-width: 88px; text-align: center; }
+.props-view-nav { display: flex; gap: 8px; }
+.props-view-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: transparent;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.props-view-on { border-color: rgba(255,255,255,0.72); }
+.props-likely-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
+.props-likely-line { color: var(--accent); font-weight: 700; }
 .props-game {
   width: 100%;
   display: flex;

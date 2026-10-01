@@ -40,6 +40,53 @@ function last10Hit(values, line) {
   return Math.round((hits / values.length) * 100);
 }
 
+const LIKELY_MIN_GAMES = 5;
+const LIKELY_MIN_RATE = 70;
+
+function likelyBoard(games, logs) {
+  const picks = [];
+  for (const game of games) {
+    if (!game.rows) continue;
+    const groups = new Map();
+    for (const row of game.rows) {
+      if (row.section !== 'player' || row.line == null) continue;
+      const key = `${row.playerId}|${row.type}`;
+      if (!groups.has(key)) groups.set(key, []);
+      const lines = groups.get(key);
+      if (!lines.some((item) => item.line === row.line)) lines.push(row);
+    }
+    for (const lines of groups.values()) {
+      const sample = lines[0];
+      const recent = logs[`${game.league}|${sample.player}|${sample.gameStart}`]?.series?.[sample.type];
+      if (!recent || recent.length < LIKELY_MIN_GAMES) continue;
+      const byRate = new Map();
+      for (const line of lines) {
+        const hits = recent.filter((value) => value >= line.line).length;
+        const rate = Math.round((hits / recent.length) * 100);
+        if (rate < LIKELY_MIN_RATE) continue;
+        const prev = byRate.get(rate);
+        if (!prev || line.line > prev.line) byRate.set(rate, { line: line.line, hits, rate, row: line });
+      }
+      for (const best of byRate.values()) {
+        picks.push({
+          id: best.row.id,
+          player: sample.player,
+          prop: `${lineText(best.line)} ${chartLabel(sample.type)}`,
+          rate: best.rate,
+          hits: best.hits,
+          total: recent.length,
+          line: best.line,
+          gameKey: game.key,
+          game: game.title,
+          sport: game.sport,
+        });
+      }
+    }
+  }
+  picks.sort((a, b) => b.rate - a.rate || b.line - a.line || b.hits - a.hits || a.player.localeCompare(b.player));
+  return picks;
+}
+
 function groupPlayers(rows) {
   const map = new Map();
   for (const row of rows) {
@@ -353,6 +400,9 @@ export default function PropsPage() {
   const [sport, setSport] = useState('All');
   const [day, setDay] = useState(() => easternDay(Date.now()));
   const [gameKey, setGameKey] = useState(null);
+  const [view, setView] = useState('games');
+  const [boardLogs, setBoardLogs] = useState({});
+  const [logDone, setLogDone] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadingSlug, setLoadingSlug] = useState('');
 
@@ -391,10 +441,38 @@ export default function PropsPage() {
   }, [events, day]);
 
   const openGame = games.find((game) => game.key === gameKey) || null;
-  const prefetchKey = games.length > 0 && games.length <= 16 ? games.map((game) => game.key).join('|') : '';
+  const fetchKey = games.length > 0 && (view === 'likely' || games.length <= 16)
+    ? games.map((game) => game.key).join('|')
+    : '';
+  const logJob = useMemo(() => {
+    if (view !== 'likely') return [];
+    const seen = new Set();
+    const players = [];
+    for (const game of games) {
+      if (!game.rows) continue;
+      for (const row of game.rows) {
+        if (row.section !== 'player') continue;
+        const id = `${game.league}|${row.player}|${row.gameStart}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        players.push({
+          id,
+          league: game.league,
+          name: row.player,
+          opponentAbbr: row.opponentAbbr,
+          opponentName: row.opponentName,
+          before: row.gameStart,
+        });
+      }
+    }
+    return players;
+  }, [view, games]);
+  const logJobKey = logJob.map((player) => player.id).join(';');
+  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs) : []), [view, games, boardLogs]);
+  const gamesLoaded = games.filter((game) => game.rows).length;
 
   useEffect(() => {
-    const slugs = prefetchKey ? prefetchKey.split('|') : [];
+    const slugs = fetchKey ? fetchKey.split('|') : [];
     if (!slugs.length) return undefined;
     let cancel = false;
     let next = 0;
@@ -411,7 +489,33 @@ export default function PropsPage() {
     }
     Promise.all(Array.from({ length: Math.min(4, slugs.length) }, worker));
     return () => { cancel = true; };
-  }, [prefetchKey]);
+  }, [fetchKey]);
+
+  useEffect(() => {
+    if (!logJobKey) return undefined;
+    let cancel = false;
+    const players = logJob;
+    let cursor = 0;
+    let done = 0;
+    setLogDone(0);
+    async function worker() {
+      while (cursor < players.length) {
+        const player = players[cursor++];
+        try {
+          const result = await recentPlayerLogs(player.league, [player]);
+          if (!cancel) {
+            setBoardLogs((prev) => (player.id in prev ? prev : { ...prev, [player.id]: result[player.name] ?? null }));
+          }
+        } catch {
+          if (!cancel) setBoardLogs((prev) => (player.id in prev ? prev : { ...prev, [player.id]: null }));
+        }
+        done += 1;
+        if (!cancel) setLogDone(done);
+      }
+    }
+    Promise.all(Array.from({ length: Math.min(4, players.length) }, worker));
+    return () => { cancel = true; };
+  }, [logJobKey, logJob]);
 
   useEffect(() => {
     if (!gameKey) return undefined;
@@ -478,6 +582,43 @@ export default function PropsPage() {
             </div>
           )}
 
+          {games.length > 0 && (
+            <div className="props-view-nav">
+              <button type="button" className={`props-view-btn ${view === 'games' ? 'props-view-on' : ''}`} onClick={() => setView('games')}>Games</button>
+              <button type="button" className={`props-view-btn ${view === 'likely' ? 'props-view-on' : ''}`} onClick={() => setView('likely')}>Likely</button>
+            </div>
+          )}
+
+          {games.length > 0 && view === 'likely' && (
+            <>
+              <p className="props-likely-note">
+                Sorted by the last 10 hit rate. Lines that hit in 70% or more of those games.
+                {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
+                {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
+              </p>
+              {likelyPicks.length === 0 && gamesLoaded === games.length && logDone >= logJob.length && (
+                <div className="empty-state"><p>No props hit that often in the last 10.</p></div>
+              )}
+              <div className="props-list">
+                {likelyPicks.map((item) => (
+                  <button key={item.id} type="button" className="props-game" onClick={() => setGameKey(item.gameKey)}>
+                    <div className="props-game-main">
+                      <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prop}</span></div>
+                      <div className="props-game-meta">
+                        {sport === 'All' ? `${item.sport} · ` : ''}{item.game} · {item.hits}/{item.total}
+                      </div>
+                    </div>
+                    <div className="props-game-best">
+                      <span>{item.rate}%</span>
+                      <span>L10</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {view === 'games' && (
           <div className="props-list">
             {games.map((game) => {
               const best = game.rows?.[0];
@@ -500,12 +641,13 @@ export default function PropsPage() {
               );
             })}
           </div>
+          )}
         </>
       )}
 
       {openGame && (
         <>
-          <button type="button" className="props-back" onClick={() => setGameKey(null)}>‹ Games</button>
+          <button type="button" className="props-back" onClick={() => setGameKey(null)}>{view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
           <div className="props-sport-head">
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>
