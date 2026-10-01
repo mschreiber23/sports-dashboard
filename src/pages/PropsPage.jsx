@@ -74,12 +74,21 @@ function slateContext(rows) {
   let favorite = '';
   let favoriteYes = null;
   let favoriteDist = Infinity;
+  let spreadLine = null;
+  let spreadLabel = '';
+  let spreadDist = Infinity;
   for (const row of rows || []) {
     if (row.section !== 'line' || typeof row.yes !== 'number') continue;
     const dist = Math.abs(row.yes - 0.5);
-    if (row.sideText === 'total' && row.line != null && dist < totalDist) {
+    const type = row.type || '';
+    if (row.sideText === 'total' && row.line != null && !type.includes('points_') && dist < totalDist) {
       total = row.line;
       totalDist = dist;
+    }
+    if (row.sideText === 'spread' && row.line != null && dist < spreadDist) {
+      spreadLine = row.line;
+      spreadLabel = row.player || '';
+      spreadDist = dist;
     }
     if (row.sideText === 'moneyline' && dist < favoriteDist) {
       favorite = row.player || '';
@@ -87,7 +96,7 @@ function slateContext(rows) {
       favoriteDist = dist;
     }
   }
-  return { total, favorite, favoriteYes };
+  return { total, favorite, favoriteYes, spreadLine, spreadLabel };
 }
 
 function likelyBoard(games, logs) {
@@ -129,6 +138,8 @@ function likelyBoard(games, logs) {
             opponentName: sample.opponentName,
             favoriteName: slate.favorite,
             favoriteYes: slate.favoriteYes,
+            spreadLine: slate.spreadLine,
+            spreadLabel: slate.spreadLabel,
           });
           if (!model) continue;
           const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
@@ -245,17 +256,19 @@ const FACTOR_KEY = [
 ];
 
 const NFL_FACTOR_KEY = [
-  ['Model', 'Our read of the chance this line hits, after shrinking the recent record and applying the nudges below.'],
+  ['Model', 'Our read of the chance this line hits. Most of it is expected attempts, carries, or targets times a stable efficiency rate. The last-10 record is the smaller piece.'],
   ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price.'],
-  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record.'],
-  ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
-  ['Attempts, carries, targets', 'Average usage over the last five games. Passing props use attempts, rushing props use carries, and receiving props use targets.'],
-  ['Prior attempts, carries, targets', 'The same usage number in the earlier games. The model compares the two.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record. It is shown in full, and it is a quarter of the read.'],
+  ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead. Touchdown props give this a little more weight.'],
+  ['Attempts, carries, targets', 'Average usage over the last five games. This is the main input. Passing props use attempts, rushing props use carries, and receiving props use targets. Receptions then use catch rate. Receiving yards use yards per target.'],
+  ['Prior attempts, carries, targets', 'The same usage number in the earlier games. Expected usage is about two thirds the last five and one third this longer rate.'],
   ['Y/A, YPC, catch rate', 'Efficiency pulled toward a typical NFL rate, so a short hot or cold stretch does not take over. Touchdowns use a per-attempt or per-target rate.'],
-  ['Volume', 'The chance that usage and efficiency imply at this exact line.'],
-  ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent.'],
-  ['Game total', 'The game total priced closest to 50/50. The model compares that number with 45 points.'],
-  ['Side', 'Whether this player’s team is the favorite or the underdog, and that team’s price.'],
+  ['Volume', 'The chance that tonight’s expected usage and that efficiency imply at this exact line. This is most of the model percent.'],
+  ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent. A small nudge, and only with at least three of those games.'],
+  ['Game total', 'The full-game total priced closest to 50/50. A higher total adds a little to passing and receiving props.'],
+  ['Implied', 'This team’s points, from the game total and the spread. A favorite in a 37.5-point game with a 2.5-point line is about 20. Touchdown props move with this number.'],
+  ['Script', 'Throwing when this team is the underdog by about a field goal or more, running when they are favored by that much. Passing and receiving props rise on a throwing script. Rushing props rise on a running script.'],
+  ['Side', 'Whether this player’s team is the moneyline favorite or the underdog, and that team’s price. The spread is what the model uses for script.'],
   ['Rest', 'Days since the last game. Under six days is a short week. Ten days or more, a bye included, counts as rested.'],
 ];
 
@@ -284,6 +297,10 @@ const FACTOR_TAGS = {
   'short week': 'rest',
   rested: 'rest',
   volume: 'volume',
+  'pass script': 'script',
+  'run script': 'script',
+  'implied points': 'implied',
+  'low implied': 'implied',
 };
 
 function shortOpp(name, abbr) {
@@ -456,6 +473,8 @@ function PlayerPropBoard({ rows, league, slate }) {
             opponentName: group.opponentName,
             favoriteName: slate?.favorite,
             favoriteYes: slate?.favoriteYes,
+            spreadLine: slate?.spreadLine,
+            spreadLabel: slate?.spreadLabel,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
           };
           const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : null);
@@ -808,7 +827,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL props do the same with attempts, carries, and targets, plus the total, the favorite, and a short week or a bye. Other props stay when they hit in 70% or more of the last 10.
+                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL props start from attempts, carries, or targets, then the spread and the total set a pass or run script and a team point total. Other props stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>

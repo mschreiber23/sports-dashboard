@@ -1,8 +1,8 @@
-// NFL player props. Shrink the last-10 hit rate toward a longer sample, blend in
-// usage (attempts, carries, or targets) times a shrunk efficiency rate, then
-// nudge for a recent usage change, the games against this opponent, the game
-// total, which side is favored, and a short week or extra rest. Edge is that
-// probability minus the yes price.
+// NFL player props. Opportunity is the base: recent attempts, carries, or
+// targets, blended with the longer sample, times a shrunk efficiency rate.
+// The last-10 hit rate is the smaller piece. Then the spread and the total
+// set a pass or run script and a team implied point total, and a short week
+// or extra rest can still move it. Edge is that probability minus the yes price.
 
 const PASS_YDS = 'football_player_passing_yards';
 const RUSH_YDS = 'football_player_rushing_yards';
@@ -84,9 +84,22 @@ function fallbackRate(type, line) {
   return 0.45;
 }
 
-function windowOf(prior, recent, key) {
+function expectedUsage(prior, recent, key) {
   const older = avg(prior, key);
-  return (older?.n >= 5 ? prior : recent) || [];
+  const latest = avg((recent || []).slice(-5), key);
+  if (latest && latest.n >= 3 && older && older.n >= 5) {
+    return { mean: latest.mean * 0.65 + older.mean * 0.35, n: older.n };
+  }
+  if (older && older.n >= 5) return older;
+  const fallback = avg(recent, key);
+  return fallback && fallback.n >= 5 ? fallback : null;
+}
+
+function usageDelta(recent, prior, key) {
+  const latest = avg((recent || []).slice(-5), key);
+  const older = avg(prior, key);
+  if (!latest || latest.n < 3 || !older || older.n < 5) return 0;
+  return latest.mean - older.mean;
 }
 
 function shrunk(all, numKey, denKey, priorNum, priorDen) {
@@ -104,8 +117,7 @@ function volumeRead(type, line, recentContext, priorContext) {
   const blank = { p: null, rows: [] };
 
   if (type === PASS_YDS || type === PASS_TD || type === COMP || type === PASS_ATT || type === INT) {
-    const source = windowOf(prior, recent, 'passAtt');
-    const attempts = avg(source, 'passAtt');
+    const attempts = expectedUsage(prior, recent, 'passAtt');
     if (!attempts || attempts.n < 5) return { ...blank, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt') };
     const ypa = shrunk(all, 'passYds', 'passAtt', 7 * 100, 100);
     const compRate = shrunk(all, 'completions', 'passAtt', 0.64 * 80, 80);
@@ -137,8 +149,7 @@ function volumeRead(type, line, recentContext, priorContext) {
   }
 
   if (type === RUSH_YDS || type === RUSH_ATT) {
-    const source = windowOf(prior, recent, 'rushAtt');
-    const carries = avg(source, 'rushAtt');
+    const carries = expectedUsage(prior, recent, 'rushAtt');
     if (!carries || carries.n < 5) return { ...blank, rows: usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt') };
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
     let p = null;
@@ -154,8 +165,7 @@ function volumeRead(type, line, recentContext, priorContext) {
   }
 
   if (type === REC_YDS || type === RECS || type === LONG) {
-    const source = windowOf(prior, recent, 'targets');
-    const targets = avg(source, 'targets');
+    const targets = expectedUsage(prior, recent, 'targets');
     const ypt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
     const catchRate = shrunk(all, 'rec', 'targets', 0.65 * 30, 30);
     let p = null;
@@ -172,10 +182,8 @@ function volumeRead(type, line, recentContext, priorContext) {
   }
 
   if (type === SCRIM || type === TD) {
-    const carrySource = windowOf(prior, recent, 'rushAtt');
-    const targetSource = windowOf(prior, recent, 'targets');
-    const carries = avg(carrySource, 'rushAtt');
-    const targets = avg(targetSource, 'targets');
+    const carries = expectedUsage(prior, recent, 'rushAtt');
+    const targets = expectedUsage(prior, recent, 'targets');
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
     const ypt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
     const rushTd = shrunk(all, 'rushTd', 'rushAtt', 0.03 * 50, 50);
@@ -214,11 +222,48 @@ function usageRows(label, priorLabel, recent, prior, key, rateLabel, rateValue) 
   return rows;
 }
 
-function trend(recent, prior, key, per) {
-  const recentAvg = avg((recent || []).slice(-5), key);
-  const priorAvg = avg(prior, key);
-  if (!recentAvg || recentAvg.n < 3 || !priorAvg || priorAvg.n < 5) return 0;
-  return clamp((recentAvg.mean - priorAvg.mean) * per, -0.06, 0.06);
+const PASS_SCRIPT = new Set([PASS_YDS, PASS_TD, COMP, PASS_ATT, INT, REC_YDS, RECS, LONG]);
+const RUSH_SCRIPT = new Set([RUSH_YDS, RUSH_ATT]);
+
+function spreadRead(line, label) {
+  if (typeof line !== 'number' || !Number.isFinite(line) || !label) return null;
+  const match = String(label).match(/^(.*)\s+([+-]?\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  const team = match[1].trim();
+  const signed = Number(match[2]);
+  if (!team || !Number.isFinite(signed)) return null;
+  const margin = Math.abs(signed);
+  if (!(margin > 0)) return null;
+  if (signed < 0) return { favorite: team, margin };
+  return { dog: team, margin };
+}
+
+function scriptOf({ gameTotal, teamName, opponentName, spreadLine, spreadLabel }) {
+  const total = typeof gameTotal === 'number' && Number.isFinite(gameTotal) ? gameTotal : null;
+  const spread = spreadRead(spreadLine, spreadLabel);
+  if (total == null || !spread) return { total, implied: null, lean: 0 };
+  const tilt = spread.margin / 2;
+  const teamFav = spread.favorite && sameTeam(teamName, spread.favorite);
+  const oppFav = spread.favorite && sameTeam(opponentName, spread.favorite);
+  const teamDog = spread.dog && sameTeam(teamName, spread.dog);
+  const oppDog = spread.dog && sameTeam(opponentName, spread.dog);
+  let implied = null;
+  if (teamFav || oppDog) implied = total / 2 + tilt;
+  else if (oppFav || teamDog) implied = total / 2 - tilt;
+  const lean = implied == null ? 0 : (total - implied) - implied;
+  return { total, implied, lean };
+}
+
+function scriptLabel(lean) {
+  if (lean >= 2) return 'Throwing';
+  if (lean <= -2) return 'Running';
+  return 'Neutral';
+}
+
+function tagUsage(tags, recent, prior, key, up, down, min) {
+  const delta = usageDelta(recent, prior, key);
+  if (delta >= min) tags.push(up);
+  else if (delta <= -min) tags.push(down);
 }
 
 function applyShift(p, tags, shift, up, down) {
@@ -236,7 +281,8 @@ function sameTeam(a, b) {
 
 export function nflFactorLines({
   type, line, recent, prior, recentContext, priorContext, versus,
-  lastPlayed, gameStart, gameTotal, teamName, opponentName, favoriteName, favoriteYes, opponentLabel,
+  lastPlayed, gameStart, gameTotal, teamName, opponentName, favoriteName, favoriteYes,
+  spreadLine, spreadLabel, opponentLabel,
 }) {
   if (!nflModeled(type) || line == null) return [];
   const lines = [];
@@ -257,8 +303,13 @@ export function nflFactorLines({
     const hits = versus.filter((value) => value >= line).length;
     lines.push({ id: 'opp', label: `vs ${opponentLabel || 'opponent'}`, value: `${hits}/${versus.length}` });
   }
+  const env = scriptOf({ gameTotal, teamName, opponentName, spreadLine, spreadLabel });
   if (typeof gameTotal === 'number' && Number.isFinite(gameTotal)) {
     lines.push({ id: 'total', label: 'Game total', value: String(gameTotal) });
+  }
+  if (env.implied != null) {
+    lines.push({ id: 'implied', label: 'Implied', value: env.implied.toFixed(1) });
+    lines.push({ id: 'script', label: 'Script', value: scriptLabel(env.lean) });
   }
   if (typeof favoriteYes === 'number' && Number.isFinite(favoriteYes)) {
     const favP = Math.max(favoriteYes, 1 - favoriteYes);
@@ -277,7 +328,7 @@ export function nflFactorLines({
 export function nflPropEdge(input) {
   const {
     type, line, recent, prior, recentContext, priorContext, versus, marketYes,
-    lastPlayed, gameStart, gameTotal, teamName, opponentName, favoriteName, favoriteYes,
+    lastPlayed, gameStart, gameTotal, teamName, opponentName, spreadLine, spreadLabel,
   } = input;
   if (!nflModeled(type)) return null;
   if (!recent || recent.length < 5 || line == null) return null;
@@ -294,33 +345,30 @@ export function nflPropEdge(input) {
 
   const volume = volumeRead(type, line, recentContext, priorContext);
   if (volume.p != null) {
-    const blended = VOLATILE.has(type) ? (0.55 * p + 0.45 * volume.p) : (0.65 * p + 0.35 * volume.p);
+    const hitWeight = VOLATILE.has(type) ? 0.35 : 0.25;
+    const blended = hitWeight * p + (1 - hitWeight) * volume.p;
     p = applyShift(p, tags, blended - p, 'volume', 'low volume');
   }
 
   const usage = [
-    [PASS_YDS, 'passAtt', 0.008, 'attempts up', 'attempts down'],
-    [PASS_TD, 'passAtt', 0.006, 'attempts up', 'attempts down'],
-    [COMP, 'passAtt', 0.008, 'attempts up', 'attempts down'],
-    [PASS_ATT, 'passAtt', 0.01, 'attempts up', 'attempts down'],
-    [INT, 'passAtt', 0.004, 'attempts up', 'attempts down'],
-    [RUSH_YDS, 'rushAtt', 0.012, 'carries up', 'carries down'],
-    [RUSH_ATT, 'rushAtt', 0.012, 'carries up', 'carries down'],
-    [REC_YDS, 'targets', 0.015, 'targets up', 'targets down'],
-    [RECS, 'targets', 0.015, 'targets up', 'targets down'],
-    [LONG, 'targets', 0.008, 'targets up', 'targets down'],
+    [PASS_YDS, 'passAtt', 'attempts up', 'attempts down', 3],
+    [PASS_TD, 'passAtt', 'attempts up', 'attempts down', 3],
+    [COMP, 'passAtt', 'attempts up', 'attempts down', 3],
+    [PASS_ATT, 'passAtt', 'attempts up', 'attempts down', 3],
+    [INT, 'passAtt', 'attempts up', 'attempts down', 3],
+    [RUSH_YDS, 'rushAtt', 'carries up', 'carries down', 2],
+    [RUSH_ATT, 'rushAtt', 'carries up', 'carries down', 2],
+    [REC_YDS, 'targets', 'targets up', 'targets down', 1.5],
+    [RECS, 'targets', 'targets up', 'targets down', 1.5],
+    [LONG, 'targets', 'targets up', 'targets down', 1.5],
   ];
   const spec = usage.find((item) => item[0] === type);
-  if (spec) {
-    const shift = trend(recentContext, priorContext, spec[1], spec[2]);
-    p = applyShift(p, tags, shift, spec[3], spec[4]);
-  } else if (type === SCRIM || type === TD) {
-    const carry = trend(recentContext, priorContext, 'rushAtt', type === TD ? 0.008 : 0.01);
-    const target = trend(recentContext, priorContext, 'targets', type === TD ? 0.008 : 0.012);
-    const shift = clamp(carry + target, -0.06, 0.06);
-    const up = Math.abs(target) >= Math.abs(carry) ? 'targets up' : 'carries up';
-    const down = Math.abs(target) >= Math.abs(carry) ? 'targets down' : 'carries down';
-    p = applyShift(p, tags, shift, up, down);
+  if (spec) tagUsage(tags, recentContext, priorContext, spec[1], spec[2], spec[3], spec[4]);
+  else if (type === SCRIM || type === TD) {
+    const carries = Math.abs(usageDelta(recentContext, priorContext, 'rushAtt'));
+    const targets = Math.abs(usageDelta(recentContext, priorContext, 'targets'));
+    if (targets >= carries) tagUsage(tags, recentContext, priorContext, 'targets', 'targets up', 'targets down', 1.5);
+    else tagUsage(tags, recentContext, priorContext, 'rushAtt', 'carries up', 'carries down', 2);
   }
 
   if (versus && versus.length >= 3) {
@@ -329,21 +377,21 @@ export function nflPropEdge(input) {
     p = applyShift(p, tags, shift, 'hot vs opponent', 'cold vs opponent');
   }
 
-  if (typeof gameTotal === 'number' && Number.isFinite(gameTotal)) {
-    const per = VOLATILE.has(type) ? 0.008 : 0.006;
-    const shift = clamp((gameTotal - 45) * per, -0.04, 0.04);
-    p = applyShift(p, tags, shift, 'high total', 'low total');
+  const env = scriptOf({ gameTotal, teamName, opponentName, spreadLine, spreadLabel });
+  if (env.implied != null && (type === TD || type === PASS_TD)) {
+    const shift = clamp((env.implied - 22) * 0.012, -0.05, 0.05);
+    p = applyShift(p, tags, shift, 'implied points', 'low implied');
   }
-
-  if (typeof favoriteYes === 'number' && Number.isFinite(favoriteYes)) {
-    const favP = Math.max(favoriteYes, 1 - favoriteYes);
-    let lean = null;
-    if (sameTeam(teamName, favoriteName)) lean = favP - 0.5;
-    else if (sameTeam(opponentName, favoriteName)) lean = 0.5 - favP;
-    if (lean != null) {
-      const shift = clamp(lean * (VOLATILE.has(type) ? 0.08 : 0.06), -0.03, 0.03);
-      p = applyShift(p, tags, shift, 'favorite', 'underdog');
-    }
+  if (PASS_SCRIPT.has(type)) {
+    const shootout = env.total == null ? 0 : (env.total - 44) * 0.005;
+    const shift = clamp(env.lean * 0.008 + shootout, -0.06, 0.06);
+    p = applyShift(p, tags, shift, 'pass script', 'run script');
+  } else if (RUSH_SCRIPT.has(type)) {
+    const shift = clamp(-env.lean * 0.008, -0.05, 0.05);
+    p = applyShift(p, tags, shift, 'run script', 'pass script');
+  } else if (type === SCRIM && env.implied != null) {
+    const shift = clamp(-env.lean * 0.004, -0.03, 0.03);
+    p = applyShift(p, tags, shift, 'run script', 'pass script');
   }
 
   if (typeof gameStart === 'number' && typeof lastPlayed === 'number' && Number.isFinite(lastPlayed)) {
