@@ -8,6 +8,7 @@ import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
 import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN, NHL_P_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
+import { nflWeekSpan } from '../api/nfl';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -651,11 +652,18 @@ export default function PropsPage() {
     return () => { cancel = true; };
   }, [reloadKey]);
 
+  const nflWeek = useMemo(() => nflWeekSpan(day), [day]);
+
   const games = useMemo(() => {
     const list = [];
+    const weekView = sport === 'NFL' && nflWeek;
     for (const event of events || []) {
-      if (easternDay(event.gameStart) !== day) continue;
-      if (sport !== 'All' && event.sport !== sport) continue;
+      const eventDay = easternDay(event.gameStart);
+      if (weekView) {
+        if (event.sport !== 'NFL' || eventDay < nflWeek.start || eventDay > nflWeek.end) continue;
+      } else if (eventDay !== day || (sport !== 'All' && event.sport !== sport)) {
+        continue;
+      }
       const rows = loaded[event.key];
       list.push({
         ...event,
@@ -664,16 +672,18 @@ export default function PropsPage() {
     }
     list.sort((a, b) => a.gameStart - b.gameStart || a.title.localeCompare(b.title));
     return list;
-  }, [events, day, sport, loaded]);
+  }, [events, day, sport, loaded, nflWeek]);
 
   const counts = useMemo(() => {
     const bySport = new Map();
+    let nfl = 0;
     for (const event of events || []) {
-      if (easternDay(event.gameStart) !== day) continue;
-      bySport.set(event.sport, (bySport.get(event.sport) || 0) + 1);
+      const eventDay = easternDay(event.gameStart);
+      if (eventDay === day) bySport.set(event.sport, (bySport.get(event.sport) || 0) + 1);
+      if (nflWeek && event.sport === 'NFL' && eventDay >= nflWeek.start && eventDay <= nflWeek.end) nfl += 1;
     }
-    return bySport;
-  }, [events, day]);
+    return { bySport, nfl };
+  }, [events, day, nflWeek]);
 
   const openGame = games.find((game) => game.key === gameKey) || null;
   const fetchKey = games.length > 0 && (view === 'likely' || games.length <= 16)
@@ -773,7 +783,7 @@ export default function PropsPage() {
       <div className="props-header">
         <h1 className="page-title">Props</h1>
         <p className="props-note">
-          Games for the day. Open a game for player props, the last 10 games, and the last five against the opponent.
+          Games for the day. The NFL tab lists every game in the week. Open a game for player props, the last 10 games, and the last five against the opponent.
           {' '}This is a read of the market, not a pick.
         </p>
       </div>
@@ -792,16 +802,18 @@ export default function PropsPage() {
       {events && !openGame && (
         <>
           <div className="props-day-nav">
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, -1)); setGameKey(null); }} aria-label="Previous day">‹</button>
-            <span className="props-day-label">{formatDayLabel(day)}</span>
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, 1)); setGameKey(null); }} aria-label="Next day">›</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
+            <span className="props-day-label">{sport === 'NFL' && nflWeek ? nflWeek.label : formatDayLabel(day)}</span>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
           </div>
 
           <div className="scores-sport-tabs">
             {TABS.map((name) => {
               const count = name === 'All'
-                ? [...counts.values()].reduce((sum, n) => sum + n, 0)
-                : (counts.get(name) || 0);
+                ? [...counts.bySport.values()].reduce((sum, n) => sum + n, 0)
+                : name === 'NFL' && nflWeek
+                  ? counts.nfl
+                  : (counts.bySport.get(name) || 0);
               return (
                 <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => setSport(name)}>
                   {name}
@@ -813,7 +825,10 @@ export default function PropsPage() {
 
           {games.length === 0 && (
             <div className="empty-state">
-              <p>No {sport === 'All' ? '' : `${sport} `}games {formatDayLabel(day) === 'Today' ? 'today' : `on ${formatDayLabel(day)}`}.</p>
+              <p>{sport === 'NFL' && nflWeek
+                ? `No NFL games in ${nflWeek.label}.`
+                : `No ${sport === 'All' ? '' : `${sport} `}games ${formatDayLabel(day) === 'Today' ? 'today' : `on ${formatDayLabel(day)}`}.`}
+              </p>
             </div>
           )}
 

@@ -32,6 +32,41 @@ export function getNflWeekInfo(date = new Date()) {
   return null; // Off-season
 }
 
+function dateFromYmd(ymd) {
+  const [year, month, day] = String(ymd).split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function ymdFromDate(date) {
+  return date.getFullYear().toString()
+    + '-' + String(date.getMonth() + 1).padStart(2, '0')
+    + '-' + String(date.getDate()).padStart(2, '0');
+}
+
+function sameNflWeek(a, b) {
+  return !!a && !!b && a.week === b.week && a.seasontype === b.seasontype;
+}
+
+/** Eastern calendar span for the NFL week that contains `ymd` (`YYYY-MM-DD`). */
+export function nflWeekSpan(ymd) {
+  const info = getNflWeekInfo(dateFromYmd(ymd));
+  if (!info) return null;
+  let start = dateFromYmd(ymd);
+  while (sameNflWeek(info, getNflWeekInfo(new Date(start.getFullYear(), start.getMonth(), start.getDate() - 1, 12)))) {
+    start = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 1, 12);
+  }
+  let end = dateFromYmd(ymd);
+  while (sameNflWeek(info, getNflWeekInfo(new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1, 12)))) {
+    end = new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1, 12);
+  }
+  return {
+    ...info,
+    label: getNflWeekLabel(info),
+    start: ymdFromDate(start),
+    end: ymdFromDate(end),
+  };
+}
+
 /** Human-readable label for the current week ("Week 1", "Wild Card", etc.) */
 export function getNflWeekLabel(weekInfo) {
   if (!weekInfo) return null;
