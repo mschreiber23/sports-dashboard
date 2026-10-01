@@ -67,10 +67,33 @@ function likelyPick(game, sample, line, recent, extra) {
   };
 }
 
+function slateContext(rows) {
+  let total = null;
+  let totalDist = Infinity;
+  let favorite = '';
+  let favoriteYes = null;
+  let favoriteDist = Infinity;
+  for (const row of rows || []) {
+    if (row.section !== 'line' || typeof row.yes !== 'number') continue;
+    const dist = Math.abs(row.yes - 0.5);
+    if (row.sideText === 'total' && row.line != null && dist < totalDist) {
+      total = row.line;
+      totalDist = dist;
+    }
+    if (row.sideText === 'moneyline' && dist < favoriteDist) {
+      favorite = row.player || '';
+      favoriteYes = row.yes;
+      favoriteDist = dist;
+    }
+  }
+  return { total, favorite, favoriteYes };
+}
+
 function likelyBoard(games, logs) {
   const picks = [];
   for (const game of games) {
     if (!game.rows) continue;
+    const slate = slateContext(game.rows);
     const groups = new Map();
     for (const row of game.rows) {
       if (row.section !== 'player' || row.line == null) continue;
@@ -94,7 +117,15 @@ function likelyBoard(games, logs) {
             prior: log?.prior?.[sample.type],
             recentContext: log?.context,
             priorContext: log?.priorContext,
+            versus: log?.versus?.[sample.type],
             marketYes: line.yes,
+            lastPlayed: log?.lastPlayed,
+            gameStart: sample.gameStart,
+            gameTotal: slate.total,
+            teamName: sample.teamName,
+            opponentName: sample.opponentName,
+            favoriteName: slate.favorite,
+            favoriteYes: slate.favoriteYes,
           });
           if (!model) continue;
           const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
@@ -643,7 +674,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then nudge for recent ice time, shots, and power-play points. Other props stay when they hit in 70% or more of the last 10. This is a simple read of the log, not tonight’s goalie or power-play deployment.
+                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume and assists, recent ice time, power-play points, the games against this opponent, the game total, which side is favored, and a back-to-back. Other props stay when they hit in 70% or more of the last 10. This is a simple read of the log, not tonight’s goalie or power-play unit.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>

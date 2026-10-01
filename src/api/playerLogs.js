@@ -185,8 +185,10 @@ function contextOf(games) {
     const shots = field(game.stats, 'shotsTotal');
     const toi = field(game.stats, 'timeOnIcePerGame');
     const pp = sumFields(game.stats, ['powerPlayGoals', 'powerPlayAssists']);
-    if (shots != null || toi != null || pp != null) any = true;
-    rows.push({ shots, toi, pp });
+    const goals = field(game.stats, 'goals');
+    const assists = field(game.stats, 'assists');
+    if (shots != null || toi != null || pp != null || goals != null || assists != null) any = true;
+    rows.push({ shots, toi, pp, goals, assists });
   }
   return any ? rows : null;
 }
@@ -305,12 +307,14 @@ export async function recentPlayerLogs(league, players) {
         const priorValues = take(earlier, type);
         if (priorValues) prior[type] = priorValues;
       }
+      const lastPlayed = games[0] ? new Date(games[0].date).getTime() : null;
       out[player.name] = {
         series,
         prior,
         versus: against,
         context: contextOf(recent),
         priorContext: contextOf(earlier),
+        lastPlayed: Number.isFinite(lastPlayed) ? lastPlayed : null,
         opponent: player.opponentName || player.opponentAbbr || '',
       };
     }
