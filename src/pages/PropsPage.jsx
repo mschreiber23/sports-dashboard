@@ -258,7 +258,7 @@ const FACTOR_KEY = [
 const NFL_FACTOR_KEY = [
   ['Model', 'Our read of the chance this line hits. Most of it is expected attempts, carries, or targets times a stable efficiency rate. The last-10 record is the smaller piece.'],
   ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price.'],
-  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record. It is shown in full, and it is a quarter of the read.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record. It is shown in full, and it is the smaller piece of the read.'],
   ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead. Touchdown props give this a little more weight.'],
   ['Attempts, carries, targets', 'Average usage over the last five games. This is the main input. Passing props use attempts, rushing props use carries, and receiving props use targets. Receptions then use catch rate. Receiving yards use yards per target.'],
   ['Prior attempts, carries, targets', 'The same usage number in the earlier games. Expected usage is about two thirds the last five and one third this longer rate.'],
