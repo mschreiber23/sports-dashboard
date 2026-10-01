@@ -310,6 +310,8 @@ function normalizeNhlProp(market, event) {
   const playerName = market.metadata?.playerName || '';
   const lineText = Number.isFinite(line) ? `${line}+ ${label}` : label;
   const teamTitle = String(market.title || '').replace(/\s+\d+\+\s+\S.*$/, '').trim();
+  const team = (event.teams || []).find((item) => Number(item.id) === Number(market.metadata?.teamId));
+  const jerseyNumber = Number(String(market.image || '').match(/jerseys\/(\d+)\.png/)?.[1]);
   const scored = scoreProp({
     yes: quote.yes,
     no: quote.no,
@@ -337,6 +339,11 @@ function normalizeNhlProp(market, event) {
     liquidity: null,
     spread: quote.spread,
     url: `https://polymarket.us/sports/nhl/${event.slug}`,
+    playerId: market.metadata?.playerId || playerName,
+    jersey: market.image || '',
+    jerseyNumber: Number.isFinite(jerseyNumber) ? jerseyNumber : null,
+    teamName: team?.name || teamTitle,
+    color: market.color || team?.colorPrimary || '',
     ...scored,
     side: 'Yes',
   };
