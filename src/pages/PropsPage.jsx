@@ -58,7 +58,7 @@ const NFL_LIKELY_MIN_LINE = {
   football_player_passing_completions: 18,
   football_player_passing_attempts: 25,
   football_player_rushing_attempts: 8,
-  football_player_passing_touchdowns: 0.5,
+  football_player_passing_touchdowns: 1.5,
   football_player_touchdowns: 0.5,
 };
 
@@ -148,7 +148,7 @@ function likelyBoard(games, logs) {
         const nfl = game.league === 'nfl';
         const candidates = nfl ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
-          if (nfl && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]) || line.yes < 0.35 || line.yes > 0.7)) continue;
+          if (nfl && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]) || line.yes < 0.43 || line.yes > 0.66)) continue;
           const model = edgeFn({
             type: sample.type,
             line: line.line,
@@ -170,9 +170,10 @@ function likelyBoard(games, logs) {
           });
           if (!model) continue;
           if (nfl) {
-            if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) continue;
+            if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN && model.edge <= 0.15)) continue;
             if (model.rate / 100 + 0.02 < line.yes) continue;
             if (model.rate / 100 + 0.08 < model.p) continue;
+            if (model.tags.some((tag) => tag === 'low volume' || tag.endsWith(' down'))) continue;
           } else {
             const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
             if (!priced && model.rate < LIKELY_MIN_RATE) continue;
@@ -874,7 +875,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL keeps the line closest to 50/50, skips token lines such as 1 catch or 10 yards, and only stays up when the recent games support the price. Other props stay when they hit in 70% or more of the last 10.
+                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL keeps the line closest to 50/50 when recent usage agrees with it. Token lines and gaps the recent games do not support stay off the list. Other props stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>
