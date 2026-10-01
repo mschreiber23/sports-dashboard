@@ -8384,6 +8384,8 @@ thead .dfs-sticky-player {
 .props-view-on { border-color: rgba(255,255,255,0.72); }
 .props-likely-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
 .props-likely-line { color: var(--accent); font-weight: 700; }
+.props-likely-tags { color: var(--text); }
+.props-edge-down span:first-child { color: var(--text2); }
 .props-game {
   width: 100%;
   display: flex;

@@ -168,9 +168,27 @@ export function chartLabel(type) {
 function parseCell(name, raw) {
   if (raw == null || raw === '' || raw === '-' || raw === '--') return undefined;
   if (name === 'innings') return String(raw);
+  if (name === 'timeOnIcePerGame') {
+    const match = String(raw).match(/^(\d+):(\d{2})$/);
+    if (!match) return undefined;
+    return Number(match[1]) + Number(match[2]) / 60;
+  }
   if (typeof raw === 'string' && /^\d+\s*-\s*\d+/.test(raw)) return raw;
   const value = Number(raw);
   return Number.isFinite(value) ? value : undefined;
+}
+
+function contextOf(games) {
+  const rows = [];
+  let any = false;
+  for (const game of games) {
+    const shots = field(game.stats, 'shotsTotal');
+    const toi = field(game.stats, 'timeOnIcePerGame');
+    const pp = sumFields(game.stats, ['powerPlayGoals', 'powerPlayAssists']);
+    if (shots != null || toi != null || pp != null) any = true;
+    rows.push({ shots, toi, pp });
+  }
+  return any ? rows : null;
 }
 
 async function espnId(league, name) {
@@ -274,18 +292,25 @@ export async function recentPlayerLogs(league, players) {
         .filter((game) => !player.before || new Date(game.date).getTime() < player.before)
         .sort((a, b) => new Date(b.date) - new Date(a.date));
       const recent = games.slice(0, 10).reverse();
+      const earlier = games.slice(10, 40);
       const versus = games.filter((game) => faces(game, player.opponentAbbr, player.opponentName)).slice(0, 5).reverse();
       const series = {};
+      const prior = {};
       const against = {};
       for (const type of Object.keys(EXTRACT)) {
         const recentValues = take(recent, type);
         if (!recentValues) continue;
         series[type] = recentValues;
         against[type] = take(versus, type) || [];
+        const priorValues = take(earlier, type);
+        if (priorValues) prior[type] = priorValues;
       }
       out[player.name] = {
         series,
+        prior,
         versus: against,
+        context: contextOf(recent),
+        priorContext: contextOf(earlier),
         opponent: player.opponentName || player.opponentAbbr || '',
       };
     }

@@ -6,6 +6,7 @@ import {
 } from '../api/polymarket';
 import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
+import { nhlPropEdge, NHL_EDGE_MIN, NHL_P_MIN } from '../utils/nhlEdge';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -43,6 +44,29 @@ function last10Hit(values, line) {
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
 
+function edgePoints(edge) {
+  return Math.round(edge * 100);
+}
+
+function marketPct(yes) {
+  return typeof yes === 'number' && Number.isFinite(yes) ? Math.round(yes * 100) : null;
+}
+
+function likelyPick(game, sample, line, recent, extra) {
+  return {
+    id: line.id,
+    player: sample.player,
+    prop: `${lineText(line.line)} ${chartLabel(sample.type)}`,
+    line: line.line,
+    total: recent.length,
+    gameKey: game.key,
+    game: game.title,
+    sport: game.sport,
+    market: marketPct(line.yes),
+    ...extra,
+  };
+}
+
 function likelyBoard(games, logs) {
   const picks = [];
   for (const game of games) {
@@ -57,33 +81,60 @@ function likelyBoard(games, logs) {
     }
     for (const lines of groups.values()) {
       const sample = lines[0];
-      const recent = logs[`${game.league}|${sample.player}|${sample.gameStart}`]?.series?.[sample.type];
+      const log = logs[`${game.league}|${sample.player}|${sample.gameStart}`];
+      const recent = log?.series?.[sample.type];
       if (!recent || recent.length < LIKELY_MIN_GAMES) continue;
+      const modeled = sample.type === 'hockey_player_goals' || sample.type === 'hockey_player_points';
+      if (modeled) {
+        for (const line of lines) {
+          const model = nhlPropEdge({
+            type: sample.type,
+            line: line.line,
+            recent,
+            prior: log?.prior?.[sample.type],
+            recentContext: log?.context,
+            priorContext: log?.priorContext,
+            marketYes: line.yes,
+          });
+          if (!model) continue;
+          const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
+          if (!priced && model.rate < LIKELY_MIN_RATE) continue;
+          picks.push(likelyPick(game, sample, line, recent, {
+            rate: model.rate,
+            hits: model.hits,
+            edge: model.edge,
+            edgePts: edgePoints(model.edge),
+            modelPct: Math.round(model.p * 100),
+            modeled: true,
+            tags: model.tags,
+          }));
+        }
+        continue;
+      }
       const byRate = new Map();
       for (const line of lines) {
         const hits = recent.filter((value) => value >= line.line).length;
         const rate = Math.round((hits / recent.length) * 100);
         if (rate < LIKELY_MIN_RATE) continue;
         const prev = byRate.get(rate);
-        if (!prev || line.line > prev.line) byRate.set(rate, { line: line.line, hits, rate, row: line });
+        if (!prev || line.line > prev.line) byRate.set(rate, { line, hits, rate });
       }
       for (const best of byRate.values()) {
-        picks.push({
-          id: best.row.id,
-          player: sample.player,
-          prop: `${lineText(best.line)} ${chartLabel(sample.type)}`,
+        const yes = typeof best.line.yes === 'number' ? best.line.yes : null;
+        const edge = yes == null ? 0 : best.rate / 100 - yes;
+        picks.push(likelyPick(game, sample, best.line, recent, {
           rate: best.rate,
           hits: best.hits,
-          total: recent.length,
-          line: best.line,
-          gameKey: game.key,
-          game: game.title,
-          sport: game.sport,
-        });
+          edge,
+          edgePts: edgePoints(edge),
+          modelPct: null,
+          modeled: false,
+          tags: [],
+        }));
       }
     }
   }
-  picks.sort((a, b) => b.rate - a.rate || b.line - a.line || b.hits - a.hits || a.player.localeCompare(b.player));
+  picks.sort((a, b) => b.edge - a.edge || b.rate - a.rate || b.line - a.line || a.player.localeCompare(b.player));
   return picks;
 }
 
@@ -592,12 +643,12 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the last 10 hit rate. Lines that hit in 70% or more of those games.
+                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then nudge for recent ice time, shots, and power-play points. Other props stay when they hit in 70% or more of the last 10. This is a simple read of the log, not tonight’s goalie or power-play deployment.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>
               {likelyPicks.length === 0 && gamesLoaded === games.length && logDone >= logJob.length && (
-                <div className="empty-state"><p>No props hit that often in the last 10.</p></div>
+                <div className="empty-state"><p>No props cleared the last-10 bar or an NHL price gap.</p></div>
               )}
               <div className="props-list">
                 {likelyPicks.map((item) => (
@@ -606,11 +657,16 @@ export default function PropsPage() {
                       <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prop}</span></div>
                       <div className="props-game-meta">
                         {sport === 'All' ? `${item.sport} · ` : ''}{item.game} · {item.hits}/{item.total}
+                        {item.modeled ? ` · model ${item.modelPct}%` : ` · L10 ${item.rate}%`}
+                        {item.market == null ? '' : ` · market ${item.market}%`}
                       </div>
+                      {item.tags.length > 0 && (
+                        <div className="props-game-meta props-likely-tags">{item.tags.join(' · ')}</div>
+                      )}
                     </div>
-                    <div className="props-game-best">
-                      <span>{item.rate}%</span>
-                      <span>L10</span>
+                    <div className={`props-game-best ${item.edge < 0 ? 'props-edge-down' : ''}`} aria-label={`${item.edgePts} point edge`}>
+                      <span>{item.edgePts > 0 ? `+${item.edgePts}` : `${item.edgePts}`}</span>
+                      <span>edge</span>
                     </div>
                   </button>
                 ))}
