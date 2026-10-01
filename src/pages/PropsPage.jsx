@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { loadPlayerProps, formatGameTime, formatLiquidity, SPORT_ORDER, compareProps } from '../api/polymarket';
+import {
+  loadPlayerProps, formatGameTime, formatLiquidity, compareProps,
+  easternDay, shiftDay, formatDayLabel,
+} from '../api/polymarket';
 import { attachSeasonStats, formatAvg } from '../api/propStats';
 import { bookLabel } from '../utils/propHit';
 
+const TABS = ['All', 'NFL', 'NBA', 'WNBA', 'MLB', 'NHL', 'Soccer'];
+
 function pct(n) {
   return `${Math.round(n * 100)}%`;
-}
-
-function sideLine(row) {
-  if (row.ou && row.line != null) return `${row.side} ${row.line} ${row.propLabel}`;
-  if (row.question.includes(':')) return row.question.split(':').slice(1).join(':').trim();
-  return row.propLabel;
 }
 
 function hitClass(row) {
@@ -33,10 +32,7 @@ function PropCard({ row }) {
             {row.player}
             {likely(row) && <span className="props-likely">Likely</span>}
           </div>
-          <div className="props-side">{sideLine(row)}</div>
-          <div className="props-meta">
-            {[row.eventTitle, formatGameTime(row.gameStart)].filter(Boolean).join(' · ')}
-          </div>
+          <div className="props-side">{row.sideText}</div>
         </div>
         <div className={`props-hit ${hitClass(row)}`}>
           <span className="props-hit-num">{pct(row.hit)}</span>
@@ -58,29 +54,14 @@ function PropCard({ row }) {
   );
 }
 
-function SportBlock({ sport, rows, limit }) {
-  const visible = rows.slice(0, limit);
-  if (!visible.length) return null;
-  return (
-    <section className="props-sport">
-      <div className="props-sport-head">
-        <h2>{sport}</h2>
-        <span>{rows.length}</span>
-      </div>
-      <div className="props-list">
-        {visible.map((row) => <PropCard key={row.id} row={row} />)}
-      </div>
-    </section>
-  );
-}
-
 export default function PropsPage() {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState({ done: 0, total: 1 });
   const [statsNote, setStatsNote] = useState(false);
   const [sport, setSport] = useState('All');
-  const [shown, setShown] = useState(20);
+  const [day, setDay] = useState(() => easternDay(Date.now()));
+  const [gameKey, setGameKey] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -104,43 +85,52 @@ export default function PropsPage() {
     return () => { cancel = true; };
   }, [reloadKey]);
 
-  const sports = useMemo(() => {
-    const counts = new Map();
-    for (const row of rows || []) counts.set(row.sport, (counts.get(row.sport) || 0) + 1);
-    const known = SPORT_ORDER.filter((name) => counts.has(name));
-    const rest = [...counts.keys()].filter((name) => !SPORT_ORDER.includes(name)).sort();
-    return [...known, ...rest];
-  }, [rows]);
-
-  const grouped = useMemo(() => {
+  const games = useMemo(() => {
     const map = new Map();
-    for (const name of sports) map.set(name, []);
     for (const row of rows || []) {
-      if (!map.has(row.sport)) map.set(row.sport, []);
-      map.get(row.sport).push(row);
+      if (easternDay(row.gameStart) !== day) continue;
+      if (sport !== 'All' && row.sport !== sport) continue;
+      const key = row.eventSlug || row.id;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          title: row.eventTitle || row.question,
+          sport: row.sport,
+          gameStart: row.gameStart,
+          rows: [],
+        });
+      }
+      map.get(key).rows.push(row);
     }
-    for (const list of map.values()) list.sort(compareProps);
-    return map;
-  }, [rows, sports]);
+    const list = [...map.values()];
+    for (const game of list) game.rows.sort(compareProps);
+    list.sort((a, b) => a.gameStart - b.gameStart || a.title.localeCompare(b.title));
+    return list;
+  }, [rows, day, sport]);
 
-  const strongest = useMemo(() => {
-    return (rows || [])
-      .filter((row) => !row.lock && row.quality >= 0.35)
-      .slice()
-      .sort(compareProps)
-      .slice(0, 5);
-  }, [rows]);
+  const counts = useMemo(() => {
+    const bySport = new Map();
+    const seen = new Set();
+    for (const row of rows || []) {
+      if (easternDay(row.gameStart) !== day) continue;
+      const key = `${row.sport}|${row.eventSlug || row.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      bySport.set(row.sport, (bySport.get(row.sport) || 0) + 1);
+    }
+    return bySport;
+  }, [rows, day]);
 
-  const selected = sport === 'All' ? null : (grouped.get(sport) || []);
+  const openGame = games.find((game) => game.key === gameKey) || null;
 
   return (
     <div className="page-content props-page">
       <div className="props-header">
         <h1 className="page-title">Props</h1>
         <p className="props-note">
-          Open Polymarket player props, grouped by sport. Over/unders show the side the market favors. When a player has several lines, this keeps the one most likely to hit that is still under a 90% lock. Yes/no props show the chance that prop happens. A thin book or a wide spread pulls the number down.
+          Games for the day, including NHL. Open a game to see every prop, most likely to hit first.
           {statsNote ? ' Season averages are blended in for the strongest NFL, NBA, WNBA, and MLB props.' : ''}
-          {' '}Near-locks above 90% sit lower in each sport. This is a read of the market, not a pick.
+          {' '}This is a read of the market, not a pick.
         </p>
       </div>
 
@@ -157,51 +147,68 @@ export default function PropsPage() {
         </div>
       )}
 
-      {rows && rows.length === 0 && (
-        <div className="empty-state">
-          <p>No open player props in the next few days.</p>
-        </div>
-      )}
-
-      {rows && rows.length > 0 && (
+      {rows && !openGame && (
         <>
-          <div className="scores-sport-tabs">
-            <button type="button" className={`ts-tab ${sport === 'All' ? 'ts-tab-active' : ''}`} onClick={() => { setSport('All'); setShown(20); }}>
-              All
-            </button>
-            {sports.map((name) => (
-              <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => { setSport(name); setShown(20); }}>
-                {name}
-                <span className="props-tab-count">{grouped.get(name)?.length || 0}</span>
-              </button>
-            ))}
+          <div className="props-day-nav">
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, -1)); setGameKey(null); }} aria-label="Previous day">‹</button>
+            <span className="props-day-label">{formatDayLabel(day)}</span>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, 1)); setGameKey(null); }} aria-label="Next day">›</button>
           </div>
 
-          {sport === 'All' && strongest.length > 0 && (
-            <section className="props-sport">
-              <div className="props-sport-head">
-                <h2>Most likely</h2>
-              </div>
-              <div className="props-list">
-                {strongest.map((row) => <PropCard key={row.id} row={row} />)}
-              </div>
-            </section>
-          )}
-
-          {sport === 'All' && sports.map((name) => (
-            <SportBlock key={name} sport={name} rows={grouped.get(name) || []} limit={8} />
-          ))}
-
-          {selected && (
-            <>
-              <SportBlock sport={sport} rows={selected} limit={shown} />
-              {shown < selected.length && (
-                <button type="button" className="props-more" onClick={() => setShown((n) => n + 30)}>
-                  Show more {sport}
+          <div className="scores-sport-tabs">
+            {TABS.map((name) => {
+              const count = name === 'All'
+                ? [...counts.values()].reduce((sum, n) => sum + n, 0)
+                : (counts.get(name) || 0);
+              return (
+                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => setSport(name)}>
+                  {name}
+                  <span className="props-tab-count">{count}</span>
                 </button>
-              )}
-            </>
+              );
+            })}
+          </div>
+
+          {games.length === 0 && (
+            <div className="empty-state">
+              <p>No {sport === 'All' ? '' : `${sport} `}games with props on {formatDayLabel(day).toLowerCase()}.</p>
+            </div>
           )}
+
+          <div className="props-list">
+            {games.map((game) => {
+              const best = game.rows[0];
+              return (
+                <button key={game.key} type="button" className="props-game" onClick={() => setGameKey(game.key)}>
+                  <div className="props-game-main">
+                    <div className="props-game-title">{game.title}</div>
+                    <div className="props-game-meta">
+                      {sport === 'All' ? `${game.sport} · ` : ''}{formatGameTime(game.gameStart)} · {game.rows.length} props
+                    </div>
+                  </div>
+                  {best && (
+                    <div className="props-game-best">
+                      <span>{pct(best.hit)}</span>
+                      <span>{best.sideText}</span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {openGame && (
+        <>
+          <button type="button" className="props-back" onClick={() => setGameKey(null)}>‹ Games</button>
+          <div className="props-sport-head">
+            <h2>{openGame.title}</h2>
+            <span>{formatGameTime(openGame.gameStart)}</span>
+          </div>
+          <div className="props-list">
+            {openGame.rows.map((row) => <PropCard key={row.id} row={row} />)}
+          </div>
         </>
       )}
     </div>

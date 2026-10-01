@@ -1,7 +1,8 @@
 import { scoreProp } from '../utils/propHit';
 
 const GAMMA = 'https://gamma-api.polymarket.com';
-const CACHE_KEY = 'props_markets_v5';
+const CACHE_KEY = 'props_markets_v7';
+const NHL_SERIES = '10346';
 const CACHE_MS = 3 * 60 * 1000;
 
 export const PLAYER_PROP_TYPES = [
@@ -50,6 +51,9 @@ const TYPE_LABEL = {
   soccer_player_shots_on_target: 'shots on target',
   soccer_anytime_goalscorer: 'anytime goal',
   soccer_player_goals_plus_assists: 'goals + assists',
+  moneyline: 'moneyline',
+  spreads: 'spread',
+  totals: 'total',
 };
 
 const LEAGUE_TO_SPORT = {
@@ -107,64 +111,167 @@ async function fetchType(type) {
   return rows;
 }
 
-function pricesOf(raw) {
-  let parsed = raw;
+function parseList(raw) {
+  if (Array.isArray(raw)) return raw;
   if (typeof raw === 'string') {
-    try { parsed = JSON.parse(raw); } catch { return [null, null]; }
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   }
-  if (!Array.isArray(parsed) || parsed.length < 2) return [null, null];
+  return [];
+}
+
+function pricesOf(raw) {
+  const parsed = parseList(raw);
+  if (parsed.length < 2) return [null, null];
   const yes = Number(parsed[0]);
   const no = Number(parsed[1]);
   return [Number.isFinite(yes) ? yes : null, Number.isFinite(no) ? no : null];
 }
 
+function cleanTitle(title) {
+  return String(title || '').replace(/\s*[-–]\s*Player Props\s*$/i, '').trim();
+}
+
+function spreadText(question, name, line) {
+  const match = String(question).match(/Spread:\s*(.+?)\s*\(([+-]?\d+(?:\.\d+)?)\)/i);
+  if (!match) return name;
+  const listed = match[1].trim();
+  const listedLine = Number(match[2]);
+  const fmt = (n) => (n > 0 ? `+${n}` : String(n));
+  if (name === listed) return `${listed} ${fmt(listedLine)}`;
+  if (Number.isFinite(line)) return `${name} ${fmt(-listedLine)}`;
+  return name;
+}
+
 export function normalizeMarket(m) {
-  const [yes, no] = pricesOf(m.outcomePrices);
+  const [priceA, priceB] = pricesOf(m.outcomePrices);
   const gameStart = parseGameStart(m.gameStartTime);
-  if (yes == null || no == null || gameStart == null) return null;
+  if (priceA == null || priceB == null || gameStart == null) return null;
   if (m.acceptingOrders === false) return null;
   const question = m.question || '';
-  const ou = /O\/U/i.test(question);
+  const names = parseList(m.outcomes).map((name) => String(name));
+  const overUnder = names.length >= 2 && names.every((name) => /^(over|under)$/i.test(name));
+  const ou = overUnder || /O\/U/i.test(question);
+  let yes = priceA;
+  let no = priceB;
+  if (overUnder && /^under$/i.test(names[0])) {
+    yes = priceB;
+    no = priceA;
+  }
   const line = m.line == null || m.line === '' ? null : Number(m.line);
+  const liquidity = Number(m.liquidityNum ?? m.liquidity) || 0;
+  const spread = Number(m.spread);
+  const type = m.sportsMarketType || '';
+  const named = !ou && names.length >= 2;
+  const favored = named
+    ? [...names.map((name, i) => ({ name, price: i === 0 ? priceA : priceB }))]
+      .sort((a, b) => b.price - a.price)[0]
+    : null;
   const scored = scoreProp({
-    yes,
-    no,
-    liquidity: Number(m.liquidityNum ?? m.liquidity) || 0,
-    spread: Number(m.spread),
-    ou,
+    yes: favored ? favored.price : yes,
+    no: favored ? (favored.price === priceA ? priceB : priceA) : no,
+    liquidity,
+    spread,
+    ou: ou || named,
   });
   if (!scored) return null;
   const player = question.includes(':') ? question.split(':')[0].trim() : question;
+  let sideText = ou && Number.isFinite(line)
+    ? `${scored.side} ${line} ${TYPE_LABEL[type] || type.replace(/_/g, ' ')}`
+    : (question.includes(':') ? question.split(':').slice(1).join(':').trim() : (TYPE_LABEL[type] || player));
+  let headline = player;
+  if (ou && type === 'totals' && Number.isFinite(line)) {
+    headline = `${scored.side} ${line}`;
+    sideText = 'total';
+  }
+  if (named && favored) {
+    headline = type === 'spreads' ? spreadText(question, favored.name, line) : favored.name;
+    sideText = TYPE_LABEL[type] || type.replace(/_/g, ' ');
+    scored.side = favored.name;
+  }
   const event = Array.isArray(m.events) ? m.events[0] : null;
-  const type = m.sportsMarketType || '';
+  const eventSlug = event?.slug || '';
   return {
     id: String(m.id),
-    player,
+    player: headline,
+    sideText,
     question,
     propLabel: TYPE_LABEL[type] || type.replace(/_/g, ' '),
     type,
     line: Number.isFinite(line) ? line : null,
     ou,
-    sport: sportOf(type, m.slug),
-    league: leagueOf(m.slug),
-    eventTitle: event?.title || '',
-    eventSlug: event?.slug || '',
+    sport: sportOf(type, m.slug || eventSlug),
+    league: leagueOf(m.slug || eventSlug),
+    eventTitle: cleanTitle(event?.title || ''),
+    eventSlug,
     gameStart,
     yes,
     no,
-    liquidity: Number(m.liquidityNum ?? m.liquidity) || 0,
-    spread: Number.isFinite(Number(m.spread)) ? Number(m.spread) : null,
-    url: event?.slug
-      ? `https://polymarket.us/event/${event.slug}`
+    liquidity,
+    spread: Number.isFinite(spread) ? spread : null,
+    url: eventSlug
+      ? `https://polymarket.us/event/${eventSlug}`
       : `https://polymarket.us/event/${m.slug}`,
     ...scored,
+    side: named && favored ? favored.name : scored.side,
   };
 }
 
+export function easternDay(ms) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms));
+}
+
+export function shiftDay(ymd, days) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + days, 16, 0, 0));
+  return easternDay(date.getTime());
+}
+
+export function formatDayLabel(ymd, now = Date.now()) {
+  if (ymd === easternDay(now)) return 'Today';
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d, 16, 0, 0));
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
 function inWindow(row, now) {
-  const from = now - 6 * 60 * 60 * 1000;
-  const to = now + 5 * 24 * 60 * 60 * 1000;
-  return row.gameStart >= from && row.gameStart <= to;
+  const day = easternDay(row.gameStart);
+  return day >= easternDay(now) && day <= easternDay(now + 5 * 24 * 60 * 60 * 1000);
+}
+
+async function fetchNhlGameMarkets() {
+  const markets = [];
+  for (let offset = 0; offset < 400; offset += 50) {
+    const url = `${GAMMA}/events?series_id=${NHL_SERIES}&closed=false&active=true&limit=50&offset=${offset}`;
+    const res = await fetch(url);
+    if (!res.ok) break;
+    const events = await res.json();
+    if (!Array.isArray(events) || events.length === 0) break;
+    for (const event of events) {
+      if (!/^nhl-[a-z0-9]+-[a-z0-9]+-\d{4}-\d{2}-\d{2}$/.test(event.slug || '')) continue;
+      for (const market of event.markets || []) {
+        markets.push({
+          ...market,
+          events: [{ title: event.title, slug: event.slug }],
+          gameStartTime: market.gameStartTime || event.startTime,
+        });
+      }
+    }
+    if (events.length < 50) break;
+  }
+  return markets;
 }
 
 function readCache(now) {
@@ -189,25 +296,32 @@ export async function loadPlayerProps(onProgress) {
   const now = Date.now();
   const cached = readCache(now);
   if (cached) {
-    onProgress?.({ done: PLAYER_PROP_TYPES.length, total: PLAYER_PROP_TYPES.length });
+    onProgress?.({ done: PLAYER_PROP_TYPES.length + 1, total: PLAYER_PROP_TYPES.length + 1 });
     return cached.filter((row) => inWindow(row, now));
   }
 
+  const total = PLAYER_PROP_TYPES.length + 1;
   let done = 0;
-  const batches = await mapPool(PLAYER_PROP_TYPES, 5, async (type) => {
-    try {
-      return await fetchType(type);
-    } catch {
-      return [];
-    } finally {
-      done += 1;
-      onProgress?.({ done, total: PLAYER_PROP_TYPES.length });
-    }
-  });
+  const tick = () => {
+    done += 1;
+    onProgress?.({ done, total });
+  };
+  const [batches, nhlMarkets] = await Promise.all([
+    mapPool(PLAYER_PROP_TYPES, 5, async (type) => {
+      try {
+        return await fetchType(type);
+      } catch {
+        return [];
+      } finally {
+        tick();
+      }
+    }),
+    fetchNhlGameMarkets().catch(() => []).finally(tick),
+  ]);
 
   const seen = new Set();
   const rows = [];
-  for (const markets of batches) {
+  for (const markets of [...batches, nhlMarkets]) {
     for (const market of markets) {
       if (!market?.id || seen.has(market.id)) continue;
       seen.add(market.id);
@@ -216,43 +330,12 @@ export async function loadPlayerProps(onProgress) {
       rows.push(row);
     }
   }
-  const primary = keepPrimaryLines(rows);
-  primary.sort(compareProps);
-  writeCache(primary, now);
-  return primary;
-}
-
-/**
- * One over/under per player, prop, and game. Prefer the strongest side that
- * is still under a 90% lock. A 94% alternate is kept only when every line is a lock.
- */
-export function keepPrimaryLines(rows) {
-  const yesNo = [];
-  const groups = new Map();
-  for (const row of rows) {
-    if (!row.ou) {
-      yesNo.push(row);
-      continue;
-    }
-    const key = `${row.eventSlug}|${normKey(row.player)}|${row.type}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
-  }
-  const ou = [];
-  for (const list of groups.values()) {
-    const open = list.filter((row) => !row.lock);
-    const pool = (open.length ? open : list).slice().sort(compareProps);
-    ou.push(pool[0]);
-  }
-  return [...yesNo, ...ou];
-}
-
-function normKey(name) {
-  return String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  rows.sort(compareProps);
+  writeCache(rows, now);
+  return rows;
 }
 
 export function compareProps(a, b) {
-  if (a.lock !== b.lock) return a.lock ? 1 : -1;
   return b.hit - a.hit;
 }
 
