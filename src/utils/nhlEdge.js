@@ -65,7 +65,7 @@ function poissonAtLeast(lambda, line) {
   return clamp(1 - below, 0, 0.95);
 }
 
-function volumeProbability(type, line, recentContext, priorContext) {
+function volumeParts(type, line, recentContext, priorContext) {
   const rows = [...(priorContext || []), ...(recentContext || [])];
   let shots = 0;
   let goals = 0;
@@ -86,13 +86,100 @@ function volumeProbability(type, line, recentContext, priorContext) {
   const priorShots = (priorContext || []).filter((row) => typeof row?.shots === 'number');
   const recentShots = (recentContext || []).filter((row) => typeof row?.shots === 'number');
   const shotSource = priorShots.length >= 5 ? priorShots : recentShots;
-  if (shotSource.length < 5 || shotGames < 8 || shots <= 0) return null;
-  const shotsPer = shotSource.reduce((sum, row) => sum + row.shots, 0) / shotSource.length;
-  const shooting = (goals + 0.105 * 80) / (shots + 80);
-  if (type === GOALS) return poissonAtLeast(shotsPer * shooting, line);
-  if (assistGames < 8) return null;
-  const assistRate = (assists + 0.35 * 15) / (assistGames + 15);
-  return poissonAtLeast(shotsPer * shooting + assistRate, line);
+  const shooting = shotGames >= 8 && shots > 0 ? (goals + 0.105 * 80) / (shots + 80) : null;
+  const assistRate = assistGames >= 8 ? (assists + 0.35 * 15) / (assistGames + 15) : null;
+  let p = null;
+  if (shooting != null && shotSource.length >= 5) {
+    const shotsPer = shotSource.reduce((sum, row) => sum + row.shots, 0) / shotSource.length;
+    if (type === GOALS) p = poissonAtLeast(shotsPer * shooting, line);
+    else if (assistRate != null) p = poissonAtLeast(shotsPer * shooting + assistRate, line);
+  }
+  return { shooting, assists: assistRate, p };
+}
+
+function volumeProbability(type, line, recentContext, priorContext) {
+  return volumeParts(type, line, recentContext, priorContext).p;
+}
+
+function formatToi(minutes) {
+  const whole = Math.floor(minutes);
+  const seconds = Math.round((minutes - whole) * 60);
+  if (seconds === 60) return `${whole + 1}:00`;
+  return `${whole}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function nhlFactorLines({
+  type,
+  line,
+  recent,
+  prior,
+  recentContext,
+  priorContext,
+  versus,
+  lastPlayed,
+  gameStart,
+  gameTotal,
+  teamName,
+  opponentName,
+  favoriteName,
+  favoriteYes,
+  opponentLabel,
+}) {
+  if (type !== GOALS && type !== POINTS || line == null) return [];
+  const lines = [];
+  const goals = type === GOALS;
+
+  if (recent?.length) {
+    const hits = recent.filter((value) => value >= line).length;
+    lines.push({ id: 'l10', label: 'Last 10', value: `${hits}/${recent.length}` });
+  }
+  if ((prior || []).length >= 8) {
+    const hits = prior.filter((value) => value >= line).length;
+    lines.push({ id: 'prior', label: 'Long sample', value: `${hits}/${prior.length}` });
+  } else {
+    lines.push({ id: 'prior', label: 'Long sample', value: `${Math.round(fallbackRate(type, line) * 100)}% typical` });
+  }
+
+  const recentToi = seriesMean(recentContext, 'toi', 5);
+  const priorToi = seriesMean(priorContext, 'toi');
+  if (recentToi.mean != null) lines.push({ id: 'toi', label: 'TOI', value: formatToi(recentToi.mean) });
+  if (priorToi.n >= 5 && priorToi.mean != null) lines.push({ id: 'toi', label: 'Prior TOI', value: formatToi(priorToi.mean) });
+
+  const recentShots = seriesMean(recentContext, 'shots', 5);
+  const priorShots = seriesMean(priorContext, 'shots');
+  if (recentShots.mean != null) lines.push({ id: 'shots', label: 'Shots', value: recentShots.mean.toFixed(1) });
+  if (priorShots.n >= 5 && priorShots.mean != null) lines.push({ id: 'shots', label: 'Prior shots', value: priorShots.mean.toFixed(1) });
+
+  const volume = volumeParts(type, line, recentContext, priorContext);
+  if (volume.shooting != null) lines.push({ id: 'volume', label: 'Shooting', value: `${Math.round(volume.shooting * 100)}%` });
+  if (!goals && volume.assists != null) lines.push({ id: 'volume', label: 'Assists', value: volume.assists.toFixed(2) });
+  if (volume.p != null) lines.push({ id: 'volume', label: 'Volume', value: `${Math.round(volume.p * 100)}%` });
+
+  const pp = seriesMean(recentContext, 'pp');
+  if (pp.n >= 5 && pp.mean != null) lines.push({ id: 'pp', label: 'Power play', value: `${pp.mean.toFixed(2)}/g` });
+
+  if (versus?.length) {
+    const hits = versus.filter((value) => value >= line).length;
+    lines.push({ id: 'opp', label: `vs ${opponentLabel || 'opponent'}`, value: `${hits}/${versus.length}` });
+  }
+
+  if (typeof gameTotal === 'number' && Number.isFinite(gameTotal)) {
+    lines.push({ id: 'total', label: 'Game total', value: String(gameTotal) });
+  }
+
+  if (typeof favoriteYes === 'number' && Number.isFinite(favoriteYes)) {
+    const favP = Math.max(favoriteYes, 1 - favoriteYes);
+    if (sameTeam(teamName, favoriteName)) lines.push({ id: 'side', label: 'Side', value: `Favored ${Math.round(favP * 100)}%` });
+    else if (sameTeam(opponentName, favoriteName)) lines.push({ id: 'side', label: 'Side', value: `Underdog ${Math.round((1 - favP) * 100)}%` });
+  }
+
+  if (typeof gameStart === 'number' && typeof lastPlayed === 'number' && Number.isFinite(lastPlayed)) {
+    const hours = (gameStart - lastPlayed) / 36e5;
+    if (hours > 0 && hours < 36) lines.push({ id: 'rest', label: 'Rest', value: 'Back to back' });
+    else if (hours >= 36) lines.push({ id: 'rest', label: 'Rest', value: `${Math.round(hours / 24)} days` });
+  }
+
+  return lines;
 }
 
 function applyShift(p, tags, shift, up, down) {

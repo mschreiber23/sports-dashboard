@@ -6,7 +6,7 @@ import {
 } from '../api/polymarket';
 import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
-import { nhlPropEdge, NHL_EDGE_MIN, NHL_P_MIN } from '../utils/nhlEdge';
+import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN, NHL_P_MIN } from '../utils/nhlEdge';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -222,7 +222,31 @@ function StatBars({ values, color, label }) {
   );
 }
 
-function PlayerPropBoard({ rows, league }) {
+const FACTOR_TAGS = {
+  'shot volume': 'volume',
+  chances: 'volume',
+  'low volume': 'volume',
+  'ice time up': 'toi',
+  'ice time down': 'toi',
+  'shots up': 'shots',
+  'shots down': 'shots',
+  'power play': 'pp',
+  'hot vs opponent': 'opp',
+  'cold vs opponent': 'opp',
+  'high total': 'total',
+  'low total': 'total',
+  favorite: 'side',
+  underdog: 'side',
+  'back to back': 'rest',
+};
+
+function shortOpp(name, abbr) {
+  const word = String(name || '').trim();
+  if (word && !word.includes(' ')) return word;
+  return abbr || word.split(/\s+/).pop() || 'opponent';
+}
+
+function PlayerPropBoard({ rows, league, slate }) {
   const groups = useMemo(() => groupPlayers(rows), [rows]);
   const pills = useMemo(() => {
     const present = new Set(groups.map((group) => group.type));
@@ -351,6 +375,26 @@ function PlayerPropBoard({ rows, league }) {
           const hitLabel = recent?.length
             ? `Last ${recent.length} hit rate, ${recent.filter((value) => value >= group.selected).length} of ${recent.length}`
             : 'Last 10 hit rate';
+          const factorInput = {
+            type: activeStat,
+            line: group.selected,
+            recent,
+            prior: log?.prior?.[activeStat],
+            recentContext: log?.context,
+            priorContext: log?.priorContext,
+            versus,
+            lastPlayed: log?.lastPlayed,
+            gameStart: group.gameStart,
+            gameTotal: slate?.total,
+            teamName: group.teamName,
+            opponentName: group.opponentName,
+            favoriteName: slate?.favorite,
+            favoriteYes: slate?.favoriteYes,
+            opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
+          };
+          const factors = league === 'nhl' ? nhlFactorLines(factorInput) : [];
+          const model = factors.length ? nhlPropEdge({ ...factorInput, marketYes: group.current.yes }) : null;
+          const moved = new Set((model?.tags || []).map((tag) => FACTOR_TAGS[tag]).filter(Boolean));
           return (
             <div key={group.key} className="pp-player">
               <div className="pp-row">
@@ -387,6 +431,28 @@ function PlayerPropBoard({ rows, league }) {
                   <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>
                 </div>
               </div>
+              {factors.length > 0 && (
+                <div className="pp-factors">
+                  {model && (
+                    <div className="pp-factor pp-factor-on">
+                      <span>Model</span>
+                      <span>{Math.round(model.p * 100)}%</span>
+                    </div>
+                  )}
+                  {model && (
+                    <div className={`pp-factor ${model.edge >= NHL_EDGE_MIN ? 'pp-factor-on' : ''}`}>
+                      <span>Edge</span>
+                      <span>{model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100)}</span>
+                    </div>
+                  )}
+                  {factors.map((item) => (
+                    <div key={`${item.label}-${item.value}`} className={`pp-factor ${moved.has(item.id) ? 'pp-factor-on' : ''}`}>
+                      <span>{item.label}</span>
+                      <span>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {(recent || versus) && (
                 <div className="pp-logs">
                   <StatBars values={recent} color={group.color} label={`Last ${recent?.length || 10} ${statName}`} />
@@ -432,7 +498,7 @@ function GameDetail({ game, rows, loading }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} rows={players} league={game.league} />
+          : <PlayerPropBoard key={game.key} rows={players} league={game.league} slate={slateContext(list)} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
