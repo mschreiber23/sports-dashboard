@@ -84,12 +84,37 @@ function fallbackRate(type, line) {
   return 0.45;
 }
 
+function nums(rows, key) {
+  const values = [];
+  for (const row of rows || []) {
+    const value = row?.[key];
+    if (typeof value === 'number' && Number.isFinite(value)) values.push(value);
+  }
+  return values;
+}
+
+function weightedMean(values) {
+  let num = 0;
+  let den = 0;
+  values.forEach((value, index) => {
+    const weight = index + 1;
+    num += value * weight;
+    den += weight;
+  });
+  return den ? num / den : null;
+}
+
 function expectedUsage(prior, recent, key) {
   const older = avg(prior, key);
-  const latest = avg((recent || []).slice(-5), key);
-  if (latest && latest.n >= 3 && older && older.n >= 5) {
-    return { mean: latest.mean * 0.65 + older.mean * 0.35, n: older.n };
+  const last5 = nums((recent || []).slice(-5), key);
+  const last3 = nums((recent || []).slice(-3), key);
+  const recent3 = last3.length >= 3 ? last3.reduce((sum, value) => sum + value, 0) / last3.length : null;
+  if (recent3 != null && older && older.n >= 5 && older.mean > 0) {
+    const ratio = recent3 / older.mean;
+    if (ratio <= 0.55 || ratio >= 1.75) return { mean: recent3, n: older.n };
   }
+  const tilted = last5.length >= 3 ? weightedMean(last5) : null;
+  if (tilted != null && older && older.n >= 5) return { mean: tilted * 0.65 + older.mean * 0.35, n: older.n };
   if (older && older.n >= 5) return older;
   const fallback = avg(recent, key);
   return fallback && fallback.n >= 5 ? fallback : null;
@@ -128,7 +153,7 @@ function volumeRead(type, line, recentContext, priorContext) {
     let rateValue = ypa == null ? null : ypa.toFixed(1);
     if (type === PASS_YDS && ypa != null) {
       const mean = attempts.mean * ypa;
-      p = normalAtLeast(mean, Math.max(45, mean * 0.22), line);
+      p = normalAtLeast(mean, Math.max(60, mean * 0.28), line);
     } else if (type === PASS_ATT) {
       p = poissonAtLeast(attempts.mean, line);
       rateLabel = null;
@@ -156,7 +181,7 @@ function volumeRead(type, line, recentContext, priorContext) {
     if (type === RUSH_ATT) p = poissonAtLeast(carries.mean, line);
     else if (ypc != null) {
       const mean = carries.mean * ypc;
-      p = normalAtLeast(mean, Math.max(18, mean * 0.4), line);
+      p = normalAtLeast(mean, Math.max(28, mean * 0.55), line);
     }
     return {
       p,
@@ -172,7 +197,7 @@ function volumeRead(type, line, recentContext, priorContext) {
     if (targets && targets.n >= 5 && type === RECS && catchRate != null) p = poissonAtLeast(targets.mean * catchRate, line);
     else if (targets && targets.n >= 5 && type === REC_YDS && ypt != null) {
       const mean = targets.mean * ypt;
-      p = normalAtLeast(mean, Math.max(18, mean * 0.45), line);
+      p = normalAtLeast(mean, Math.max(32, mean * 0.65), line);
     }
     const rateLabel = type === RECS ? 'Catch%' : 'Y/tgt';
     const rateValue = type === RECS
@@ -194,7 +219,7 @@ function volumeRead(type, line, recentContext, priorContext) {
       const recMean = targets && targets.n >= 5 && ypt != null ? targets.mean * ypt : 0;
       if (rushMean || recMean) {
         const mean = rushMean + recMean;
-        const sd = Math.max(20, Math.sqrt((rushMean * 0.4) ** 2 + (recMean * 0.45) ** 2));
+        const sd = Math.max(34, Math.sqrt((rushMean * 0.55) ** 2 + (recMean * 0.65) ** 2));
         p = normalAtLeast(mean, sd, line);
       }
     } else {
@@ -345,7 +370,7 @@ export function nflPropEdge(input) {
 
   const volume = volumeRead(type, line, recentContext, priorContext);
   if (volume.p != null) {
-    const hitWeight = VOLATILE.has(type) ? 0.35 : 0.25;
+    const hitWeight = VOLATILE.has(type) ? 0.5 : 0.4;
     const blended = hitWeight * p + (1 - hitWeight) * volume.p;
     p = applyShift(p, tags, blended - p, 'volume', 'low volume');
   }

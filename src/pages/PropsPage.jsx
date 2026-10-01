@@ -45,6 +45,29 @@ function last10Hit(values, line) {
 
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
+const NFL_LIKELY_SKIP = new Set([
+  'football_player_interceptions_thrown',
+  'football_player_longest_reception',
+  'football_player_scrimmage_yards',
+]);
+const NFL_LIKELY_MIN_LINE = {
+  football_player_passing_yards: 150,
+  football_player_rushing_yards: 40,
+  football_player_receiving_yards: 30,
+  football_player_receptions: 3,
+  football_player_passing_completions: 18,
+  football_player_passing_attempts: 25,
+  football_player_rushing_attempts: 8,
+  football_player_passing_touchdowns: 0.5,
+  football_player_touchdowns: 0.5,
+};
+
+function mainLine(lines) {
+  return lines
+    .filter((line) => typeof line.yes === 'number' && Number.isFinite(line.yes))
+    .slice()
+    .sort((a, b) => Math.abs(a.yes - 0.5) - Math.abs(b.yes - 0.5) || a.line - b.line)[0] || null;
+}
 
 function edgePoints(edge) {
   return Math.round(edge * 100);
@@ -122,7 +145,10 @@ function likelyBoard(games, logs) {
         ? nhlPropEdge
         : (game.league === 'nfl' && nflModeled(sample.type) ? nflPropEdge : null);
       if (edgeFn) {
-        for (const line of lines) {
+        const nfl = game.league === 'nfl';
+        const candidates = nfl ? [mainLine(lines)].filter(Boolean) : lines;
+        for (const line of candidates) {
+          if (nfl && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]) || line.yes < 0.35 || line.yes > 0.7)) continue;
           const model = edgeFn({
             type: sample.type,
             line: line.line,
@@ -143,8 +169,14 @@ function likelyBoard(games, logs) {
             spreadLabel: slate.spreadLabel,
           });
           if (!model) continue;
-          const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
-          if (!priced && model.rate < LIKELY_MIN_RATE) continue;
+          if (nfl) {
+            if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) continue;
+            if (model.rate / 100 + 0.02 < line.yes) continue;
+            if (model.rate / 100 + 0.08 < model.p) continue;
+          } else {
+            const priced = model.p >= NHL_P_MIN && model.edge >= NHL_EDGE_MIN;
+            if (!priced && model.rate < LIKELY_MIN_RATE) continue;
+          }
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
             hits: model.hits,
@@ -842,7 +874,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL props start from attempts, carries, or targets, then the spread and the total set a pass or run script and a team point total. Other props stay when they hit in 70% or more of the last 10.
+                Sorted by the gap between our read and the contract price. NHL goals and points shrink the last 10 toward a longer sample, then account for shot volume, ice time, power-play points, the opponent, the game total, the favorite, and a back-to-back. NFL keeps the line closest to 50/50, skips token lines such as 1 catch or 10 yards, and only stays up when the recent games support the price. Other props stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
               </p>
