@@ -23,6 +23,7 @@ import TeamsPage from './pages/TeamsPage';
 import NhlDemoPage from './pages/NhlDemoPage';
 import PlayerCardsPage from './pages/PlayerCardsPage';
 import MiLBPage from './pages/MiLBPage';
+import PropsPage from './pages/PropsPage';
 import MiLBPlayerPage from './pages/MiLBPlayerPage';
 import './index.css';
 
@@ -95,6 +96,7 @@ function AppShell({ userId }) {
             <Route path="/boxscore/:sport/:gameId"           element={<main className="main"><BoxScorePage /></main>} />
             <Route path="/team/:sport/:teamId"               element={<main className="main"><TeamPage /></main>} />
             <Route path="/milb"                              element={<main className="main"><MiLBPage /></main>} />
+            <Route path="/props"                             element={<main className="main"><PropsPage /></main>} />
           </Routes>
         </div>
         <BottomNav />

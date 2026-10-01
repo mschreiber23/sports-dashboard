@@ -114,6 +114,16 @@ function CardsIcon({ active }) {
   );
 }
 
+function PropsIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19V5"/>
+      <path d="M4 19h16"/>
+      <path d="M8 15l3.5-4 3 2.5L19 7"/>
+    </svg>
+  );
+}
+
 function MiLBIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -126,6 +136,7 @@ function MiLBIcon({ active }) {
 }
 
 const MORE_ITEMS = [
+  { path: '/props',    label: 'Props',      Icon: PropsIcon },
   { path: '/milb',     label: 'MiLB',       Icon: MiLBIcon },
   { path: '/me',       label: 'My Profile', Icon: MeIcon },
   { path: '/leaders',  label: 'Leaders',    Icon: LeadersIcon },
