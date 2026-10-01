@@ -1239,9 +1239,26 @@ function NhlTeamRows({ away, home, showScore, finalLabel, liveLabel, awayScoreOv
   );
 }
 
+function NhlExpandButton({ open, onToggle }) {
+  return (
+    <>
+      <div className="mlbc-divider" />
+      <button
+        type="button"
+        className="nhl-card-expand"
+        onClick={(ev) => { ev.stopPropagation(); onToggle(); }}
+      >
+        {open ? 'Collapse' : 'Expand'}
+        <span className="nhl-card-expand-chevron" aria-hidden="true">{open ? '▲' : '▼'}</span>
+      </button>
+    </>
+  );
+}
+
 /* ── NHL Final card ──────────────────────────────────── */
-function NhlFinalCard({ game, navigate, accentColor }) {
+function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false }) {
   const [nhlData, setNhlData] = useState(null);
+  const [scoringOpen, setScoringOpen] = useState(false);
   const comp        = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
@@ -1285,8 +1302,12 @@ function NhlFinalCard({ game, navigate, accentColor }) {
         </>
       )}
 
-      {/* Goal scorers — like top performers in MLB */}
-      {goals.length > 0 && (
+      {collapseScoring && goals.length > 0 && (
+        <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
+      )}
+
+      {/* Goal scorers. Favorites hides these until Expand. */}
+      {goals.length > 0 && (!collapseScoring || scoringOpen) && (
         <>
           <div className="mlbc-divider" />
           <div className="nhl-card-goals">
@@ -1325,8 +1346,9 @@ function NhlFinalCard({ game, navigate, accentColor }) {
 }
 
 /* ── NHL Live card ───────────────────────────────────── */
-function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
+function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = false }) {
   const [nhlData, setNhlData] = useState(null);
+  const [scoringOpen, setScoringOpen] = useState(false);
   const timerRef    = useRef(null);
   const comp        = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -1388,7 +1410,11 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
         </>
       )}
 
-      {goals.length > 0 && (
+      {collapseScoring && goals.length > 0 && (
+        <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
+      )}
+
+      {goals.length > 0 && (!collapseScoring || scoringOpen) && (
         <>
           <div className="mlbc-divider" />
           <div className="nhl-card-goals">
@@ -1637,8 +1663,8 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
 
   // NHL gets dedicated cards with goalie stats + goal scorers
   if (sport === 'nhl') {
-    if (isLive)       return <NhlLiveCard  game={game} navigate={navigate} accentColor={accentColor} />;
-    if (st2 === 'post') return <NhlFinalCard game={game} navigate={navigate} accentColor={accentColor} />;
+    if (isLive)       return <NhlLiveCard  game={game} navigate={navigate} accentColor={accentColor} collapseScoring />;
+    if (st2 === 'post') return <NhlFinalCard game={game} navigate={navigate} accentColor={accentColor} collapseScoring />;
     return <SportPreCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
   }
 

@@ -7640,6 +7640,24 @@ thead .dfs-sticky-player {
   font-variant-numeric: tabular-nums; line-height: 1.2;
 }
 
+.nhl-card-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.nhl-card-expand:hover { color: var(--accent2); }
+.nhl-card-expand-chevron { font-size: 9px; line-height: 1; }
+
 .nhl-card-goals {
   display: flex; flex-direction: column; gap: 0;
   padding: 4px 0;
