@@ -458,6 +458,310 @@ export function compareProps(a, b) {
   return b.hit - a.hit;
 }
 
+export const PROP_SPORTS = [
+  { key: 'nhl', label: 'NHL', tag: 'nhl' },
+  { key: 'nba', label: 'NBA', tag: 'nba' },
+  { key: 'mlb', label: 'MLB', tag: 'mlb' },
+  { key: 'nfl', label: 'NFL', tag: 'nfl' },
+  { key: 'wnba', label: 'WNBA', tag: 'wnba' },
+  { key: 'cbb', label: 'College Basketball', tag: 'cbb' },
+  { key: 'cfb', label: 'College Football', tag: 'cfb' },
+];
+
+const SPORT_BY_TAG = Object.fromEntries(PROP_SPORTS.map((sport) => [sport.tag, sport]));
+
+export const PILL_ORDER = [
+  'hockey_player_goals',
+  'hockey_player_points',
+  'basketball_player_points',
+  'basketball_player_rebounds',
+  'basketball_player_assists',
+  'basketball_player_threes',
+  'football_player_passing_yards',
+  'football_player_rushing_yards',
+  'football_player_receiving_yards',
+  'football_player_receptions',
+  'football_player_touchdowns',
+  'football_player_passing_touchdowns',
+  'football_player_passing_completions',
+  'football_player_passing_attempts',
+  'football_player_rushing_attempts',
+  'football_player_interceptions_thrown',
+  'football_player_scrimmage_yards',
+  'football_player_longest_reception',
+  'baseball_player_hits',
+  'baseball_player_home_runs',
+  'baseball_player_rbis',
+  'baseball_player_total_bases',
+  'baseball_player_hits_runs_rbis',
+  'baseball_player_strikeouts',
+  'baseball_player_stolen_bases',
+  'baseball_player_outs',
+  'baseball_player_hits_allowed',
+  'baseball_player_earned_runs_allowed',
+  'baseball_player_walks_allowed',
+];
+
+const PILL_LABEL = {
+  hockey_player_goals: 'Goals',
+  hockey_player_points: 'Points',
+  basketball_player_points: 'Points',
+  basketball_player_rebounds: 'Rebounds',
+  basketball_player_assists: 'Assists',
+  basketball_player_threes: 'Threes',
+  football_player_passing_yards: 'Pass Yds',
+  football_player_rushing_yards: 'Rush Yds',
+  football_player_receiving_yards: 'Rec Yds',
+  football_player_receptions: 'Receptions',
+  football_player_touchdowns: 'TDs',
+  football_player_passing_touchdowns: 'Pass TDs',
+  football_player_passing_completions: 'Completions',
+  football_player_passing_attempts: 'Pass Att',
+  football_player_rushing_attempts: 'Carries',
+  football_player_interceptions_thrown: 'INTs',
+  football_player_scrimmage_yards: 'Scrim Yds',
+  football_player_longest_reception: 'Long Rec',
+  baseball_player_hits: 'Hits',
+  baseball_player_home_runs: 'Home Runs',
+  baseball_player_rbis: 'RBIs',
+  baseball_player_total_bases: 'Total Bases',
+  baseball_player_hits_runs_rbis: 'H+R+RBI',
+  baseball_player_strikeouts: 'Strikeouts',
+  baseball_player_stolen_bases: 'Steals',
+  baseball_player_outs: 'Outs',
+  baseball_player_hits_allowed: 'Hits Allowed',
+  baseball_player_earned_runs_allowed: 'Earned Runs',
+  baseball_player_walks_allowed: 'Walks',
+};
+
+export function pillLabel(type) {
+  return PILL_LABEL[type] || String(type || '').replace(/^(hockey|basketball|football|baseball)_/, '').replace(/_/g, ' ');
+}
+
+function prettySigned(raw) {
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return String(raw || '').trim();
+  const text = String(value);
+  return value > 0 ? `+${text}` : text;
+}
+
+function lineNumber(market) {
+  if (market.line == null || market.line === '') return null;
+  const line = Number(market.line);
+  return Number.isFinite(line) ? line : null;
+}
+
+function marketSection(market) {
+  const type = market.sportsMarketType || '';
+  const player = market.metadata?.playerName;
+  if (player && lineNumber(market) != null && PILL_LABEL[type]) return 'player';
+  if (/full_game_(winner|spread|total)$/.test(type)) return 'line';
+  return 'prop';
+}
+
+function eventSport(event) {
+  const tag = String(event?.slug || '').split('-')[0].toLowerCase();
+  return SPORT_BY_TAG[tag] || { key: tag || 'other', label: tag ? tag.toUpperCase() : 'Other', tag };
+}
+
+function usHeaders() {
+  return {
+    'content-type': 'application/json',
+    'connect-protocol-version': '1',
+    'poly-platform': 'web',
+  };
+}
+
+function baseRow(market, event, sport, quote, scored) {
+  const roster = event.teams || [];
+  const team = roster.find((item) => Number(item.id) === Number(market.metadata?.teamId));
+  const opponent = team ? roster.find((item) => item !== team) : null;
+  const jerseyNumber = Number(String(market.image || '').match(/jerseys\/(\d+)\.png/)?.[1]);
+  const playerName = market.metadata?.playerName || '';
+  return {
+    id: `us:${market.id}`,
+    question: market.question || '',
+    type: market.sportsMarketType || '',
+    line: lineNumber(market),
+    sport: sport.label,
+    league: sport.key,
+    eventTitle: event.title || '',
+    eventSlug: event.slug,
+    gameStart: parseGameStart(market.gameStartTime || event.startTime),
+    yes: quote.yes,
+    no: quote.no,
+    liquidity: null,
+    spread: quote.spread,
+    url: `https://polymarket.us/sports/${sport.tag}/${event.slug}`,
+    playerId: market.metadata?.playerId || playerName,
+    jersey: market.image || '',
+    jerseyNumber: Number.isFinite(jerseyNumber) ? jerseyNumber : null,
+    teamName: team?.name || '',
+    color: market.color || team?.colorPrimary || '',
+    opponentName: opponent?.name || '',
+    opponentAbbr: String(opponent?.displayAbbreviation || opponent?.abbreviation || '').toUpperCase(),
+    ...scored,
+  };
+}
+
+function lineHeadline(market, quote) {
+  const sides = market.marketSides || [];
+  const long = sides.find((side) => side.long) || sides[0];
+  const other = sides.find((side) => side !== long);
+  const favored = quote.yes >= 0.5 ? long : other;
+  const type = market.sportsMarketType || '';
+  const line = lineNumber(market);
+  if (/winner$/.test(type)) {
+    return favored?.team?.name || favored?.description || market.title || 'Moneyline';
+  }
+  if (/spread$/.test(type)) {
+    const team = favored?.team?.name || '';
+    const desc = prettySigned(favored?.description);
+    return team ? `${team} ${desc}` : (market.title || desc);
+  }
+  if (/total$/.test(type)) {
+    const word = quote.yes >= 0.5 ? 'Over' : 'Under';
+    return Number.isFinite(line) ? `${word} ${line}` : word;
+  }
+  return market.title || market.question || 'Line';
+}
+
+function lineKind(type) {
+  if (/winner$/.test(type)) return 'moneyline';
+  if (/spread$/.test(type)) return 'spread';
+  if (/total$/.test(type)) return 'total';
+  return 'line';
+}
+
+function normalizeUsMarket(market, event) {
+  if (market.hidden || market.closed || market.active === false) return null;
+  if (market.status && market.status !== 'MARKET_STATUS_OPEN') return null;
+  const quote = yesQuote(market);
+  const sport = eventSport(event);
+  const gameStart = parseGameStart(market.gameStartTime || event.startTime);
+  if (!quote || gameStart == null) return null;
+  const section = marketSection(market);
+  const type = market.sportsMarketType || '';
+  const line = lineNumber(market);
+  if (section === 'line') {
+    const price = Math.max(quote.yes, 1 - quote.yes);
+    const scored = scoreProp({
+      yes: price,
+      no: 1 - price,
+      liquidity: null,
+      spread: quote.spread,
+      ou: true,
+    });
+    if (!scored) return null;
+    const headline = lineHeadline(market, quote);
+    return {
+      ...baseRow(market, event, sport, quote, scored),
+      player: headline,
+      sideText: lineKind(type),
+      propLabel: lineKind(type),
+      ou: true,
+      section,
+      side: headline,
+    };
+  }
+  const label = pillLabel(type).toLowerCase();
+  const playerName = market.metadata?.playerName || '';
+  const lineText = Number.isFinite(line) ? `${line}+ ${label}` : label;
+  const teamTitle = String(market.title || '').replace(/\s+\d+(?:\.\d+)?\+\s+\S.*$/, '').trim();
+  const scored = scoreProp({
+    yes: quote.yes,
+    no: quote.no,
+    liquidity: null,
+    spread: quote.spread,
+    ou: false,
+  });
+  if (!scored) return null;
+  return {
+    ...baseRow(market, event, sport, quote, scored),
+    player: playerName || teamTitle || market.title || market.question,
+    sideText: section === 'player' ? lineText : (Number.isFinite(line) ? lineText : (market.title || label)),
+    propLabel: label,
+    ou: false,
+    section,
+    side: 'Yes',
+  };
+}
+
+async function fetchCalendarTag(tag) {
+  const events = [];
+  const seen = new Set();
+  let cursor = '';
+  for (let page = 0; page < 5; page += 1) {
+    const body = { tag_slug: tag, limit: 200 };
+    if (cursor) body.cursor = cursor;
+    const res = await fetch(`${US_GATEWAY}/gateway.calendar.v2.CalendarService/GetCalendarByTag`, {
+      method: 'POST',
+      headers: usHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    for (const event of data.events || []) {
+      if (!event?.slug || seen.has(event.slug) || event.hidden || event.closed) continue;
+      const gameStart = parseGameStart(event.startTime);
+      if (gameStart == null) continue;
+      seen.add(event.slug);
+      const sport = SPORT_BY_TAG[tag];
+      events.push({
+        key: event.slug,
+        title: event.title || event.slug,
+        sport: sport.label,
+        league: sport.key,
+        gameStart,
+        marketCount: Number(event.marketCounts?.numMarkets) || 0,
+      });
+    }
+    cursor = data.nextCursor || '';
+    if (!cursor || !(data.events || []).length) break;
+  }
+  return events;
+}
+
+let calendarPromise = null;
+
+export function loadPropEvents() {
+  if (!calendarPromise) {
+    calendarPromise = mapPool(PROP_SPORTS, 4, (sport) => fetchCalendarTag(sport.tag).catch(() => []))
+      .then((lists) => lists.flat())
+      .catch((err) => {
+        calendarPromise = null;
+        throw err;
+      });
+  }
+  return calendarPromise;
+}
+
+const eventPropPromises = new Map();
+
+async function fetchEventProps(slug) {
+  const res = await fetch(`${US_GATEWAY}/gateway.events.v1.EventsService/GetEventBySlug`, {
+    method: 'POST',
+    headers: usHeaders(),
+    body: JSON.stringify({ slug }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  const event = data.event;
+  if (!event?.markets) return [];
+  return event.markets.map((market) => normalizeUsMarket(market, event)).filter(Boolean);
+}
+
+export function loadGameProps(slug) {
+  if (!slug) return Promise.resolve([]);
+  if (!eventPropPromises.has(slug)) {
+    eventPropPromises.set(slug, fetchEventProps(slug).catch((err) => {
+      eventPropPromises.delete(slug);
+      throw err;
+    }));
+  }
+  return eventPropPromises.get(slug);
+}
+
 export function formatGameTime(ms) {
   if (!ms) return '';
   return new Intl.DateTimeFormat('en-US', {

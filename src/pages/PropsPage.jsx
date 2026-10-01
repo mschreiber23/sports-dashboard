@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  loadPlayerProps, loadNhlPropsForSlugs, mergePropRows,
+  loadPropEvents, loadGameProps, PROP_SPORTS, PILL_ORDER, pillLabel,
   formatGameTime, formatLiquidity, compareProps,
   easternDay, shiftDay, formatDayLabel,
 } from '../api/polymarket';
-import { attachSeasonStats, formatAvg } from '../api/propStats';
-import { recentNhlLogs } from '../api/nhlLogs';
+import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
 
-const TABS = ['All', 'NFL', 'NBA', 'WNBA', 'MLB', 'NHL', 'Soccer'];
+const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
 function pct(n) {
   return `${Math.round(n * 100)}%`;
@@ -31,11 +30,14 @@ function lineWindow(lines, selected) {
   return lines.slice(start, start + 3);
 }
 
-function groupNhlPlayers(rows) {
+function lineText(line) {
+  return Number.isInteger(line) ? `${line}+` : `${line}+`;
+}
+
+function groupPlayers(rows) {
   const map = new Map();
   for (const row of rows) {
-    if (row.type !== 'hockey_player_goals' && row.type !== 'hockey_player_points') continue;
-    if (row.line == null) continue;
+    if (row.section !== 'player' || row.line == null) continue;
     const key = `${row.playerId}|${row.type}`;
     if (!map.has(key)) {
       map.set(key, {
@@ -52,7 +54,8 @@ function groupNhlPlayers(rows) {
         lines: [],
       });
     }
-    map.get(key).lines.push(row);
+    const group = map.get(key);
+    if (!group.lines.some((line) => line.line === row.line)) group.lines.push(row);
   }
   for (const group of map.values()) {
     group.lines.sort((a, b) => a.line - b.line);
@@ -73,9 +76,9 @@ function StatBars({ values, color, label }) {
           {values.map((value, index) => (
             <div key={`${label}-${index}`} className="pp-bar-col">
               <div className="pp-bar-track">
-                <div className="pp-bar" style={{ height: `${(value / max) * 100}%`, background: color || '#e10600' }} />
+                <div className="pp-bar" style={{ height: `${(Math.max(0, value) / max) * 100}%`, background: color || '#e10600' }} />
               </div>
-              <span>{value}</span>
+              <span>{Number.isInteger(value) ? value : Math.round(value)}</span>
             </div>
           ))}
         </div>
@@ -84,29 +87,56 @@ function StatBars({ values, color, label }) {
   );
 }
 
-function NhlPlayerProps({ rows }) {
-  const groups = useMemo(() => groupNhlPlayers(rows), [rows]);
+function PlayerPropBoard({ rows, league }) {
+  const groups = useMemo(() => groupPlayers(rows), [rows]);
+  const pills = useMemo(() => {
+    const present = new Set(groups.map((group) => group.type));
+    const ordered = PILL_ORDER.filter((type) => present.has(type));
+    for (const type of present) if (!ordered.includes(type)) ordered.push(type);
+    return ordered;
+  }, [groups]);
   const [logs, setLogs] = useState({});
-  const [stat, setStat] = useState('hockey_player_goals');
+  const [stat, setStat] = useState('');
   const [team, setTeam] = useState('all');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [picked, setPicked] = useState({});
 
+  const activeStat = pills.includes(stat) ? stat : (pills[0] || '');
   const logKey = useMemo(() => groups.map((group) => `${group.player}|${group.opponentAbbr}|${group.gameStart}`).sort().join(';'), [groups]);
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
 
   useEffect(() => {
     if (!logKey) return undefined;
     let cancel = false;
-    const players = groups.map((group) => ({
-      name: group.player,
-      opponentAbbr: group.opponentAbbr,
-      opponentName: group.opponentName,
-      before: group.gameStart,
-    }));
-    recentNhlLogs(players).then((next) => { if (!cancel) setLogs(next); }).catch(() => {});
+    const current = groupsRef.current;
+    const players = [];
+    const seen = new Set();
+    const ordered = [...current.filter((group) => group.type === activeStat), ...current];
+    for (const group of ordered) {
+      if (seen.has(group.player)) continue;
+      seen.add(group.player);
+      players.push({
+        name: group.player,
+        opponentAbbr: group.opponentAbbr,
+        opponentName: group.opponentName,
+        before: group.gameStart,
+      });
+    }
+    let next = 0;
+    async function worker() {
+      while (next < players.length) {
+        const player = players[next++];
+        try {
+          const result = await recentPlayerLogs(league, [player]);
+          if (!cancel) setLogs((prev) => ({ ...prev, ...result }));
+        } catch { /* chart stays hidden */ }
+      }
+    }
+    Promise.all(Array.from({ length: Math.min(4, players.length) }, worker));
     return () => { cancel = true; };
-  }, [logKey, groups]);
+  }, [logKey, league, activeStat]);
 
   const teams = useMemo(() => {
     const names = new Set();
@@ -117,7 +147,7 @@ function NhlPlayerProps({ rows }) {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return groups
-      .filter((group) => group.type === stat)
+      .filter((group) => group.type === activeStat)
       .filter((group) => team === 'all' || group.teamName === team)
       .filter((group) => !q || group.player.toLowerCase().includes(q))
       .map((group) => {
@@ -128,7 +158,7 @@ function NhlPlayerProps({ rows }) {
         return { ...group, selected, current };
       })
       .sort((a, b) => b.lines[0].yes - a.lines[0].yes || a.player.localeCompare(b.player));
-  }, [groups, stat, team, query, picked]);
+  }, [groups, activeStat, team, query, picked]);
 
   function chooseLine(key, lines, dir) {
     setPicked((prev) => {
@@ -158,8 +188,11 @@ function NhlPlayerProps({ rows }) {
             onChange={(event) => setQuery(event.target.value)}
           />
         )}
-        <button type="button" className={`pp-pill ${stat === 'hockey_player_goals' ? 'pp-pill-on' : ''}`} onClick={() => setStat('hockey_player_goals')}>Goals</button>
-        <button type="button" className={`pp-pill ${stat === 'hockey_player_points' ? 'pp-pill-on' : ''}`} onClick={() => setStat('hockey_player_points')}>Points</button>
+        {pills.map((type) => (
+          <button key={type} type="button" className={`pp-pill ${activeStat === type ? 'pp-pill-on' : ''}`} onClick={() => setStat(type)}>
+            {pillLabel(type)}
+          </button>
+        ))}
         <select className="pp-team" aria-label="Team" value={team} onChange={(event) => setTeam(event.target.value)}>
           <option value="all">All teams</option>
           {teams.map((name) => <option key={name} value={name}>{name}</option>)}
@@ -175,49 +208,48 @@ function NhlPlayerProps({ rows }) {
           const yesPct = `${Math.round(group.current.yes * 100)}%`;
           const noPct = `${Math.round(group.current.no * 100)}%`;
           const log = logs[group.player];
-          const goalsView = stat === 'hockey_player_goals';
-          const recent = log ? (goalsView ? log.goals : log.points) : null;
-          const versus = log ? (goalsView ? log.vsGoals : log.vsPoints) : null;
-          const statLabel = goalsView ? 'goals' : 'points';
+          const recent = log?.series?.[activeStat] || null;
+          const versus = log?.versus?.[activeStat] || null;
+          const statName = chartLabel(activeStat);
           return (
             <div key={group.key} className="pp-player">
-            <div className="pp-row">
-              <div className="pp-who">
-                {group.jersey ? (
-                  <img className="pp-jersey" src={group.jersey} alt="" />
-                ) : (
-                  <span className="pp-jersey pp-jersey-fallback" style={{ background: group.color || '#333' }}>{group.jerseyNumber || ''}</span>
-                )}
-                <div className="pp-id">
-                  <div className="pp-name">{group.player} <span>{group.selected}+</span></div>
-                  <div className="pp-switch">
-                    <button type="button" aria-label="Lower line" disabled={idx <= 0} onClick={() => chooseLine(group.key, group.lines, -1)}>‹</button>
-                    {shown.map((line) => (
-                      <button
-                        key={line.id}
-                        type="button"
-                        className={line.line === group.selected ? 'pp-line-on' : ''}
-                        onClick={() => setPicked((prev) => ({ ...prev, [group.key]: line.line }))}
-                      >
-                        {line.line}+
-                      </button>
-                    ))}
-                    <button type="button" aria-label="Higher line" disabled={idx >= group.lines.length - 1} onClick={() => chooseLine(group.key, group.lines, 1)}>›</button>
+              <div className="pp-row">
+                <div className="pp-who">
+                  {group.jersey ? (
+                    <img className="pp-jersey" src={group.jersey} alt="" />
+                  ) : (
+                    <span className="pp-jersey pp-jersey-fallback" style={{ background: group.color || '#333' }}>{group.jerseyNumber || ''}</span>
+                  )}
+                  <div className="pp-id">
+                    <div className="pp-name">{group.player} <span>{lineText(group.selected)}</span></div>
+                    <div className="pp-switch">
+                      <button type="button" aria-label="Lower line" disabled={idx <= 0} onClick={() => chooseLine(group.key, group.lines, -1)}>‹</button>
+                      {shown.map((line) => (
+                        <button
+                          key={line.id}
+                          type="button"
+                          className={line.line === group.selected ? 'pp-line-on' : ''}
+                          onClick={() => setPicked((prev) => ({ ...prev, [group.key]: line.line }))}
+                        >
+                          {lineText(line.line)}
+                        </button>
+                      ))}
+                      <button type="button" aria-label="Higher line" disabled={idx >= group.lines.length - 1} onClick={() => chooseLine(group.key, group.lines, 1)}>›</button>
+                    </div>
                   </div>
                 </div>
+                <div className="pp-pct">{yesPct}</div>
+                <div className="pp-sides">
+                  <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>
+                  <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>
+                </div>
               </div>
-              <div className="pp-pct">{yesPct}</div>
-              <div className="pp-sides">
-                <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>
-                <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>
-              </div>
-            </div>
-            {log && (
-              <div className="pp-logs">
-                <StatBars values={recent} color={group.color} label={`Last ${recent.length || 10} ${statLabel}`} />
-                <StatBars values={versus} color={group.color} label={`Last 5 vs ${log.opponent || 'opponent'}`} />
-              </div>
-            )}
+              {(recent || versus) && (
+                <div className="pp-logs">
+                  <StatBars values={recent} color={group.color} label={`Last ${recent?.length || 10} ${statName}`} />
+                  <StatBars values={versus} color={group.color} label={`Last 5 vs ${log?.opponent || 'opponent'}`} />
+                </div>
+              )}
             </div>
           );
         })}
@@ -226,11 +258,26 @@ function NhlPlayerProps({ rows }) {
   );
 }
 
-function NhlGameDetail({ game, loading }) {
+function primaryLines(rows) {
+  const best = new Map();
+  for (const row of rows) {
+    const kind = row.sideText;
+    const dist = Math.abs((row.marketP ?? 0) - 0.5);
+    const prev = best.get(kind);
+    if (!prev || dist < prev.dist) best.set(kind, { row, dist });
+  }
+  const order = ['moneyline', 'spread', 'total'];
+  return [...best.entries()]
+    .sort((a, b) => (order.indexOf(a[0]) + 1 || 9) - (order.indexOf(b[0]) + 1 || 9))
+    .map((entry) => entry[1].row);
+}
+
+function GameDetail({ game, rows, loading }) {
   const [section, setSection] = useState('players');
-  const players = game.rows.filter((row) => row.type === 'hockey_player_goals' || row.type === 'hockey_player_points');
-  const lines = game.rows.filter((row) => row.type === 'moneyline' || row.type === 'spreads' || row.type === 'totals');
-  const props = game.rows.filter((row) => row.type === 'hockey_team_saves');
+  const list = rows || [];
+  const players = list.filter((row) => row.section === 'player');
+  const lines = primaryLines(list.filter((row) => row.section === 'line'));
+  const props = list.filter((row) => row.section === 'prop');
   const cards = section === 'lines' ? lines : props;
   return (
     <>
@@ -242,12 +289,17 @@ function NhlGameDetail({ game, loading }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <NhlPlayerProps rows={players} />
+          : <PlayerPropBoard key={game.key} rows={players} league={game.league} />
       )}
       {section !== 'players' && (
-        <div className="props-list">
-          {cards.map((row) => <PropCard key={row.id} row={row} />)}
-        </div>
+        loading && cards.length === 0
+          ? <div className="loading-text">Loading markets…</div>
+          : (
+            <div className="props-list">
+              {cards.length === 0 && <div className="empty-state"><p>No markets in this section.</p></div>}
+              {cards.map((row) => <PropCard key={row.id} row={row} />)}
+            </div>
+          )
       )}
     </>
   );
@@ -276,128 +328,105 @@ function PropCard({ row }) {
         {spread && <span>{spread} spread</span>}
         {row.liquidity != null && <span>{formatLiquidity(row.liquidity)}</span>}
       </div>
-      {row.seasonAvg != null && row.statP != null && (
-        <div className="props-season">
-          Season {formatAvg(row.seasonAvg)} {row.seasonUnit} · stats {pct(row.statP)} {row.side.toLowerCase()}
-        </div>
-      )}
     </a>
   );
 }
 
 export default function PropsPage() {
-  const [rows, setRows] = useState(null);
+  const [events, setEvents] = useState(null);
+  const [loaded, setLoaded] = useState({});
   const [error, setError] = useState('');
-  const [progress, setProgress] = useState({ done: 0, total: 1 });
-  const [statsNote, setStatsNote] = useState(false);
   const [sport, setSport] = useState('All');
   const [day, setDay] = useState(() => easternDay(Date.now()));
   const [gameKey, setGameKey] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [propsLoading, setPropsLoading] = useState(false);
+  const [loadingSlug, setLoadingSlug] = useState('');
 
   useEffect(() => {
     let cancel = false;
-    setRows(null);
+    setEvents(null);
     setError('');
-    setStatsNote(false);
-    loadPlayerProps((next) => { if (!cancel) setProgress(next); })
-      .then(async (list) => {
-        if (cancel) return;
-        setRows(list);
-        const withStats = await attachSeasonStats(list);
-        if (cancel) return;
-        withStats.sort(compareProps);
-        setRows((prev) => {
-          const extras = (prev || []).filter((row) => String(row.id).startsWith('us:'));
-          return mergePropRows(withStats, extras);
-        });
-        setStatsNote(withStats.some((row) => row.seasonAvg != null));
-      })
-      .catch((err) => {
-        if (!cancel) setError(err?.message || 'Could not load props');
-      });
+    loadPropEvents()
+      .then((list) => { if (!cancel) setEvents(list); })
+      .catch((err) => { if (!cancel) setError(err?.message || 'Could not load props'); });
     return () => { cancel = true; };
   }, [reloadKey]);
 
-  const nhlSlugKey = useMemo(() => {
-    const slugs = new Set();
-    for (const row of rows || []) {
-      if (row.sport !== 'NHL' || !row.eventSlug) continue;
-      if (easternDay(row.gameStart) !== day) continue;
-      slugs.add(row.eventSlug);
-    }
-    return [...slugs].sort().join('|');
-  }, [rows, day]);
-
-  useEffect(() => {
-    const slugs = nhlSlugKey ? nhlSlugKey.split('|') : [];
-    if (!slugs.length) return undefined;
-    let cancel = false;
-    setPropsLoading(true);
-    loadNhlPropsForSlugs(slugs)
-      .then((extra) => {
-        if (cancel) return;
-        setRows((prev) => (prev ? mergePropRows(prev, extra) : prev));
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancel) setPropsLoading(false); });
-    return () => { cancel = true; };
-  }, [nhlSlugKey]);
-
   const games = useMemo(() => {
-    const map = new Map();
-    for (const row of rows || []) {
-      if (easternDay(row.gameStart) !== day) continue;
-      if (sport !== 'All' && row.sport !== sport) continue;
-      const key = row.eventSlug || row.id;
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          title: row.eventTitle || row.question,
-          sport: row.sport,
-          gameStart: row.gameStart,
-          rows: [],
-        });
-      }
-      map.get(key).rows.push(row);
+    const list = [];
+    for (const event of events || []) {
+      if (easternDay(event.gameStart) !== day) continue;
+      if (sport !== 'All' && event.sport !== sport) continue;
+      const rows = loaded[event.key];
+      list.push({
+        ...event,
+        rows: rows ? [...rows].sort(compareProps) : null,
+      });
     }
-    const list = [...map.values()];
-    for (const game of list) game.rows.sort(compareProps);
     list.sort((a, b) => a.gameStart - b.gameStart || a.title.localeCompare(b.title));
     return list;
-  }, [rows, day, sport]);
+  }, [events, day, sport, loaded]);
 
   const counts = useMemo(() => {
     const bySport = new Map();
-    const seen = new Set();
-    for (const row of rows || []) {
-      if (easternDay(row.gameStart) !== day) continue;
-      const key = `${row.sport}|${row.eventSlug || row.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      bySport.set(row.sport, (bySport.get(row.sport) || 0) + 1);
+    for (const event of events || []) {
+      if (easternDay(event.gameStart) !== day) continue;
+      bySport.set(event.sport, (bySport.get(event.sport) || 0) + 1);
     }
     return bySport;
-  }, [rows, day]);
+  }, [events, day]);
 
   const openGame = games.find((game) => game.key === gameKey) || null;
+  const prefetchKey = games.length > 0 && games.length <= 16 ? games.map((game) => game.key).join('|') : '';
+
+  useEffect(() => {
+    const slugs = prefetchKey ? prefetchKey.split('|') : [];
+    if (!slugs.length) return undefined;
+    let cancel = false;
+    let next = 0;
+    async function worker() {
+      while (next < slugs.length) {
+        const slug = slugs[next++];
+        try {
+          const rows = await loadGameProps(slug);
+          if (!cancel) setLoaded((prev) => (prev[slug] ? prev : { ...prev, [slug]: rows }));
+        } catch {
+          if (!cancel) setLoaded((prev) => (prev[slug] ? prev : { ...prev, [slug]: [] }));
+        }
+      }
+    }
+    Promise.all(Array.from({ length: Math.min(4, slugs.length) }, worker));
+    return () => { cancel = true; };
+  }, [prefetchKey]);
+
+  useEffect(() => {
+    if (!gameKey) return undefined;
+    let cancel = false;
+    setLoadingSlug(gameKey);
+    loadGameProps(gameKey)
+      .then((rows) => {
+        if (cancel) return;
+        setLoaded((prev) => (prev[gameKey] ? prev : { ...prev, [gameKey]: rows }));
+      })
+      .catch(() => {
+        if (!cancel) setLoaded((prev) => (prev[gameKey] ? prev : { ...prev, [gameKey]: [] }));
+      })
+      .finally(() => { if (!cancel) setLoadingSlug(''); });
+    return () => { cancel = true; };
+  }, [gameKey]);
 
   return (
     <div className="page-content props-page">
       <div className="props-header">
         <h1 className="page-title">Props</h1>
         <p className="props-note">
-          Games for the day, including NHL. Open a game to see every prop, most likely to hit first.
-          {statsNote ? ' Season averages are blended in for the strongest NFL, NBA, WNBA, and MLB props.' : ''}
+          Games for the day. Open a game for player props, the last 10 games, and the last five against the opponent.
           {' '}This is a read of the market, not a pick.
         </p>
       </div>
 
-      {rows == null && !error && (
-        <div className="loading-text">
-          Loading props… {progress.total ? `${progress.done}/${progress.total}` : ''}
-        </div>
+      {events == null && !error && (
+        <div className="loading-text">Loading props…</div>
       )}
 
       {error && (
@@ -407,7 +436,7 @@ export default function PropsPage() {
         </div>
       )}
 
-      {rows && !openGame && (
+      {events && !openGame && (
         <>
           <div className="props-day-nav">
             <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, -1)); setGameKey(null); }} aria-label="Previous day">‹</button>
@@ -431,19 +460,20 @@ export default function PropsPage() {
 
           {games.length === 0 && (
             <div className="empty-state">
-              <p>No {sport === 'All' ? '' : `${sport} `}games with props on {formatDayLabel(day).toLowerCase()}.</p>
+              <p>No {sport === 'All' ? '' : `${sport} `}games {formatDayLabel(day) === 'Today' ? 'today' : `on ${formatDayLabel(day)}`}.</p>
             </div>
           )}
 
           <div className="props-list">
             {games.map((game) => {
-              const best = game.rows[0];
+              const best = game.rows?.[0];
+              const count = game.rows ? game.rows.length : game.marketCount;
               return (
                 <button key={game.key} type="button" className="props-game" onClick={() => setGameKey(game.key)}>
                   <div className="props-game-main">
                     <div className="props-game-title">{game.title}</div>
                     <div className="props-game-meta">
-                      {sport === 'All' ? `${game.sport} · ` : ''}{formatGameTime(game.gameStart)} · {game.rows.length} props
+                      {sport === 'All' ? `${game.sport} · ` : ''}{formatGameTime(game.gameStart)} · {count} props
                     </div>
                   </div>
                   {best && (
@@ -466,13 +496,12 @@ export default function PropsPage() {
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>
           </div>
-          {openGame.sport === 'NHL' ? (
-            <NhlGameDetail key={openGame.key} game={openGame} loading={propsLoading} />
-          ) : (
-            <div className="props-list">
-              {openGame.rows.map((row) => <PropCard key={row.id} row={row} />)}
-            </div>
-          )}
+          <GameDetail
+            key={openGame.key}
+            game={openGame}
+            rows={openGame.rows}
+            loading={loadingSlug === openGame.key || !openGame.rows}
+          />
         </>
       )}
     </div>
