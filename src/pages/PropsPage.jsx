@@ -34,6 +34,12 @@ function lineText(line) {
   return Number.isInteger(line) ? `${line}+` : `${line}+`;
 }
 
+function last10Hit(values, line) {
+  if (!values?.length || line == null) return null;
+  const hits = values.filter((value) => value >= line).length;
+  return Math.round((hits / values.length) * 100);
+}
+
 function groupPlayers(rows) {
   const map = new Map();
   for (const row of rows) {
@@ -211,6 +217,11 @@ function PlayerPropBoard({ rows, league }) {
           const recent = log?.series?.[activeStat] || null;
           const versus = log?.versus?.[activeStat] || null;
           const statName = chartLabel(activeStat);
+          const hit = last10Hit(recent, group.selected);
+          const hitText = hit == null ? '—' : `${hit}%`;
+          const hitLabel = recent?.length
+            ? `Last ${recent.length} hit rate, ${recent.filter((value) => value >= group.selected).length} of ${recent.length}`
+            : 'Last 10 hit rate';
           return (
             <div key={group.key} className="pp-player">
               <div className="pp-row">
@@ -238,7 +249,10 @@ function PlayerPropBoard({ rows, league }) {
                     </div>
                   </div>
                 </div>
-                <div className="pp-pct">{yesPct}</div>
+                <div className="pp-pct" aria-label={hitLabel} title={hitLabel}>
+                  <span>{hitText}</span>
+                  <span className="pp-pct-l10">L10</span>
+                </div>
                 <div className="pp-sides">
                   <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>
                   <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>

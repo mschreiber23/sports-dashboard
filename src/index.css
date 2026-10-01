@@ -8587,12 +8587,22 @@ thead .dfs-sticky-player {
 }
 .pp-name span { color: var(--accent); font-weight: 700; margin-left: 4px; }
 .pp-pct {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.5px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   flex-shrink: 0;
+}
+.pp-pct-l10 {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--text2);
 }
 .pp-switch {
   display: inline-flex;
