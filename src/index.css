@@ -8477,12 +8477,70 @@ thead .dfs-sticky-player {
   font-weight: 650;
   max-width: 42%;
 }
+.pp-player {
+  padding: 10px 0 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
 .pp-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 2px 0;
+}
+.pp-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pp-log {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+.pp-log-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text2);
+  line-height: 1.25;
+  padding-bottom: 14px;
+}
+.pp-log-empty {
+  font-size: 11px;
+  color: var(--text2);
+  padding-bottom: 12px;
+}
+.pp-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.pp-bar-col {
+  width: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pp-bar-track {
+  height: 28px;
+  width: 8px;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid rgba(255,255,255,0.28);
+}
+.pp-bar {
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+}
+.pp-bar-col span {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 .pp-who {
   display: flex;

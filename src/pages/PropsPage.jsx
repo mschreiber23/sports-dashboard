@@ -5,6 +5,7 @@ import {
   easternDay, shiftDay, formatDayLabel,
 } from '../api/polymarket';
 import { attachSeasonStats, formatAvg } from '../api/propStats';
+import { recentNhlLogs } from '../api/nhlLogs';
 import { bookLabel } from '../utils/propHit';
 
 const TABS = ['All', 'NFL', 'NBA', 'WNBA', 'MLB', 'NHL', 'Soccer'];
@@ -45,6 +46,9 @@ function groupNhlPlayers(rows) {
         jerseyNumber: row.jerseyNumber,
         teamName: row.teamName,
         color: row.color,
+        opponentName: row.opponentName || '',
+        opponentAbbr: row.opponentAbbr || '',
+        gameStart: row.gameStart,
         lines: [],
       });
     }
@@ -56,13 +60,53 @@ function groupNhlPlayers(rows) {
   return [...map.values()];
 }
 
+function StatBars({ values, color, label }) {
+  if (!values) return null;
+  const max = Math.max(1, ...values, 0);
+  return (
+    <div className="pp-log">
+      <div className="pp-log-label">{label}</div>
+      {values.length === 0 ? (
+        <div className="pp-log-empty">No games</div>
+      ) : (
+        <div className="pp-bars" aria-label={label}>
+          {values.map((value, index) => (
+            <div key={`${label}-${index}`} className="pp-bar-col">
+              <div className="pp-bar-track">
+                <div className="pp-bar" style={{ height: `${(value / max) * 100}%`, background: color || '#e10600' }} />
+              </div>
+              <span>{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NhlPlayerProps({ rows }) {
   const groups = useMemo(() => groupNhlPlayers(rows), [rows]);
+  const [logs, setLogs] = useState({});
   const [stat, setStat] = useState('hockey_player_goals');
   const [team, setTeam] = useState('all');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [picked, setPicked] = useState({});
+
+  const logKey = useMemo(() => groups.map((group) => `${group.player}|${group.opponentAbbr}|${group.gameStart}`).sort().join(';'), [groups]);
+
+  useEffect(() => {
+    if (!logKey) return undefined;
+    let cancel = false;
+    const players = groups.map((group) => ({
+      name: group.player,
+      opponentAbbr: group.opponentAbbr,
+      opponentName: group.opponentName,
+      before: group.gameStart,
+    }));
+    recentNhlLogs(players).then((next) => { if (!cancel) setLogs(next); }).catch(() => {});
+    return () => { cancel = true; };
+  }, [logKey, groups]);
 
   const teams = useMemo(() => {
     const names = new Set();
@@ -130,8 +174,14 @@ function NhlPlayerProps({ rows }) {
           const idx = group.lines.findIndex((line) => line.line === group.selected);
           const yesPct = `${Math.round(group.current.yes * 100)}%`;
           const noPct = `${Math.round(group.current.no * 100)}%`;
+          const log = logs[group.player];
+          const goalsView = stat === 'hockey_player_goals';
+          const recent = log ? (goalsView ? log.goals : log.points) : null;
+          const versus = log ? (goalsView ? log.vsGoals : log.vsPoints) : null;
+          const statLabel = goalsView ? 'goals' : 'points';
           return (
-            <div key={group.key} className="pp-row">
+            <div key={group.key} className="pp-player">
+            <div className="pp-row">
               <div className="pp-who">
                 {group.jersey ? (
                   <img className="pp-jersey" src={group.jersey} alt="" />
@@ -161,6 +211,13 @@ function NhlPlayerProps({ rows }) {
                 <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>
                 <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>
               </div>
+            </div>
+            {log && (
+              <div className="pp-logs">
+                <StatBars values={recent} color={group.color} label={`Last ${recent.length || 10} ${statLabel}`} />
+                <StatBars values={versus} color={group.color} label={`Last 5 vs ${log.opponent || 'opponent'}`} />
+              </div>
+            )}
             </div>
           );
         })}

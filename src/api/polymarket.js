@@ -310,7 +310,9 @@ function normalizeNhlProp(market, event) {
   const playerName = market.metadata?.playerName || '';
   const lineText = Number.isFinite(line) ? `${line}+ ${label}` : label;
   const teamTitle = String(market.title || '').replace(/\s+\d+\+\s+\S.*$/, '').trim();
-  const team = (event.teams || []).find((item) => Number(item.id) === Number(market.metadata?.teamId));
+  const roster = event.teams || [];
+  const team = roster.find((item) => Number(item.id) === Number(market.metadata?.teamId));
+  const opponent = roster.find((item) => item !== team);
   const jerseyNumber = Number(String(market.image || '').match(/jerseys\/(\d+)\.png/)?.[1]);
   const scored = scoreProp({
     yes: quote.yes,
@@ -344,6 +346,8 @@ function normalizeNhlProp(market, event) {
     jerseyNumber: Number.isFinite(jerseyNumber) ? jerseyNumber : null,
     teamName: team?.name || teamTitle,
     color: market.color || team?.colorPrimary || '',
+    opponentName: opponent?.name || '',
+    opponentAbbr: String(opponent?.displayAbbreviation || opponent?.abbreviation || '').toUpperCase(),
     ...scored,
     side: 'Yes',
   };
