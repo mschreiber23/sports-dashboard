@@ -8514,6 +8514,43 @@ thead .dfs-sticky-player {
   gap: 8px;
   margin-top: 8px;
 }
+.pp-key-btn {
+  display: block;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0;
+  cursor: pointer;
+}
+.pp-key {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg2);
+}
+.pp-key p {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text2);
+}
+.pp-key-row { min-width: 0; }
+.pp-key-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent2);
+}
+.pp-key-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text);
+}
 .pp-factors {
   display: grid;
   grid-template-columns: 1fr 1fr;

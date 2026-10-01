@@ -222,6 +222,25 @@ function StatBars({ values, color, label }) {
   );
 }
 
+const FACTOR_KEY = [
+  ['Model', 'Our read of the chance this line hits, after shrinking the recent record and applying the nudges below.'],
+  ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record.'],
+  ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
+  ['TOI', 'Average ice time over the last five games.'],
+  ['Prior TOI', 'Average ice time in the games before those five. The model compares the two.'],
+  ['Shots', 'Average shots over the last five games.'],
+  ['Prior shots', 'Average shots in the earlier games. The model compares the two.'],
+  ['Shooting', 'Shooting percentage, pulled toward a typical NHL rate so a short hot or cold stretch does not take over.'],
+  ['Assists', 'Assists per game on a points prop, pulled toward a typical rate. Goals rows leave this off.'],
+  ['Volume', 'The chance implied by the shot rate at this line. Points props fold in the assist rate as well.'],
+  ['Power play', 'Power-play points per game over the recent games.'],
+  ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent.'],
+  ['Game total', 'The game total priced closest to 50/50. The model compares that number with 6 goals.'],
+  ['Side', 'Whether this player’s team is the favorite or the underdog, and that team’s price.'],
+  ['Rest', 'Days since the last regular-season game. A gap under 36 hours is a back-to-back.'],
+];
+
 const FACTOR_TAGS = {
   'shot volume': 'volume',
   chances: 'volume',
@@ -260,6 +279,7 @@ function PlayerPropBoard({ rows, league, slate }) {
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [picked, setPicked] = useState({});
+  const [keyOpen, setKeyOpen] = useState(false);
 
   const activeStat = pills.includes(stat) ? stat : (pills[0] || '');
   const logKey = useMemo(() => groups.map((group) => `${group.player}|${group.opponentAbbr}|${group.gameStart}`).sort().join(';'), [groups]);
@@ -357,6 +377,25 @@ function PlayerPropBoard({ rows, league, slate }) {
           {teams.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
       </div>
+
+      {league === 'nhl' && (
+        <>
+          <button type="button" className="pp-key-btn" aria-expanded={keyOpen} onClick={() => setKeyOpen((open) => !open)}>
+            {keyOpen ? 'Hide stat key' : 'Stat key'}
+          </button>
+          {keyOpen && (
+            <div className="pp-key">
+              <p>Blue numbers are the inputs that moved the model for the line selected on that player. Yes and No stay the contract price.</p>
+              {FACTOR_KEY.map(([label, text]) => (
+                <div key={label} className="pp-key-row">
+                  <div className="pp-key-label">{label}</div>
+                  <div className="pp-key-text">{text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {visible.length === 0 && <div className="empty-state"><p>No player props for that filter.</p></div>}
 
