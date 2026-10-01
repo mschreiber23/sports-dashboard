@@ -1166,6 +1166,7 @@ async function fetchNhlGameSummary(gameId) {
       // Goal count: extract "(7)" from "McDavid Goal (7) Snap Shot, assists: ..."
       const goalCountMatch = p.text?.match(/Goal\s*\((\d+)\)/i);
       const goalCount = goalCountMatch?.[1] || null;
+      const strength = (p.strength?.abbreviation || p.strength?.text || '').toLowerCase();
       const teamId = String(p.team?.id || '');
       return {
         period:    p.period?.number || '?',
@@ -1175,6 +1176,7 @@ async function fetchNhlGameSummary(gameId) {
         teamLogo:  teamLogos[teamId] || null,
         espnId:    scorer?.id,
         goalCount,
+        powerPlay: strength === 'power-play' || strength === 'power play',
         assists,
         awayScore: p.awayScore ?? 0,
         homeScore: p.homeScore ?? 0,
@@ -1299,6 +1301,7 @@ function NhlFinalCard({ game, navigate, accentColor }) {
                 <div className="nhl-card-goal-info">
                   <span className="nhl-card-goal-scorer">
                     {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
+                    {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
                   </span>
                   {g.assists.length > 0 && (
                     <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
@@ -1398,6 +1401,7 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore }) {
                 <div className="nhl-card-goal-info">
                   <span className="nhl-card-goal-scorer">
                     {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
+                    {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
                   </span>
                   {g.assists.length > 0 && (
                     <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>

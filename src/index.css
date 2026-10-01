@@ -7647,6 +7647,19 @@ thead .dfs-sticky-player {
 .nhl-card-goal-count {
   font-weight: 400; color: var(--text2); font-size: 11px;
 }
+.nhl-card-goal-pp {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  line-height: 1.45;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.16);
+  vertical-align: 1px;
+}
 .nhl-card-goal-assists {
   font-size: 10px; color: var(--text2); font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
