@@ -412,18 +412,19 @@ function PlayerPropBoard({ rows, league, slate }) {
       .filter((group) => team === 'all' || group.teamName === team)
       .filter((group) => !q || group.player.toLowerCase().includes(q))
       .map((group) => {
+        const fallback = mainLine(group.lines)?.line ?? group.lines[0].line;
         const selected = group.lines.some((line) => line.line === picked[group.key])
           ? picked[group.key]
-          : group.lines[0].line;
+          : fallback;
         const current = group.lines.find((line) => line.line === selected) || group.lines[0];
         return { ...group, selected, current };
       })
-      .sort((a, b) => b.lines[0].yes - a.lines[0].yes || a.player.localeCompare(b.player));
+      .sort((a, b) => b.current.yes - a.current.yes || a.player.localeCompare(b.player));
   }, [groups, activeStat, team, query, picked]);
 
   function chooseLine(key, lines, dir) {
     setPicked((prev) => {
-      const current = lines.some((line) => line.line === prev[key]) ? prev[key] : lines[0].line;
+      const current = lines.some((line) => line.line === prev[key]) ? prev[key] : (mainLine(lines)?.line ?? lines[0].line);
       const idx = lines.findIndex((line) => line.line === current);
       const next = lines[idx + dir];
       if (!next) return prev;
