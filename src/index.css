@@ -8425,6 +8425,13 @@ thead .dfs-sticky-player {
   color: #22c55e;
   line-height: 1;
 }
+.props-game-ou {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.1px;
+}
 .props-back {
   align-self: flex-start;
   background: none;

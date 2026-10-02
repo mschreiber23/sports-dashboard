@@ -73,6 +73,22 @@ const NFL_LIKELY_MIN_LINE = {
   football_player_touchdowns: 0.5,
 };
 
+function mainTotalLabel(rows) {
+  if (!rows) return '';
+  const { total } = slateContext(rows);
+  if (typeof total !== 'number' || !Number.isFinite(total)) return '';
+  return `Total ${total}`;
+}
+
+function cardClock(ms) {
+  if (!ms) return '';
+  return `${new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(ms))} ET`;
+}
+
 function mainLine(lines) {
   return lines
     .filter((line) => typeof line.yes === 'number' && Number.isFinite(line.yes))
@@ -847,8 +863,7 @@ export default function PropsPage() {
       <div className="props-header">
         <h1 className="page-title">Props</h1>
         <p className="props-note">
-          Games for the day. The NFL tab lists every game in the week. Open a game for player props, the last 10 games, and the last five against the opponent.
-          {' '}This is a read of the market, not a pick.
+          Open a game for the lines and player props. The NFL tab is the full week. This is a read of the market, not a pick.
         </p>
       </div>
 
@@ -940,22 +955,17 @@ export default function PropsPage() {
           {view === 'games' && (
           <div className="props-list">
             {games.map((game) => {
-              const best = game.rows?.[0];
-              const count = game.rows ? game.rows.length : game.marketCount;
+              const totalLabel = mainTotalLabel(game.rows);
+              const when = sport === 'NFL' ? formatGameTime(game.gameStart) : cardClock(game.gameStart);
               return (
                 <button key={game.key} type="button" className="props-game" onClick={() => setGameKey(game.key)}>
                   <div className="props-game-main">
                     <div className="props-game-title">{game.title}</div>
                     <div className="props-game-meta">
-                      {sport === 'All' ? `${game.sport} · ` : ''}{formatGameTime(game.gameStart)} · {count} props
+                      {sport === 'All' ? `${game.sport} · ` : ''}{when}
                     </div>
                   </div>
-                  {best && (
-                    <div className="props-game-best">
-                      <span>{pct(best.hit)}</span>
-                      <span>{best.sideText}</span>
-                    </div>
-                  )}
+                  {totalLabel && <div className="props-game-ou">{totalLabel}</div>}
                 </button>
               );
             })}
