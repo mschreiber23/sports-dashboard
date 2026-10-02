@@ -207,6 +207,7 @@ function likelyBoard(games, logs) {
             favoriteYes: slate.favoriteYes,
             spreadLine: slate.spreadLine,
             spreadLabel: slate.spreadLabel,
+            matchup: log?.matchup,
             teammates: game.league === 'nfl' ? teammateLogs(game.rows.filter((row) => (
               row.section === 'player' && row.player !== sample.player && row.teamName && row.teamName === sample.teamName
             )).map((row) => {
@@ -338,6 +339,7 @@ const NFL_FACTOR_KEY = [
   ['Y/A, YPC, catch rate', 'Efficiency pulled toward a typical NFL rate, so a short hot or cold stretch does not take over. Touchdowns use a per-attempt or per-target rate.'],
   ['Volume', 'The chance that tonight’s expected usage and that efficiency imply at this exact line. This is most of the model percent.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent. A small nudge, and only with at least three of those games.'],
+  ['vs TE, WR, or RB', 'How often this defense has thrown to that position this season, and the yards per target on those throws. A share well above normal lifts expected targets a little. Yards per target moves the efficiency a little. Snap counts are not in this feed, so the player’s own targets still set the role.'],
   ['Game total', 'The full-game total priced closest to 50/50. A higher total adds a little to passing and receiving props.'],
   ['Implied', 'This team’s points, from the game total and the spread. A favorite in a 37.5-point game with a 2.5-point line is about 20. Touchdown props move with this number.'],
   ['Script', 'Throwing when this team is the underdog by about a field goal or more, running when they are favored by that much. Passing and receiving props rise on a throwing script. Rushing props rise on a running script.'],
@@ -550,6 +552,7 @@ function PlayerPropBoard({ rows, league, slate }) {
             spreadLine: slate?.spreadLine,
             spreadLabel: slate?.spreadLabel,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
+            matchup: log?.matchup,
             teammates: league === 'nfl' ? teammateLogs(groups.filter((other) => (
               other.player !== group.player && other.teamName && other.teamName === group.teamName
             )).map((other) => ({
@@ -562,7 +565,12 @@ function PlayerPropBoard({ rows, league, slate }) {
           const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : null);
           const factors = factorFn ? factorFn(factorInput) : [];
           const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes }) : null;
-          const moved = new Set((model?.tags || []).map((tag) => FACTOR_TAGS[tag] || (String(tag).endsWith(' back') ? 'usage' : null)).filter(Boolean));
+          const moved = new Set((model?.tags || []).map((tag) => {
+            if (FACTOR_TAGS[tag]) return FACTOR_TAGS[tag];
+            if (String(tag).endsWith(' back')) return 'usage';
+            if (/^(TE|WR|RB) targets/.test(tag)) return 'pos';
+            return null;
+          }).filter(Boolean));
           return (
             <div key={group.key} className="pp-player">
               <div className="pp-row">

@@ -1,3 +1,5 @@
+import { opponentReceiving, receivingGroup } from './nflMatchup.js';
+
 const LEAGUES = {
   nhl: { path: 'hockey/nhl', search: ['nhl'] },
   nba: { path: 'basketball/nba', search: ['nba'] },
@@ -62,6 +64,7 @@ const CHART_LABEL = {
 
 const idCache = new Map();
 const seasonCache = new Map();
+const positionCache = new Map();
 
 function canon(abbr) {
   const key = String(abbr || '').toUpperCase();
@@ -208,6 +211,19 @@ function contextOf(games) {
   return any ? rows : null;
 }
 
+async function athletePosition(id) {
+  if (!id) return '';
+  if (positionCache.has(id)) return positionCache.get(id);
+  const pending = (async () => {
+    const res = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes/${id}`);
+    if (!res.ok) return '';
+    const data = await res.json();
+    return data.athlete?.position?.abbreviation || '';
+  })().catch(() => '');
+  positionCache.set(id, pending);
+  return pending;
+}
+
 async function espnId(league, name) {
   const sport = LEAGUES[league];
   const key = `${league}|${normName(name)}`;
@@ -323,6 +339,19 @@ export async function recentPlayerLogs(league, players) {
         if (priorValues) prior[type] = priorValues;
       }
       const lastPlayed = games[0] ? new Date(games[0].date).getTime() : null;
+      let position = '';
+      let matchup = null;
+      if (league === 'nfl') {
+        position = await athletePosition(id);
+        const group = receivingGroup(position);
+        if (group && player.opponentAbbr) {
+          const profile = await opponentReceiving(player.opponentAbbr);
+          const row = profile?.groups?.[group];
+          if (row && profile.games >= 2 && row.targets >= 15) {
+            matchup = { group, games: profile.games, ...row };
+          }
+        }
+      }
       out[player.name] = {
         series,
         prior,
@@ -331,6 +360,8 @@ export async function recentPlayerLogs(league, players) {
         priorContext: contextOf(earlier),
         lastPlayed: Number.isFinite(lastPlayed) ? lastPlayed : null,
         opponent: player.opponentName || player.opponentAbbr || '',
+        position,
+        matchup,
       };
     }
   }

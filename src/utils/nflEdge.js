@@ -2,6 +2,7 @@
 // targets, blended with the longer sample, times a shrunk efficiency rate.
 // When a high-usage teammate is back after missing the games where this
 // player's usage spiked, the expectation uses the games they played together.
+// A defense that funnels targets to a position nudges that position's props.
 // The last-10 hit rate is the smaller piece. Then the spread and the total
 // set a pass or run script and a team implied point total, and a short week
 // or extra rest can still move it. Edge is that probability minus the yes price.
@@ -226,7 +227,22 @@ function shrunk(all, numKey, denKey, priorNum, priorDen) {
   return (num.sum + priorNum) / (den.sum + priorDen);
 }
 
-function volumeRead(type, line, recentContext, priorContext, teammates) {
+const POSITION_SHARE = { TE: 0.21, WR: 0.58, RB: 0.2 };
+
+function matchupReady(matchup) {
+  return Boolean(matchup?.group && POSITION_SHARE[matchup.group] && matchup.games >= 2 && matchup.targets >= 15 && matchup.share > 0);
+}
+
+function receivingShape(targets, ypt, matchup) {
+  if (!targets || !matchupReady(matchup)) return { targets, ypt };
+  const shareMul = clamp(1 + (matchup.share - POSITION_SHARE[matchup.group]) * 1.15, 0.86, 1.16);
+  const next = { ...targets, mean: targets.mean * shareMul };
+  if (ypt == null || !(matchup.ypt > 0)) return { targets: next, ypt };
+  const yptMul = clamp(1 + ((matchup.ypt / 7.8) - 1) * 0.3, 0.9, 1.1);
+  return { targets: next, ypt: ypt * yptMul };
+}
+
+function volumeRead(type, line, recentContext, priorContext, teammates, matchup) {
   const recent = recentContext || [];
   const prior = priorContext || [];
   const all = [...prior, ...recent];
@@ -283,8 +299,11 @@ function volumeRead(type, line, recentContext, priorContext, teammates) {
   }
 
   if (type === REC_YDS || type === RECS || type === LONG) {
-    const targets = expectedUsage(prior, recent, 'targets', teammates);
-    const ypt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
+    const baseTargets = expectedUsage(prior, recent, 'targets', teammates);
+    const baseYpt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
+    const shaped = receivingShape(baseTargets, baseYpt, matchup);
+    const targets = shaped.targets;
+    const ypt = shaped.ypt;
     const catchRate = shrunk(all, 'rec', 'targets', 0.65 * 30, 30);
     let p = null;
     if (targets && targets.n >= 5 && type === RECS && catchRate != null) p = poissonAtLeast(targets.mean * catchRate, line);
@@ -293,9 +312,10 @@ function volumeRead(type, line, recentContext, priorContext, teammates) {
       p = normalAtLeast(mean, Math.max(32, mean * 0.65), line);
     }
     const rateLabel = type === RECS ? 'Catch%' : 'Y/tgt';
+    const shownYpt = baseYpt == null ? null : baseYpt.toFixed(1);
     const rateValue = type === RECS
       ? (catchRate == null ? null : `${Math.round(catchRate * 100)}%`)
-      : (ypt == null ? null : ypt.toFixed(1));
+      : shownYpt;
     return {
       p,
       back: targets?.back || null,
@@ -305,9 +325,12 @@ function volumeRead(type, line, recentContext, priorContext, teammates) {
 
   if (type === SCRIM || type === TD) {
     const carries = expectedUsage(prior, recent, 'rushAtt', teammates);
-    const targets = expectedUsage(prior, recent, 'targets', teammates);
+    const baseTargets = expectedUsage(prior, recent, 'targets', teammates);
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
-    const ypt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
+    const baseYpt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
+    const shaped = receivingShape(baseTargets, baseYpt, matchup);
+    const targets = shaped.targets;
+    const ypt = shaped.ypt;
     const rushTd = shrunk(all, 'rushTd', 'rushAtt', 0.03 * 50, 50);
     const recTd = shrunk(all, 'recTd', 'targets', 0.035 * 40, 40);
     let p = null;
@@ -404,7 +427,7 @@ function sameTeam(a, b) {
 export function nflFactorLines({
   type, line, recent, prior, recentContext, priorContext, versus,
   lastPlayed, gameStart, gameTotal, teamName, opponentName, favoriteName, favoriteYes,
-  spreadLine, spreadLabel, opponentLabel, teammates,
+  spreadLine, spreadLabel, opponentLabel, teammates, matchup,
 }) {
   if (!nflModeled(type) || line == null) return [];
   const lines = [];
@@ -418,9 +441,14 @@ export function nflFactorLines({
   } else {
     lines.push({ id: 'prior', label: 'Long sample', value: `${Math.round(fallbackRate(type, line) * 100)}% typical` });
   }
-  const volume = volumeRead(type, line, recentContext, priorContext, teammates);
+  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup);
   lines.push(...volume.rows);
   if (volume.back) lines.push({ id: 'usage', label: 'Role', value: `${volume.back} back` });
+  const receivingType = type === REC_YDS || type === RECS || type === LONG || type === SCRIM || type === TD;
+  if (receivingType && matchupReady(matchup)) {
+    lines.push({ id: 'pos', label: `vs ${matchup.group}`, value: `${Math.round(matchup.share * 100)}% tgt` });
+    lines.push({ id: 'pos', label: `${matchup.group} Y/T`, value: matchup.ypt.toFixed(1) });
+  }
   if (volume.p != null) lines.push({ id: 'volume', label: 'Volume', value: `${Math.round(volume.p * 100)}%` });
   if (versus?.length) {
     const hits = versus.filter((value) => value >= line).length;
@@ -452,7 +480,7 @@ export function nflPropEdge(input) {
   const {
     type, line, recent, prior, recentContext, priorContext, versus, marketYes,
     lastPlayed, gameStart, gameTotal, teamName, opponentName, spreadLine, spreadLabel,
-    teammates,
+    teammates, matchup,
   } = input;
   if (!nflModeled(type)) return null;
   if (!recent || recent.length < 5 || line == null) return null;
@@ -467,7 +495,7 @@ export function nflPropEdge(input) {
   let p = (hits + anchor * strength) / (n + strength);
   const tags = [];
 
-  const volume = volumeRead(type, line, recentContext, priorContext, teammates);
+  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup);
   if (volume.back) tags.push(`${volume.back} back`);
   if (volume.p != null) {
     const hitWeight = VOLATILE.has(type) ? 0.5 : 0.4;
@@ -494,6 +522,12 @@ export function nflPropEdge(input) {
     const targets = Math.abs(usageDelta(recentContext, priorContext, 'targets'));
     if (targets >= carries) tagUsage(tags, recentContext, priorContext, 'targets', 'targets up', 'targets down', 1.5);
     else tagUsage(tags, recentContext, priorContext, 'rushAtt', 'carries up', 'carries down', 2);
+  }
+
+  if (matchupReady(matchup) && (type === REC_YDS || type === RECS || type === LONG || type === SCRIM || type === TD)) {
+    const gap = matchup.share - POSITION_SHARE[matchup.group];
+    if (gap >= 0.05) tags.push(`${matchup.group} targets`);
+    else if (gap <= -0.05) tags.push(`${matchup.group} targets down`);
   }
 
   if (versus && versus.length >= 3) {
