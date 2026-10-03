@@ -6,6 +6,7 @@ import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { getNflWeekGames, getNflWeekInfo, getNflWeekLabel } from '../api/nfl';
 import useSportsDaySelection from '../hooks/useSportsDay';
 import { formatSportsDateLabel, sportsDayStr, toDateStr } from '../utils/sportsDay';
+import { finalStatusLabel } from './TeamRow';
 
 function getScore(c) {
   const s = c?.score;
@@ -147,7 +148,7 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
   return (
     <button className={`ticker-card ${isMine ? 'ticker-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="ticker-status">
-        <span className="ticker-final">Final</span>
+        <span className="ticker-final">{finalStatusLabel(status, false)}</span>
       </div>
       <div className="ticker-teams">
         {[away, home].filter(Boolean).map((c) => {
@@ -172,7 +173,7 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
 }
 
 /* ── Full grid card — same design as ticker, just larger ── */
-function GridCard({ game, sport, myTeamIds, mlbScore }) {
+function GridCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
@@ -251,7 +252,7 @@ function GridCard({ game, sport, myTeamIds, mlbScore }) {
   return (
     <button className={`grid-card ${isMine ? 'grid-card-mine' : ''}`} onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}>
       <div className="grid-card-top">
-        <span className="grid-final">Final</span>
+        <span className="grid-final">{finalStatusLabel(status, false)}</span>
       </div>
       <div className="grid-card-teams">
         {[away, home].filter(Boolean).map((c) => (

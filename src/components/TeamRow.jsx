@@ -40,6 +40,13 @@ function LogoImg({ team, className, style }) {
   );
 }
 
+export function finalStatusLabel(status, upper = true) {
+  const detail = `${status?.type?.shortDetail || ''} ${status?.type?.detail || ''}`;
+  const mark = detail.match(/Final\/([A-Za-z0-9]+)/i)?.[1]?.toUpperCase() || '';
+  const base = upper ? 'FINAL' : 'Final';
+  return mark ? `${base} ${mark}` : base;
+}
+
 function getScore(c) {
   const s = c?.score;
   if (s == null) return null;
@@ -1177,6 +1184,7 @@ async function fetchNhlGameSummary(gameId) {
         espnId:    scorer?.id,
         goalCount,
         powerPlay: strength === 'power-play' || strength === 'power play',
+        emptyNet: strength.startsWith('empty'),
         assists,
         awayScore: p.awayScore ?? 0,
         homeScore: p.homeScore ?? 0,
@@ -1274,7 +1282,7 @@ function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false }) 
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
       <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
-        <NhlTeamRows away={away} home={home} showScore finalLabel="FINAL" teamStats={teamStats} />
+        <NhlTeamRows away={away} home={home} showScore finalLabel={finalStatusLabel(comp?.status)} teamStats={teamStats} />
       </div>
 
       {/* Goalie stats — like pitcher decisions in MLB */}
@@ -1323,6 +1331,7 @@ function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false }) 
                   <span className="nhl-card-goal-scorer">
                     {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
                     {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
+                    {g.emptyNet && <span className="nhl-card-goal-en">EN</span>}
                   </span>
                   {g.assists.length > 0 && (
                     <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
@@ -1428,6 +1437,7 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = 
                   <span className="nhl-card-goal-scorer">
                     {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
                     {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
+                    {g.emptyNet && <span className="nhl-card-goal-en">EN</span>}
                   </span>
                   {g.assists.length > 0 && (
                     <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
@@ -1559,7 +1569,7 @@ function SportFinalCard({ game, sport, navigate, accentColor }) {
   return (
     <div className="mlbc-card" style={accentStyle(accentColor)}>
       <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: sport === 'nhl' ? 'Gamecast' : undefined } })}>
-        <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel="FINAL" />
+        <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel={finalStatusLabel(comp?.status)} />
       </div>
       {topLeaders.length > 0 && (
         <>

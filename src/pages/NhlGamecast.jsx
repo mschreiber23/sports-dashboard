@@ -109,6 +109,10 @@ function teamById(competitors, id) {
   if (!id) return null;
   return competitors?.find(c => String(c.team?.id) === String(id)) || null;
 }
+function isEmptyNet(play) {
+  const strength = (play?.strength?.abbreviation || play?.strength?.text || '').toLowerCase();
+  return strength.startsWith('empty');
+}
 
 /* ─── Recent play row (Gamecast) ─────────────────────── */
 function RecentRow({ play, away, home, competitors }) {
@@ -125,6 +129,7 @@ function RecentRow({ play, away, home, competitors }) {
         ? <img src={logo} alt="" className="nhl-recent-logo" onError={e=>e.target.style.display='none'}/>
         : <span className="nhl-recent-logo-placeholder">🏒</span>}
       <span className="nhl-recent-desc">{boldNames(play.text, play.participants)}</span>
+      {isGoal && isEmptyNet(play) && <span className="nhl-card-goal-en">EN</span>}
       {isGoal && <span className="nhl-recent-score">{play.awayScore}–{play.homeScore}</span>}
     </div>
   );
@@ -157,6 +162,7 @@ function PbpRow({ play, away, home, competitors }) {
       <div className="nhl-pbp-body">
         <div className="nhl-pbp-meta-row">
           <span className="nhl-pbp-badge" style={{background:badge.bg, color:badge.color}}>{badge.label}</span>
+          {isGoal && isEmptyNet(play) && <span className="nhl-card-goal-en">EN</span>}
           {periodStr && <span className="nhl-pbp-period">{periodStr}</span>}
           <span className="nhl-pbp-time">{play.clock?.displayValue}</span>
           {isGoal && <span className="nhl-pbp-score">{play.awayScore}–{play.homeScore}</span>}

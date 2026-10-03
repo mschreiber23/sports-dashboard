@@ -5,6 +5,7 @@ import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import useMlbLiveFeed, { mlbHeadshot } from '../hooks/useMlbLiveFeed';
 import NhlGamecast, { NhlPbpTab } from './NhlGamecast';
 import { buildMiLBComp, levelShort } from '../api/milb';
+import { finalStatusLabel } from '../components/TeamRow';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
 const PITCH_NAMES = {
@@ -2988,7 +2989,7 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, m
   const awayScore = mlbTotals?.away?.runs ?? getScore(away);
   const homeScore = mlbTotals?.home?.runs ?? getScore(home);
 
-  const centerLabel = isFinal ? 'Final'
+  const centerLabel = isFinal ? finalStatusLabel(status, false)
     : isPre   ? null
     : mlbInningDisplay || shortDetail;
 
