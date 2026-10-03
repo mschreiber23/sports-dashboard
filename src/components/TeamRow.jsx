@@ -1110,26 +1110,21 @@ function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, 
 const espnNhlHeadshot = (id) =>
   id ? `https://a.espncdn.com/i/headshots/nhl/players/full/${id}.png` : null;
 
-async function fetchNhlGameSummary(gameId) {
-  const r = await fetch(
-    `https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/summary?event=${gameId}`
-  );
-  const d = await r.json();
-
-  const players     = d.boxscore?.players || [];
-  const plays       = d.plays || [];
-  const competitors = d.header?.competitions?.[0]?.competitors || [];
+export function nhlScoringFromSummary(d, competitors) {
+  const players = d?.boxscore?.players || [];
+  const plays   = d?.plays || [];
+  const comps   = competitors || d?.header?.competitions?.[0]?.competitors || [];
 
   // Build teamId → logo map from header competitors
   const teamLogos = {};
-  for (const c of competitors) {
+  for (const c of comps) {
     const id = String(c.team?.id || '');
     if (id) teamLogos[id] = c.team?.logos?.[0]?.href || c.team?.logo || null;
   }
 
   // Team-level stats (shots, hits) keyed by homeAway
   const teamStats = {};
-  for (const t of d.boxscore?.teams || []) {
+  for (const t of d?.boxscore?.teams || []) {
     const ha = t.homeAway;
     const sm = {};
     for (const s of t.statistics || []) sm[s.name] = s.displayValue;
@@ -1193,6 +1188,78 @@ async function fetchNhlGameSummary(gameId) {
     });
 
   return { goalies, goals, teamStats };
+}
+
+async function fetchNhlGameSummary(gameId) {
+  const r = await fetch(
+    `https://site.web.api.espn.com/apis/site/v2/sports/hockey/nhl/summary?event=${gameId}`
+  );
+  const d = await r.json();
+  return nhlScoringFromSummary(d);
+}
+
+export function NhlScoringSummary({ goalies = [], goals = [], showGoals = true, onPlayer, between = null }) {
+  const openPlayer = (ev, id) => {
+    ev.stopPropagation();
+    if (id && onPlayer) onPlayer(id);
+  };
+  return (
+    <>
+      {goalies.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="nhl-card-goalies">
+            {goalies.map((g, i) => (
+              <div key={i} className="nhl-card-goalie-row"
+                style={{ cursor: g.espnId && onPlayer ? 'pointer' : 'default' }}
+                onClick={(ev) => openPlayer(ev, g.espnId)}>
+                {g.headshot
+                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
+                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
+                <div className="nhl-card-goalie-info">
+                  <div className="nhl-card-goalie-top">
+                    <span className="nhl-card-goalie-name">{g.name}</span>
+                    {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
+                  </div>
+                  <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {between}
+      {showGoals && goals.length > 0 && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="nhl-card-goals">
+            {goals.map((g, i) => (
+              <div key={i} className="nhl-card-goal-row"
+                style={{ cursor: g.espnId && onPlayer ? 'pointer' : 'default' }}
+                onClick={(ev) => openPlayer(ev, g.espnId)}>
+                <span className="nhl-card-goal-period">{g.period > 3 ? 'OT' : `P${g.period}`} {g.time}</span>
+                {g.headshot
+                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
+                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
+                <div className="nhl-card-goal-info">
+                  <span className="nhl-card-goal-scorer">
+                    {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
+                    {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
+                    {g.emptyNet && <span className="nhl-card-goal-en">EN</span>}
+                  </span>
+                  {g.assists.length > 0 && (
+                    <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
+                  )}
+                </div>
+                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
+                <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 /* ── NHL team rows with shots + hits ────────────────── */
@@ -1285,65 +1352,15 @@ function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false }) 
         <NhlTeamRows away={away} home={home} showScore finalLabel={finalStatusLabel(comp?.status)} teamStats={teamStats} />
       </div>
 
-      {/* Goalie stats — like pitcher decisions in MLB */}
-      {goalies.length > 0 && (
-        <>
-          <div className="mlbc-divider" />
-          <div className="nhl-card-goalies">
-            {goalies.map((g, i) => (
-              <div key={i} className="nhl-card-goalie-row"
-                style={{ cursor: g.espnId ? 'pointer' : 'default' }}
-                onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
-                {g.headshot
-                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
-                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <div className="nhl-card-goalie-info">
-                  <div className="nhl-card-goalie-top">
-                    <span className="nhl-card-goalie-name">{g.name}</span>
-                    {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
-                  </div>
-                  <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {collapseScoring && goals.length > 0 && (
-        <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
-      )}
-
-      {/* Goal scorers. Favorites hides these until Expand. */}
-      {goals.length > 0 && (!collapseScoring || scoringOpen) && (
-        <>
-          <div className="mlbc-divider" />
-          <div className="nhl-card-goals">
-            {goals.map((g, i) => (
-              <div key={i} className="nhl-card-goal-row"
-                style={{ cursor: g.espnId ? 'pointer' : 'default' }}
-                onClick={(ev) => { ev.stopPropagation(); if (g.espnId) navigate(`/player/nhl/${g.espnId}`); }}>
-                <span className="nhl-card-goal-period">{g.period > 3 ? 'OT' : `P${g.period}`} {g.time}</span>
-                {g.headshot
-                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
-                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <div className="nhl-card-goal-info">
-                  <span className="nhl-card-goal-scorer">
-                    {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
-                    {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
-                    {g.emptyNet && <span className="nhl-card-goal-en">EN</span>}
-                  </span>
-                  {g.assists.length > 0 && (
-                    <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
-                  )}
-                </div>
-                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
-                <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <NhlScoringSummary
+        goalies={goalies}
+        goals={goals}
+        showGoals={!collapseScoring || scoringOpen}
+        onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+        between={collapseScoring && goals.length > 0
+          ? <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
+          : null}
+      />
 
       <div className="mlbc-divider" />
       <div className="mlbc-actions">
@@ -1397,59 +1414,15 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = 
           awayScoreOverride={awayScore} homeScoreOverride={homeScore} teamStats={teamStats} />
       </div>
 
-      {goalies.length > 0 && (
-        <>
-          <div className="mlbc-divider" />
-          <div className="nhl-card-goalies">
-            {goalies.map((g, i) => (
-              <div key={i} className="nhl-card-goalie-row">
-                {g.headshot
-                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
-                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <div className="nhl-card-goalie-info">
-                  <div className="nhl-card-goalie-top">
-                    <span className="nhl-card-goalie-name">{g.name}</span>
-                    {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
-                  </div>
-                  <span className="nhl-card-goalie-stats">{g.sv} SV · {g.ga} GA</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {collapseScoring && goals.length > 0 && (
-        <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
-      )}
-
-      {goals.length > 0 && (!collapseScoring || scoringOpen) && (
-        <>
-          <div className="mlbc-divider" />
-          <div className="nhl-card-goals">
-            {goals.map((g, i) => (
-              <div key={i} className="nhl-card-goal-row">
-                <span className="nhl-card-goal-period">{g.period > 3 ? 'OT' : `P${g.period}`} {g.time}</span>
-                {g.headshot
-                  ? <img src={g.headshot} alt="" className="nhl-card-headshot" onError={e=>e.target.style.display='none'}/>
-                  : <div className="nhl-card-headshot nhl-card-headshot-empty"/>}
-                <div className="nhl-card-goal-info">
-                  <span className="nhl-card-goal-scorer">
-                    {g.scorer}{g.goalCount ? <span className="nhl-card-goal-count"> ({g.goalCount})</span> : ''}
-                    {g.powerPlay && <span className="nhl-card-goal-pp">PP</span>}
-                    {g.emptyNet && <span className="nhl-card-goal-en">EN</span>}
-                  </span>
-                  {g.assists.length > 0 && (
-                    <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
-                  )}
-                </div>
-                {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
-                <span className="nhl-card-goal-score">{g.awayScore}–{g.homeScore}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <NhlScoringSummary
+        goalies={goalies}
+        goals={goals}
+        showGoals={!collapseScoring || scoringOpen}
+        onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+        between={collapseScoring && goals.length > 0
+          ? <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
+          : null}
+      />
 
       {nhlScore?.ppTeam && (
         <>

@@ -4,6 +4,8 @@
  * the Gamecast tab and PBP tab update automatically without any
  * additional fetching here.
  */
+import { useNavigate } from 'react-router-dom';
+import { NhlScoringSummary, nhlScoringFromSummary } from '../components/TeamRow';
 
 /* ─── Badge config (keyed by ESPN play type text) ──── */
 const BADGES = {
@@ -194,7 +196,9 @@ export function NhlPbpTab({ data, competitors, status }) {
 
 /* ─── Main Gamecast export ───────────────────────────── */
 export default function NhlGamecast({ data, comp, competitors, status }) {
+  const navigate = useNavigate();
   const plays = data?.plays || [];
+  const { goalies, goals } = nhlScoringFromSummary(data, competitors);
   const away  = competitors?.find(c=>c.homeAway==='away') || competitors?.[0];
   const home  = competitors?.find(c=>c.homeAway==='home') || competitors?.[1];
 
@@ -261,6 +265,12 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
       </div>
 
       <div className="nhl-gc-body">
+        <NhlScoringSummary
+          goalies={goalies}
+          goals={goals}
+          onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+        />
+
         {/* Live situation */}
         {isLive && (
           <div className="nhl-sit-bar">
