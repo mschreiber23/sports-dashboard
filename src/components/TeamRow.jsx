@@ -1117,9 +1117,13 @@ export function nhlScoringFromSummary(d, competitors) {
 
   // Build teamId → logo map from header competitors
   const teamLogos = {};
+  const teamLogosByAbbr = {};
   for (const c of comps) {
     const id = String(c.team?.id || '');
-    if (id) teamLogos[id] = c.team?.logos?.[0]?.href || c.team?.logo || null;
+    const href = getTeamLogo(c.team) || c.team?.logos?.[0]?.href || c.team?.logo || null;
+    if (id && href) teamLogos[id] = href;
+    const abbr = c.team?.abbreviation;
+    if (abbr && href) teamLogosByAbbr[abbr] = href;
   }
 
   // Team-level stats (shots, hits) keyed by homeAway
@@ -1135,7 +1139,12 @@ export function nhlScoringFromSummary(d, competitors) {
   const goalies = [];
   for (const team of players) {
     const abbr    = team.team?.abbreviation || '';
-    const teamLogo = team.team?.logos?.[0]?.href || team.team?.logo || null;
+    const teamLogo = teamLogos[String(team.team?.id || '')]
+      || teamLogosByAbbr[abbr]
+      || getTeamLogo(team.team)
+      || team.team?.logos?.[0]?.href
+      || team.team?.logo
+      || null;
     const gg      = (team.statistics || []).find(sg => sg.name === 'goalies');
     if (!gg?.athletes?.length) continue;
     const labels  = gg.labels || [];

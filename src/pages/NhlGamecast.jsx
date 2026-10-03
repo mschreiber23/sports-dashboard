@@ -5,6 +5,7 @@
  * additional fetching here.
  */
 import { useNavigate } from 'react-router-dom';
+import { getTeamLogo } from '../api/espn';
 import { NhlScoringSummary, nhlScoringFromSummary } from '../components/TeamRow';
 
 /* ─── Badge config (keyed by ESPN play type text) ──── */
@@ -92,11 +93,8 @@ function IceRink({ homeLogo, awayLogo }) {
           <path d={`M${goalLineX[1]},${H*0.38} A20,20 0 0,1 ${goalLineX[1]},${H*0.62} L${goalLineX[1]+22},${H*0.62} L${goalLineX[1]+22},${H*0.38} Z`}
             fill="rgba(0,56,168,0.18)" stroke="#0038a8" strokeWidth={1.5}/>
           {/* Logos */}
-          {awayLogo && <image href={awayLogo} x={6} y={H/2-24} width={48} height={48} opacity={0.55}/>}
-          {homeLogo && <image href={homeLogo} x={W/2-30} y={H/2-30} width={60} height={60} opacity={0.6}/>}
-          {awayLogo && (
-            <image href={awayLogo} x={W-54} y={H/2-24} width={48} height={48} opacity={0.55}/>
-          )}
+          {awayLogo && <image href={awayLogo} x={10} y={H/2-28} width={56} height={56} opacity={0.92}/>}
+          {homeLogo && <image href={homeLogo} x={W-66} y={H/2-28} width={56} height={56} opacity={0.92}/>}
         </svg>
       </div>
     </div>
@@ -105,7 +103,7 @@ function IceRink({ homeLogo, awayLogo }) {
 
 /* ─── Team logo helper ───────────────────────────────── */
 function teamLogo(team) {
-  return team?.logo || team?.logos?.[0]?.href || null;
+  return getTeamLogo(team) || team?.logo || team?.logos?.[0]?.href || null;
 }
 function teamById(competitors, id) {
   if (!id) return null;
