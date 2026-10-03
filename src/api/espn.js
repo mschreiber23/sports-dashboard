@@ -8,12 +8,27 @@ const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
  * Teams with bright logos (Reds red C, Pirates gold P) often have no dark
  * variant, so the onError fallback returns the original colored logo.
  */
+function logoByRel(team, name) {
+  const logos = team?.logos || [];
+  return logos.find((l) => Array.isArray(l.rel) && l.rel.includes(name))?.href || null;
+}
+
 export function getTeamLogo(team) {
   const logos = team?.logos || [];
+  const orig = team?.logo || logoByRel(team, 'default') || logos[0]?.href || null;
+  // The Capitals primary is a wide navy wordmark. It vanishes on a dark
+  // background and shrinks to a sliver in the square logo slots. Their eagle
+  // is the mark that stays readable there.
+  const abbr = String(team?.abbreviation || '').toUpperCase();
+  const caps = (abbr === 'WSH' || abbr === 'WAS' || String(team?.id) === '23')
+    && /\/teamlogos\/nhl\//.test(orig || '');
+  if (caps) {
+    const eagle = logoByRel(team, 'secondary_logo_on_black_color');
+    if (eagle) return eagle;
+  }
   // Prefer explicit dark entry from logos array
-  const darkEntry = logos.find((l) => Array.isArray(l.rel) && l.rel.includes('dark'));
-  if (darkEntry?.href) return darkEntry.href;
-  const orig = team?.logo || logos[0]?.href;
+  const darkEntry = logoByRel(team, 'dark');
+  if (darkEntry) return darkEntry;
   if (!orig) return null;
   // Try ESPN's standard dark URL pattern: /500/ → /500-dark/
   return orig.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/, '$1$2-dark$3');
@@ -210,6 +225,14 @@ export async function getTeamNews(sport, teamId, limit = 10) {
     `${BASE}/${league}/news?team=${teamId}&limit=${limit}`
   );
   return data.articles || [];
+}
+
+export async function getTeamDepthChart(sport, teamId) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/site/v2/sports/${league}/teams/${teamId}/depthcharts`
+  );
+  return data;
 }
 
 export async function getStandings(sport, level = 3) {

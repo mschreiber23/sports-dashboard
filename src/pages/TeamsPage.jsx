@@ -73,7 +73,7 @@ function ViewedTeams({ teams, onClear }) {
               )}
               <div className="teams-viewed-abbr">{t.abbreviation}</div>
               <span className="player-viewed-badge"
-                style={{ background: `${sp?.color || '#7c3aed'}22`, color: sp?.color || '#7c3aed' }}>
+                style={{ background: `${sp?.color || '#0092ff'}22`, color: sp?.color || '#0092ff' }}>
                 {sp?.label || t.sport?.toUpperCase()}
               </span>
             </button>
