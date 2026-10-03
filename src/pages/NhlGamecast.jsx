@@ -221,7 +221,6 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
 
   // Recent plays (most recent first, hide noise)
   const recent = [...plays].reverse().filter(p => !HIDE_TYPES.has(p.type?.text)).slice(0, 10);
-  const lastPlay = recent[0];
 
   const homeLogo = teamLogo(home?.team);
   const awayLogo = teamLogo(away?.team);
@@ -269,12 +268,9 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
           onPlayer={(id) => navigate(`/player/nhl/${id}`)}
         />
 
-        {/* Live situation */}
-        {isLive && (
+        {isLive && ppText && (
           <div className="nhl-sit-bar">
-            <span className="nhl-sit-period">{shortDetail}</span>
-            {ppText && <span className="nhl-sit-pp">⚡ {ppText}</span>}
-            {lastPlay && <span style={{color:'var(--text2)',fontSize:11,marginLeft:'auto'}}>{lastPlay.text?.slice(0, 60)}{(lastPlay.text?.length||0)>60?'…':''}</span>}
+            <span className="nhl-sit-pp">⚡ {ppText}</span>
           </div>
         )}
 
