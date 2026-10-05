@@ -347,6 +347,13 @@ function hasStats(data, sportKey) {
 
 function darkUrl(url){if(!url)return url;return url.replace(/(\/i\/teamlogos\/[^/]+\/)(\d+)(\/)/,'$1$2-dark$3');}
 
+function gameLogStats(labels, values) {
+  const stats = Object.fromEntries((labels || []).map((label, index) => [label, values?.[index] ?? '']));
+  if (!stats.TOI && stats['TOI/G']) stats.TOI = stats['TOI/G'];
+  if (!stats.SOG && stats.S) stats.SOG = stats.S;
+  return stats;
+}
+
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
   const navigate = useNavigate();
@@ -417,7 +424,7 @@ export default function PlayerPage() {
               opponent: info.opponent?.abbreviation || '',
               atVs: info.atVs || '',
               result: info.gameResult || '',
-              stats: Object.fromEntries(labels.map((l, i) => [l, ev.stats?.[i] ?? ''])),
+              stats: gameLogStats(labels, ev.stats),
             });
           }
         }
@@ -449,7 +456,7 @@ export default function PlayerPage() {
                   if (found?.stats?.length) {
                     const myTeam = comp?.competitors?.find((c) => c.team?.id === teamId);
                     const opp = comp?.competitors?.find((c) => c.team?.id !== teamId);
-                    const injected = Object.fromEntries(bsLabels.map((l, i) => [l, found.stats[i] ?? '']));
+                    const injected = gameLogStats(bsLabels, found.stats);
                     // Sanity: AB must be a realistic single-game number (not season totals)
                     if (parseInt(injected['AB'] || 0) <= 10) {
                       games.unshift({
