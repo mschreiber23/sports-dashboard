@@ -4,19 +4,13 @@ import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
 import { expectedProfit, quoteForUnit, tradeId } from '../utils/propBook';
+import { mergeTradeLists } from '../utils/tradeSync';
 
 const PropSyncContext = createContext(null);
 
 function mergeTradeSnapshot(current, incoming) {
-  if (!current) return incoming;
-  const byId = new Map(incoming.map((trade) => [trade.id, trade]));
-  return current.map((trade) => {
-    const update = byId.get(trade.id);
-    if (update?.result && !trade.result) {
-      return { ...trade, result: update.result, actual: update.actual, gradedAt: update.gradedAt };
-    }
-    return trade;
-  });
+  if (!current) return incoming || [];
+  return mergeTradeLists(current, incoming);
 }
 
 export function PropSyncProvider({ children }) {
@@ -94,8 +88,7 @@ export function PropSyncProvider({ children }) {
         gradedAt: null,
         recordedAt: Date.now(),
       }];
-      await saveTrades(userId, next);
-      setTrades(next);
+      setTrades(await saveTrades(userId, next));
     });
     tradeLock.current = run.then(() => {}, () => {});
     return run;
@@ -128,8 +121,7 @@ export function PropSyncProvider({ children }) {
         }
         return row;
       });
-      await saveTrades(userId, next);
-      setTrades(next);
+      setTrades(await saveTrades(userId, next));
     });
     tradeLock.current = run.then(() => {}, () => {});
     return run;
@@ -139,8 +131,7 @@ export function PropSyncProvider({ children }) {
     const run = tradeLock.current.then(async () => {
       const current = await loadTrades(userId);
       const next = current.filter((trade) => trade.id !== id || trade.result);
-      await saveTrades(userId, next);
-      setTrades(next);
+      setTrades(await saveTrades(userId, next));
     });
     tradeLock.current = run.then(() => {}, () => {});
     return run;
@@ -157,6 +148,16 @@ export function PropSyncProvider({ children }) {
     refresh(false);
     return () => { stop.current = true; };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      loadTrades(userId).then((rows) => setTrades(rows));
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [userId]);
 
   return (
     <PropSyncContext.Provider value={{ reads, trades, unit, addTrade, updateTrade, removeTrade, setUnit, status, error, calibration, working, refresh }}>

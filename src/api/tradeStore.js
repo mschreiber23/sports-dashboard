@@ -1,17 +1,39 @@
 import { supabase } from '../lib/supabase';
 import { idbStorage } from '../lib/idbStorage';
+import { mergeBooks, sameBook } from '../utils/tradeSync';
 
 const KEY = 'prop_trades_v1';
 const UNIT_KEY = 'prop_unit_v1';
-let remoteOff = false;
+const SEEN_KEY = 'prop_trades_seen_v1';
+const DEFAULT_SPORT_ORDER = ['mlb', 'nba', 'nfl', 'nhl'];
+
+// The dedicated table is optional. Until it exists, the book rides along in
+// user_preferences, which is the row the account already syncs.
+let tableMissing = false;
+let chain = Promise.resolve();
+
+function locked(fn) {
+  const run = chain.then(fn, fn);
+  chain = run.then(() => {}, () => {});
+  return run;
+}
 
 function parseLocal(raw) {
   if (!raw) return [];
   try {
     const rows = JSON.parse(raw);
-    return Array.isArray(rows) ? rows : [];
+    return Array.isArray(rows) ? rows.filter((row) => row?.id) : [];
   } catch {
     return [];
+  }
+}
+
+function parseSeen(raw) {
+  try {
+    const ids = JSON.parse(raw);
+    return new Set(Array.isArray(ids) ? ids : []);
+  } catch {
+    return new Set();
   }
 }
 
@@ -80,36 +102,42 @@ function toRemote(userId, trade) {
   };
 }
 
-function prefer(local, remote) {
-  if (!local) return remote;
-  if (!remote) return local;
-  const first = (local.recordedAt || 0) <= (remote.recordedAt || 0) ? local : remote;
-  const graded = [local, remote]
-    .filter((row) => row.result)
-    .sort((a, b) => (b.gradedAt || 0) - (a.gradedAt || 0))[0];
-  const edited = (local.editedAt || remote.editedAt)
-    ? ((local.editedAt || 0) >= (remote.editedAt || 0) ? local : remote)
-    : first;
-  const payout = edited.payout ?? first.payout ?? local.payout ?? remote.payout ?? null;
-  const terms = {
-    unit: edited.unit,
-    price: edited.price,
-    edge: edited.edge,
-    payout,
-    editedAt: edited.editedAt || null,
-  };
-  if (!graded) return { ...first, ...terms };
-  return {
-    ...first,
-    ...terms,
-    result: graded.result,
-    actual: graded.actual,
-    gradedAt: graded.gradedAt,
-  };
+function storageKey(userId) {
+  return userId ? `${KEY}:${userId}` : KEY;
 }
 
-async function remoteLoad(userId) {
-  if (!userId || remoteOff) return null;
+function seenKey(userId) {
+  return `${SEEN_KEY}:${userId || ''}`;
+}
+
+function missingTable(error) {
+  return error?.code === 'PGRST205' || /prop_trades/.test(error?.message || '');
+}
+
+async function readLocal(userId) {
+  const scoped = parseLocal(await idbStorage.getItem(storageKey(userId)));
+  if (scoped.length || !userId) return scoped;
+  const legacy = parseLocal(await idbStorage.getItem(KEY));
+  if (!legacy.length) return [];
+  await idbStorage.setItem(storageKey(userId), JSON.stringify(legacy));
+  await idbStorage.removeItem(KEY);
+  return legacy;
+}
+
+async function writeLocal(userId, rows) {
+  await idbStorage.setItem(storageKey(userId), JSON.stringify(rows));
+}
+
+async function readSeen(userId) {
+  return parseSeen(await idbStorage.getItem(seenKey(userId)));
+}
+
+async function writeSeen(userId, rows) {
+  await idbStorage.setItem(seenKey(userId), JSON.stringify(rows.map((row) => row.id)));
+}
+
+async function loadTable(userId) {
+  if (tableMissing) return 'missing';
   const all = [];
   for (let from = 0; from < 20000; from += 1000) {
     const { data, error } = await supabase
@@ -118,52 +146,157 @@ async function remoteLoad(userId) {
       .eq('user_id', userId)
       .range(from, from + 999);
     if (error) {
-      remoteOff = true;
+      if (missingTable(error)) {
+        tableMissing = true;
+        return 'missing';
+      }
       return null;
     }
-    const page = (data || []).map(fromRemote);
+    const page = (data || []).map(fromRemote).filter((row) => row.id);
     all.push(...page);
     if (page.length < 1000) break;
   }
   return all;
 }
 
-async function remoteSave(userId, rows) {
-  if (!userId || remoteOff || !rows.length) return;
+async function loadPrefs(userId) {
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('preferences')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return null;
+  const trades = data?.preferences?.trades;
+  return Array.isArray(trades) ? trades.filter((row) => row?.id) : [];
+}
+
+async function remoteLoad(userId) {
+  const table = await loadTable(userId);
+  if (table === null) return null;
+  if (table === 'missing') {
+    const rows = await loadPrefs(userId);
+    if (!rows) return null;
+    return { rows, mode: 'prefs' };
+  }
+  if (table.length === 0) {
+    const prefs = await loadPrefs(userId);
+    if (prefs?.length) return { rows: prefs, mode: 'table', migrate: true };
+  }
+  return { rows: table, mode: 'table' };
+}
+
+async function saveTable(userId, rows, previous) {
+  const keep = new Set(rows.map((row) => row.id));
+  const gone = (previous || [])
+    .filter((row) => row?.id && !keep.has(row.id))
+    .map((row) => `${userId}|${row.id}`);
+  if (gone.length) {
+    const { error } = await supabase.from('prop_trades').delete().in('id', gone);
+    if (error) {
+      if (missingTable(error)) {
+        tableMissing = true;
+        return savePrefs(userId, rows);
+      }
+      return false;
+    }
+  }
+  if (!rows.length) return true;
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200).map((row) => toRemote(userId, row));
     const { error } = await supabase.from('prop_trades').upsert(chunk, { onConflict: 'id' });
     if (error) {
-      remoteOff = true;
-      return;
+      if (missingTable(error)) {
+        tableMissing = true;
+        return savePrefs(userId, rows);
+      }
+      return false;
     }
   }
+  return true;
 }
 
-export async function loadTrades(userId) {
-  const local = parseLocal(await idbStorage.getItem(KEY));
-  let remote = null;
-  try {
-    remote = await remoteLoad(userId);
-  } catch {
-    remote = null;
+async function clearPrefsTrades(userId) {
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('preferences, sport_order')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data?.preferences || !('trades' in data.preferences)) return;
+  const preferences = { ...data.preferences };
+  delete preferences.trades;
+  await supabase.from('user_preferences').upsert({
+    user_id: userId,
+    preferences,
+    sport_order: data.sport_order || DEFAULT_SPORT_ORDER,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+}
+
+async function savePrefs(userId, rows) {
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('preferences, sport_order')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return false;
+  const base = data?.preferences && typeof data.preferences === 'object' ? data.preferences : {};
+  const payload = {
+    user_id: userId,
+    preferences: { ...base, trades: rows },
+    updated_at: new Date().toISOString(),
+  };
+  if (data?.sport_order) payload.sport_order = data.sport_order;
+  const { error: saveError } = await supabase
+    .from('user_preferences')
+    .upsert(payload, { onConflict: 'user_id' });
+  return !saveError;
+}
+
+async function remoteSave(userId, rows, source) {
+  if (source?.mode === 'table' && !tableMissing) {
+    const saved = await saveTable(userId, rows, source.migrate ? [] : source.rows);
+    if (saved && source.migrate) await clearPrefsTrades(userId);
+    if (saved || !tableMissing) return saved;
   }
+  return savePrefs(userId, rows);
+}
+
+async function publish(userId, local) {
+  const remote = await remoteLoad(userId);
   if (!remote) return local;
-  const map = new Map();
-  for (const row of local) map.set(row.id, row);
-  for (const row of remote) map.set(row.id, prefer(map.get(row.id), row));
-  const merged = [...map.values()];
-  await idbStorage.setItem(KEY, JSON.stringify(merged));
+  const seen = await readSeen(userId);
+  const merged = mergeBooks(local, remote.rows, seen);
+  await writeLocal(userId, merged);
+  if (!sameBook(merged, remote.rows)) {
+    const saved = await remoteSave(userId, merged, remote);
+    if (!saved) return merged;
+  }
+  await writeSeen(userId, merged);
   return merged;
 }
 
+export async function loadTrades(userId) {
+  return locked(async () => {
+    const local = await readLocal(userId);
+    if (!userId) return local;
+    try {
+      return await publish(userId, local);
+    } catch {
+      return local;
+    }
+  });
+}
+
 export async function saveTrades(userId, rows) {
-  await idbStorage.setItem(KEY, JSON.stringify(rows));
-  try {
-    await remoteSave(userId, rows);
-  } catch {
-    remoteOff = true;
-  }
+  return locked(async () => {
+    await writeLocal(userId, rows);
+    if (!userId) return rows;
+    try {
+      return await publish(userId, rows);
+    } catch {
+      return rows;
+    }
+  });
 }
 
 export async function loadUnit() {

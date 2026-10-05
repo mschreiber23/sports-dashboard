@@ -40,8 +40,7 @@ async function gradeTrades(userId) {
     if (!update?.result || trade.result) return trade;
     return { ...trade, result: update.result, actual: update.actual, gradedAt: update.gradedAt };
   });
-  await saveTrades(userId, next);
-  return next;
+  return saveTrades(userId, next);
 }
 
 export async function runPropSync({ userId, force = false, onStatus, onUpdate, shouldStop }) {

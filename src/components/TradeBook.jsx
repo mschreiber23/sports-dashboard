@@ -108,7 +108,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. On this sheet, edit Unit for the amount wagered and Expected profit for what a correct trade makes. Potential becomes the wager plus that profit. Percentage is the price you filled. Changing it leaves the wager and expected profit alone, and the edge moves by the same number of points. Today, this month, and lifetime add up those stakes.
+        This sheet is saved to your account, so the same trades show on your phone and your computer. Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. On this sheet, edit Unit for the amount wagered and Expected profit for what a correct trade makes. Potential becomes the wager plus that profit. Percentage is the price you filled. Changing it leaves the wager and expected profit alone, and the edge moves by the same number of points. Today, this month, and lifetime add up those stakes.
       </p>
       <label className="trade-unit">
         Unit
