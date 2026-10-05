@@ -53,6 +53,15 @@ export function potentialWin(trade) {
   return unit / price;
 }
 
+// Over 50%, risk enough to profit one unit. At 50% or less, risk the unit.
+export function stakeForUnit(price, unit) {
+  const p = Number(price);
+  const target = Number(unit);
+  if (!(target > 0) || !(p > 0 && p < 1)) return null;
+  if (p <= 0.5) return target;
+  return Math.round((target * p / (1 - p)) * 100) / 100;
+}
+
 export function tradeId(draft) {
   const line = draft.line == null ? '' : draft.line;
   const pick = draft.pick || draft.side || 'yes';

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
-import { tradeId } from '../utils/propBook';
+import { stakeForUnit, tradeId } from '../utils/propBook';
 
 const PropSyncContext = createContext(null);
 
@@ -85,7 +85,7 @@ export function PropSyncProvider({ children }) {
       const next = [...current, {
         ...draft,
         id,
-        unit,
+        unit: stakeForUnit(draft.price, unit),
         result: null,
         actual: null,
         gradedAt: null,

@@ -1,5 +1,5 @@
 import { canGradeProp } from '../api/playerLogs';
-import { predictionWon, sideDraft, tradeId } from '../utils/propBook';
+import { predictionWon, sideDraft, stakeForUnit, tradeId } from '../utils/propBook';
 import { usePropSync } from './PropSync';
 
 function gradeable(draft) {
@@ -13,6 +13,8 @@ function SideButton({ draft, prediction, trades, unit, compact, addTrade, remove
   const id = tradeId(next);
   const existing = (trades || []).find((trade) => trade.id === id);
   const label = prediction === 'no' ? 'No' : 'Yes';
+  const stake = stakeForUnit(next.price, unit);
+  const stakeText = stake == null ? '' : (Math.abs(stake - Math.round(stake)) < 0.001 ? `$${Math.round(stake)}` : `$${stake.toFixed(2)}`);
   if (existing?.result) {
     const won = predictionWon(existing);
     const text = existing.result === 'void' ? 'Void' : (won ? 'Correct' : 'Incorrect');
@@ -27,7 +29,7 @@ function SideButton({ draft, prediction, trades, unit, compact, addTrade, remove
   }
   return (
     <button type="button" className="props-trade" onClick={() => addTrade(next)}>
-      {compact ? label : `${label} $${unit}`}
+      {stakeText ? `${label} ${stakeText}` : label}
     </button>
   );
 }

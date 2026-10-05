@@ -45,7 +45,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Yes or No adds that side to the sheet. Potential is the money returned if that trade is correct. A $25 trade at 50% can return $50. Profit is what is left after the stake. Today, this month, and lifetime are the units you have put on trades.
+        Yes or No adds that side to the sheet. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $50. Over 50%, the stake is raised so a win profits one unit: 67% takes $50.76 to profit $25, and a loss costs that stake. Today, this month, and lifetime add up those stakes.
       </p>
       <label className="trade-unit">
         Unit
@@ -106,7 +106,7 @@ export default function TradeBook() {
                     <td>{sheetMarket(trade)}</td>
                     <td>{sheetTrade(trade)}</td>
                     <td>{trade.prediction === 'no' ? 'No' : 'Yes'}</td>
-                    <td className="num">${Number(trade.unit).toFixed(0)}</td>
+                    <td className="num">{stakeText(trade.unit)}</td>
                     <td className="num">{resultText(potentialWin(trade))}</td>
                     <td className="num">{Math.round(Number(trade.price) * 100)}%</td>
                     <td className="num">{edgeText(trade.edge)}</td>
