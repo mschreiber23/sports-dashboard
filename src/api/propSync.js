@@ -1,6 +1,8 @@
 import { loadPropEvents, loadGameProps } from './polymarket';
 import { recentPlayerLogs, playerResultOnDate } from './playerLogs';
 import { loadReads, saveReads } from './propStore';
+import { loadTrades, saveTrades } from './tradeStore';
+import { finalScore, gradeMarketTrade } from './gameResult';
 import { gamesToRecord, buildReads, refreshReads, gradeRead } from '../utils/propReads';
 import { learnCalibration, priceRead } from '../utils/propCalibration';
 
@@ -19,15 +21,39 @@ async function pool(items, limit, fn) {
   return out;
 }
 
+async function gradeTrades(userId) {
+  const trades = await loadTrades(userId);
+  const pending = trades.filter((trade) => !trade.result && trade.gameStart <= Date.now());
+  if (!pending.length) return trades;
+  const graded = await pool(pending, 4, async (trade) => {
+    if (trade.kind === 'winner' || trade.kind === 'total') {
+      const score = await finalScore(trade.league, trade.gameStart, trade.teams).catch(() => ({ status: 'missing' }));
+      return gradeMarketTrade(trade, score);
+    }
+    const stat = await playerResultOnDate(trade.league, trade.player, trade.propType, trade.gameStart).catch(() => ({ status: 'unknown' }));
+    return gradeRead(trade, stat);
+  });
+  const fresh = await loadTrades(userId);
+  const byId = new Map(graded.map((trade) => [trade.id, trade]));
+  const next = fresh.map((trade) => {
+    const update = byId.get(trade.id);
+    if (!update?.result || trade.result) return trade;
+    return { ...trade, result: update.result, actual: update.actual, gradedAt: update.gradedAt };
+  });
+  await saveTrades(userId, next);
+  return next;
+}
+
 export async function runPropSync({ userId, force = false, onStatus, onUpdate, shouldStop }) {
   const stop = () => shouldStop?.();
-  const publish = (nextRows, calibration) => {
-    onUpdate?.({ reads: nextRows, calibration });
-    return { reads: nextRows, calibration };
+  const publish = (nextRows, calibration, trades) => {
+    onUpdate?.({ reads: nextRows, calibration, trades });
+    return { reads: nextRows, calibration, trades };
   };
   let rows = await loadReads(userId);
   let calibration = learnCalibration(rows);
-  publish(rows, calibration);
+  let trades = await gradeTrades(userId);
+  publish(rows, calibration, trades);
   if (stop()) return { reads: rows, calibration };
 
   const pending = rows.filter((row) => !row.result && row.gameStart <= Date.now());
@@ -43,7 +69,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
     const byId = new Map(graded.map((row) => [row.id, row]));
     rows = rows.map((row) => byId.get(row.id) || row);
     calibration = learnCalibration(rows);
-    publish(rows, calibration);
+    publish(rows, calibration, trades);
     await saveReads(userId, rows);
   }
   const events = await loadPropEvents();
@@ -95,7 +121,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   const fresh = buildReads({ games: withRows, logs }).map((row) => priceRead(row, calibration));
   rows = refreshReads(rows, fresh);
   calibration = learnCalibration(rows);
-  publish(rows, calibration);
+  publish(rows, calibration, trades);
   await saveReads(userId, rows);
   const noun = due.length === 1 ? 'game' : 'games';
   const covered = due.filter((game) => rows.some((row) => row.eventSlug === game.key)).length;

@@ -12,6 +12,9 @@ import { nflWeekSpan } from '../api/nfl';
 import { espnAbbr, homeSide, teamRecentGames } from '../api/teamForm';
 import { gameLineRead } from '../utils/gameLineEdge';
 import PropLedger from '../components/PropLedger';
+import ModelTicker from '../components/ModelTicker';
+import TradeBook from '../components/TradeBook';
+import TradeButton from '../components/TradeButton';
 import { usePropSync } from '../components/PropSync';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
@@ -118,6 +121,11 @@ function likelyPick(game, sample, line, recent, extra) {
     gameKey: game.key,
     game: game.title,
     sport: game.sport,
+    league: game.league,
+    gameStart: sample.gameStart,
+    propType: sample.type,
+    price: line.yes,
+    kind: 'player',
     market: marketPct(line.yes),
     ...extra,
   };
@@ -239,6 +247,17 @@ function addGameLines(picks, game, forms) {
     sport: game.sport,
     gameStart: game.gameStart,
     market: marketPct(read.winner.price),
+    price: read.winner.price,
+    league: game.league,
+    kind: 'winner',
+    propType: 'game_winner',
+    pick: read.winner.name,
+    pickAbbr: espnAbbr((teams.find((team) => {
+      const name = team.name.toLowerCase();
+      const pick = read.winner.name.toLowerCase();
+      return name === pick || name.includes(pick) || pick.includes(name);
+    }) || {}).abbr),
+    teams: teams.map((team) => ({ name: team.name, abbr: espnAbbr(team.abbr) })),
     rate: null,
     edge: read.winner.edge,
     edgePts: edgePoints(read.winner.edge),
@@ -260,6 +279,12 @@ function addGameLines(picks, game, forms) {
     sport: game.sport,
     gameStart: game.gameStart,
     market: marketPct(read.total.price),
+    price: read.total.price,
+    league: game.league,
+    kind: 'total',
+    propType: 'game_total',
+    pick: read.total.label.startsWith('Over') ? 'Over' : 'Under',
+    teams: teams.map((team) => ({ name: team.name, abbr: espnAbbr(team.abbr) })),
     rate: null,
     edge: read.total.edge,
     edgePts: edgePoints(read.total.edge),
@@ -497,7 +522,7 @@ function shortOpp(name, abbr) {
   return abbr || word.split(/\s+/).pop() || 'opponent';
 }
 
-function PlayerPropBoard({ rows, league, slate, calibration }) {
+function PlayerPropBoard({ rows, league, slate, calibration, game }) {
   const groups = useMemo(() => groupPlayers(rows), [rows]);
   const pills = useMemo(() => {
     const present = new Set(groups.map((group) => group.type));
@@ -742,6 +767,24 @@ function PlayerPropBoard({ rows, league, slate, calibration }) {
                   ))}
                 </div>
               )}
+              {game && (
+                <div className="pp-trade-row">
+                  <TradeButton draft={{
+                    league: game.league,
+                    eventSlug: game.key,
+                    game: game.title,
+                    gameStart: group.gameStart || game.gameStart,
+                    player: group.player,
+                    propType: group.type,
+                    propLabel: `${lineText(group.selected)} ${chartLabel(group.type)}`,
+                    line: group.selected,
+                    side: 'yes',
+                    price: group.current?.yes,
+                    kind: 'player',
+                    pick: 'yes',
+                  }} />
+                </div>
+              )}
               {(recent || versus) && (
                 <div className="pp-logs">
                   <StatBars values={recent} color={group.color} label={`Last ${recent?.length || 10} ${statName}`} />
@@ -787,7 +830,7 @@ function GameDetail({ game, rows, loading, calibration }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} />
+          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
@@ -830,26 +873,49 @@ function PropCard({ row }) {
   );
 }
 
+function likelyDraft(item) {
+  if (!(item.price > 0 && item.price < 1) || !item.league || !item.gameStart) return null;
+  return {
+    league: item.league,
+    eventSlug: item.gameKey,
+    game: item.game,
+    gameStart: item.gameStart,
+    player: item.player,
+    propType: item.propType,
+    propLabel: item.prop,
+    line: item.line,
+    side: item.kind === 'player' ? 'yes' : (item.pick || 'yes'),
+    price: item.price,
+    kind: item.kind || 'player',
+    pick: item.pick || 'yes',
+    pickAbbr: item.pickAbbr || '',
+    teams: item.teams || [],
+  };
+}
+
 function LikelyRow({ item, sport, onOpen }) {
   return (
-    <button type="button" className="props-game" onClick={() => onOpen(item.gameKey)}>
-      <div className="props-game-main">
-        <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prop}</span></div>
-        <div className="props-game-meta">
-          {sport === 'All' ? `${item.sport} · ` : ''}{item.game}
-          {item.gameLine ? '' : ` · ${item.hits}/${item.total}`}
-          {item.modeled ? ` · model ${item.modelPct}%` : ` · L10 ${item.rate}%`}
-          {item.market == null ? '' : ` · market ${item.market}%`}
+    <div className="props-game">
+      <button type="button" className="props-game-open" onClick={() => onOpen(item.gameKey)}>
+        <div className="props-game-main">
+          <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prop}</span></div>
+          <div className="props-game-meta">
+            {sport === 'All' ? `${item.sport} · ` : ''}{item.game}
+            {item.gameLine ? '' : ` · ${item.hits}/${item.total}`}
+            {item.modeled ? ` · model ${item.modelPct}%` : ` · L10 ${item.rate}%`}
+            {item.market == null ? '' : ` · market ${item.market}%`}
+          </div>
+          {item.tags.length > 0 && (
+            <div className="props-game-meta props-likely-tags">{item.tags.join(' · ')}</div>
+          )}
         </div>
-        {item.tags.length > 0 && (
-          <div className="props-game-meta props-likely-tags">{item.tags.join(' · ')}</div>
-        )}
-      </div>
-      <div className={`props-game-best ${item.edge < 0 ? 'props-edge-down' : ''}`} aria-label={`${item.edgePts} point edge`}>
-        <span>{item.edgePts > 0 ? `+${item.edgePts}` : `${item.edgePts}`}</span>
-        <span>edge</span>
-      </div>
-    </button>
+        <div className={`props-game-best ${item.edge < 0 ? 'props-edge-down' : ''}`} aria-label={`${item.edgePts} point edge`}>
+          <span>{item.edgePts > 0 ? `+${item.edgePts}` : `${item.edgePts}`}</span>
+          <span>edge</span>
+        </div>
+      </button>
+      <TradeButton draft={likelyDraft(item)} compact />
+    </div>
   );
 }
 
@@ -1069,13 +1135,15 @@ export default function PropsPage() {
 
       {events && !openGame && (
         <>
+          <ModelTicker onOpen={() => setView('results')} />
           <div className="props-view-nav">
             <button type="button" className={`props-view-btn ${view === 'games' ? 'props-view-on' : ''}`} onClick={() => setView('games')}>Games</button>
             <button type="button" className={`props-view-btn ${view === 'likely' ? 'props-view-on' : ''}`} onClick={() => setView('likely')}>Likely</button>
             <button type="button" className={`props-view-btn ${view === 'results' ? 'props-view-on' : ''}`} onClick={() => setView('results')}>Results</button>
+            <button type="button" className={`props-view-btn ${view === 'trades' ? 'props-view-on' : ''}`} onClick={() => setView('trades')}>Trades</button>
           </div>
 
-          {view === 'results' ? <PropLedger /> : (
+          {view === 'results' ? <PropLedger /> : view === 'trades' ? <TradeBook /> : (
           <>
           <div className="props-day-nav">
             <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>

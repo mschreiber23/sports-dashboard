@@ -168,6 +168,10 @@ export function chartLabel(type) {
   return CHART_LABEL[type] || 'stat';
 }
 
+export function canGradeProp(type) {
+  return Boolean(EXTRACT[type]);
+}
+
 function parseCell(name, raw) {
   if (raw == null || raw === '' || raw === '-' || raw === '--') return undefined;
   if (name === 'innings') return String(raw);

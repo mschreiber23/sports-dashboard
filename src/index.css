@@ -8382,10 +8382,10 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .props-day-label { font-size: 14px; font-weight: 800; min-width: 88px; text-align: center; }
-.props-view-nav { display: flex; gap: 8px; }
+.props-view-nav { display: flex; flex-wrap: wrap; gap: 8px; }
 .props-view-btn {
   height: 32px;
-  padding: 0 14px;
+  padding: 0 12px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.16);
   background: transparent;
@@ -8422,6 +8422,100 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .props-game:hover { border-color: rgba(255,255,255,0.2); }
+.props-game-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.props-trade {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.props-trade-on { border-color: rgba(34,197,94,0.7); color: #22c55e; }
+.props-trade-done { display: inline-flex; align-items: center; text-transform: uppercase; letter-spacing: 0.04em; }
+.pp-trade-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+.model-ticker {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.model-ticker-score, .model-ticker-sports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.model-ticker-score b { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+.model-ticker-sports { color: var(--text2); font-size: 12px; }
+.model-sport { margin-bottom: 12px; }
+.model-sport-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.model-sport-top span:last-child { margin-left: auto; color: var(--text2); font-weight: 700; }
+.model-spark { width: 88px; height: 22px; }
+.model-spark path { fill: none; stroke: #22c55e; stroke-width: 1.6; }
+.model-days { display: flex; gap: 8px; overflow-x: auto; margin-top: 6px; }
+.model-day {
+  display: flex;
+  flex-direction: column;
+  min-width: 52px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+}
+.model-day span:nth-child(2) { color: var(--text); font-size: 13px; }
+.trade-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.trade-unit input {
+  width: 72px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: inherit;
+  font-size: 16px;
+  font-weight: 800;
+}
+.trade-result { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.trade-result b { font-size: 16px; }
+.trade-down { color: #f87171; }
+.ledger-section h3 span { margin-left: auto; }
 .props-game-main { min-width: 0; flex: 1; }
 .props-game-title { font-size: 15px; font-weight: 800; }
 .props-game-meta {
@@ -8797,7 +8891,7 @@ thead .dfs-sticky-player {
   line-height: 1;
 }
 .ledger-stat span { display: block; margin-top: 4px; font-size: 11px; color: var(--text2); font-weight: 700; }
-.ledger-section h3 { margin: 4px 0 8px; font-size: 13px; font-weight: 800; }
+.ledger-section h3 { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 8px; font-size: 13px; font-weight: 800; }
 .ledger-row {
   display: flex;
   flex-wrap: wrap;

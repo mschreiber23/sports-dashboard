@@ -3,6 +3,7 @@ import { formatGameTime } from '../api/polymarket';
 import { ledgerReport } from '../utils/propReads';
 import { calibrationMoves } from '../utils/propCalibration';
 import { usePropSync } from './PropSync';
+import { AccuracyPanel } from './ModelTicker';
 
 function pct(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '–';
@@ -84,6 +85,7 @@ export default function PropLedger() {
       <button type="button" className="btn-primary ledger-again" disabled={working} onClick={() => refresh(true)}>
         Update now
       </button>
+      <AccuracyPanel />
       <section className="ledger-section">
         <h3>Weight adjustments</h3>
         <WeightFit name="NFL" fit={calibration?.nfl} />
