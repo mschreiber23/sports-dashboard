@@ -91,12 +91,17 @@ function prefer(local, remote) {
     ? ((local.editedAt || 0) >= (remote.editedAt || 0) ? local : remote)
     : first;
   const payout = edited.payout ?? first.payout ?? local.payout ?? remote.payout ?? null;
-  if (!graded) return { ...first, unit: edited.unit, payout, editedAt: edited.editedAt || null };
-  return {
-    ...first,
+  const terms = {
     unit: edited.unit,
+    price: edited.price,
+    edge: edited.edge,
     payout,
     editedAt: edited.editedAt || null,
+  };
+  if (!graded) return { ...first, ...terms };
+  return {
+    ...first,
+    ...terms,
     result: graded.result,
     actual: graded.actual,
     gradedAt: graded.gradedAt,

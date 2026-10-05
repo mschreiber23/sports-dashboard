@@ -106,18 +106,27 @@ export function PropSyncProvider({ children }) {
       const current = await loadTrades(userId);
       const next = current.map((trade) => {
         if (trade.id !== id) return trade;
-        const stake = patch.unit != null ? Number(patch.unit) : Number(trade.unit);
-        const profit = patch.profit != null ? Number(patch.profit) : expectedProfit(trade);
-        if (profit == null || !Number.isFinite(profit)) return trade;
-        const unit = Math.round(stake * 100) / 100;
-        const net = Math.round(profit * 100) / 100;
-        if (!(unit > 0) || unit > 1000000 || net < 0 || net > 1000000) return trade;
-        return {
-          ...trade,
-          unit,
-          payout: Math.round((unit + net) * 100) / 100,
-          editedAt: Date.now(),
-        };
+        const row = { ...trade, editedAt: Date.now() };
+        if (patch.unit != null || patch.profit != null) {
+          const stake = patch.unit != null ? Number(patch.unit) : Number(trade.unit);
+          const profit = patch.profit != null ? Number(patch.profit) : expectedProfit(trade);
+          if (profit == null || !Number.isFinite(profit)) return trade;
+          const unit = Math.round(stake * 100) / 100;
+          const net = Math.round(profit * 100) / 100;
+          if (!(unit > 0) || unit > 1000000 || net < 0 || net > 1000000) return trade;
+          row.unit = unit;
+          row.payout = Math.round((unit + net) * 100) / 100;
+        }
+        if (patch.price != null) {
+          const price = Math.round(Number(patch.price) * 100) / 100;
+          const old = Number(trade.price);
+          if (!(price > 0 && price < 1) || !(old > 0 && old < 1)) return trade;
+          row.price = price;
+          if (typeof trade.edge === 'number') {
+            row.edge = Math.round((trade.edge + (old - price)) * 100) / 100;
+          }
+        }
+        return row;
       });
       await saveTrades(userId, next);
       setTrades(next);

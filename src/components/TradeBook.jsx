@@ -53,6 +53,38 @@ function MoneyEdit({ value, label, onCommit }) {
   );
 }
 
+function PercentEdit({ value, label, onCommit }) {
+  const shown = typeof value === 'number' && Number.isFinite(value) ? String(Math.round(value * 100)) : '';
+  const [text, setText] = useState(shown);
+  useEffect(() => { setText(shown); }, [shown]);
+  const commit = () => {
+    const next = Math.round(Number(text));
+    if (!Number.isInteger(next) || next < 1 || next > 99) {
+      setText(shown);
+      return;
+    }
+    if (Number(shown) !== next) onCommit(next / 100);
+  };
+  return (
+    <span className="trade-money">
+      <input
+        className="trade-edit trade-edit-pct"
+        type="number"
+        inputMode="numeric"
+        min="1"
+        max="99"
+        step="1"
+        aria-label={label}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+      />
+      <span>%</span>
+    </span>
+  );
+}
+
 function edgeText(edge) {
   if (typeof edge !== 'number' || !Number.isFinite(edge)) return '';
   const points = Math.round(edge * 100);
@@ -76,7 +108,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. On this sheet, edit Unit for the amount wagered and Expected profit for what a correct trade makes. Potential becomes the wager plus that profit. Today, this month, and lifetime add up those stakes.
+        Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. On this sheet, edit Unit for the amount wagered and Expected profit for what a correct trade makes. Potential becomes the wager plus that profit. Percentage is the price you filled. Changing it leaves the wager and expected profit alone, and the edge moves by the same number of points. Today, this month, and lifetime add up those stakes.
       </p>
       <label className="trade-unit">
         Unit
@@ -153,7 +185,13 @@ export default function TradeBook() {
                       />
                     </td>
                     <td className="num">{resultText(potentialWin(trade))}</td>
-                    <td className="num">{Math.round(Number(trade.price) * 100)}%</td>
+                    <td className="num">
+                      <PercentEdit
+                        value={Number(trade.price)}
+                        label={`Percentage on ${sheetMarket(trade)}`}
+                        onCommit={(next) => updateTrade(trade.id, { price: next })}
+                      />
+                    </td>
                     <td className="num">{edgeText(trade.edge)}</td>
                     <td className={verdict === 'Correct' ? 'trade-correct' : verdict === 'Incorrect' ? 'trade-incorrect' : ''}>{verdict}</td>
                     <td className={`num ${payout < 0 ? 'trade-incorrect' : payout > 0 ? 'trade-correct' : ''}`}>
