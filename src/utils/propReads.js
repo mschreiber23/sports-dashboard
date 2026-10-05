@@ -5,6 +5,7 @@
 import { chartLabel } from '../api/playerLogs';
 import { nflModeled, nflPropEdge } from './nflEdge';
 import { nhlPropEdge } from './nhlEdge';
+import { callGrade } from './modelCall';
 
 export const LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 const NEAR_MS = 12 * 60 * 60 * 1000;
@@ -232,6 +233,7 @@ export function refreshReads(existing, incoming, now = Date.now()) {
       team: row.team || prev.team,
       opponent: row.opponent || prev.opponent,
       propLabel: row.propLabel || prev.propLabel,
+      prediction: row.prediction || prev.prediction,
       pricedAt: now,
     });
   }
@@ -281,6 +283,7 @@ export function ledgerReport(rows) {
   const list = rows || [];
   const graded = list.filter((row) => row.result === 'hit' || row.result === 'miss');
   const hits = graded.filter((row) => row.result === 'hit').length;
+  const callHits = graded.filter((row) => callGrade(row) === 'hit').length;
   const voids = list.filter((row) => row.result === 'void').length;
   const open = list.filter((row) => !row.result).length;
   const tags = new Map();
@@ -307,6 +310,8 @@ export function ledgerReport(rows) {
     graded: graded.length,
     hits,
     hitRate: graded.length ? hits / graded.length : null,
+    callHits,
+    callRate: graded.length ? callHits / graded.length : null,
     voids,
     open,
     model: graded.length ? graded.reduce((sum, row) => sum + row.modelP, 0) / graded.length : null,

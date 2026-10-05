@@ -4,7 +4,7 @@
 // ice time, power-play points, the opponent, the game total, the favorite, and
 // a back-to-back. Edge is that probability minus the yes price.
 
-import { applyLearned } from './propCalibration';
+import { applyLearned } from './propCalibration.js';
 
 const GOALS = 'hockey_player_goals';
 const POINTS = 'hockey_player_points';

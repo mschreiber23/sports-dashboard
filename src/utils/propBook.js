@@ -6,6 +6,7 @@
 // contracts. A loss costs the stake. A void returns nothing.
 
 import { easternDay } from '../api/polymarket';
+import { callGrade } from './modelCall';
 
 // Standard taker coefficient on polymarket.us. Straight trades, not combos.
 export const TAKER_FEE = 0.0695;
@@ -209,7 +210,7 @@ function seriesFor(rows) {
   let graded = 0;
   return [...byDay.keys()].sort().map((day) => {
     const group = byDay.get(day);
-    const dayHits = group.filter((row) => row.result === 'hit').length;
+    const dayHits = group.filter((row) => callGrade(row) === 'hit').length;
     hits += dayHits;
     graded += group.length;
     return {
@@ -233,7 +234,7 @@ export function accuracyReport(reads) {
   }
   const rank = { nhl: 0, nfl: 1 };
   const sports = [...byLeague.entries()].map(([league, rows]) => {
-    const hits = rows.filter((row) => row.result === 'hit').length;
+    const hits = rows.filter((row) => callGrade(row) === 'hit').length;
     return {
       league,
       label: String(league).toUpperCase(),
@@ -244,7 +245,7 @@ export function accuracyReport(reads) {
       series: seriesFor(rows),
     };
   }).sort((a, b) => (rank[a.league] ?? 9) - (rank[b.league] ?? 9) || b.graded - a.graded);
-  const hits = graded.filter((row) => row.result === 'hit').length;
+  const hits = graded.filter((row) => callGrade(row) === 'hit').length;
   return {
     hits,
     misses: graded.length - hits,

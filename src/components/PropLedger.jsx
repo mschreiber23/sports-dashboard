@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatGameTime } from '../api/polymarket';
 import { ledgerReport } from '../utils/propReads';
+import { callGrade, modelSide } from '../utils/modelCall';
 import { calibrationMoves } from '../utils/propCalibration';
 import { usePropSync } from './PropSync';
 import { AccuracyPanel } from './ModelTicker';
@@ -78,7 +79,7 @@ export default function PropLedger() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Every NHL and NFL game in the next 8 days is recorded while the app is open. The price and the read update until the game starts, then the result is a hit, a miss, or a void if the player did not play. Voids stay out of the hit rate. After 40 graded props in a league, those results nudge that league’s probabilities.
+        Every NHL and NFL game in the next 8 days is recorded while the app is open. The price and the read update until the game starts. A Yes is a hit when the player clears the line. A No is a hit when they stay under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
       </p>
       {status && <p className="ledger-status">{status}</p>}
       {error && <p className="ledger-status">{error}</p>}
@@ -116,11 +117,11 @@ export default function PropLedger() {
         <>
           <div className="ledger-stats">
             <div className="ledger-stat"><b>{report.graded}</b><span>Graded</span></div>
-            <div className="ledger-stat"><b>{pct(report.hitRate)}</b><span>Hit</span></div>
+            <div className="ledger-stat"><b>{pct(report.callRate)}</b><span>Hit</span></div>
             <div className="ledger-stat"><b>{pct(report.model)}</b><span>Model said</span></div>
           </div>
           <p className="props-likely-note ledger-summary">
-            These props hit {pct(report.hitRate)} of the time. The prices averaged {pct(report.price)}. The model averaged {pct(report.model)}.
+            The model was right on {pct(report.callRate)} of these calls. The yes price averaged {pct(report.price)}. The model’s yes probability averaged {pct(report.model)}.
             {report.voids ? ` ${report.voids} ${report.voids === 1 ? 'void' : 'voids'} stayed out.` : ''}
             {report.open ? ` ${report.open} still open.` : ''}
           </p>
@@ -154,19 +155,23 @@ export default function PropLedger() {
           <section className="ledger-section">
             <h3>Graded props</h3>
             <div className="props-list">
-              {visible.map((row) => (
-                <div className="ledger-card" key={row.id}>
-                  <div>
-                    <div className="props-game-title">{row.player} <span className="props-likely-line">{row.propLabel}</span></div>
-                    <div className="props-game-meta">
-                      {row.league.toUpperCase()} · {row.game} · {formatGameTime(row.gameStart)}
-                      {row.actual == null ? '' : ` · actual ${row.actual}`}
-                      {` · model ${pct(row.modelP)} · price ${pct(row.price)} · ${points(row.edge)}`}
+              {visible.map((row) => {
+                const grade = callGrade(row) || row.result;
+                const side = modelSide(row);
+                return (
+                  <div className="ledger-card" key={row.id}>
+                    <div>
+                      <div className="props-game-title">{row.player} <span className="props-likely-line">{side === 'no' ? `No ${row.propLabel}` : row.propLabel}</span></div>
+                      <div className="props-game-meta">
+                        {row.league.toUpperCase()} · {row.game} · {formatGameTime(row.gameStart)}
+                        {row.actual == null ? '' : ` · actual ${row.actual}`}
+                        {` · model ${pct(row.modelP)} · price ${pct(row.price)} · ${points(row.edge)}`}
+                      </div>
                     </div>
+                    <div className={`ledger-mark ledger-${grade}`}>{grade}</div>
                   </div>
-                  <div className={`ledger-mark ledger-${row.result}`}>{row.result}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {recent.length > 20 && (
               <button type="button" className="props-more" onClick={() => setShowAll((open) => !open)}>

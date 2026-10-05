@@ -5,6 +5,7 @@ import { loadTrades, saveTrades } from './tradeStore';
 import { finalScore, gradeMarketTrade } from './gameResult';
 import { gamesToRecord, buildReads, refreshReads, gradeRead } from '../utils/propReads';
 import { learnCalibration, priceRead } from '../utils/propCalibration';
+import { stampPrediction } from '../utils/modelCall';
 
 async function pool(items, limit, fn) {
   const out = new Array(items.length);
@@ -117,7 +118,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   });
   if (stop()) return { reads: rows, calibration };
 
-  const fresh = buildReads({ games: withRows, logs }).map((row) => priceRead(row, calibration));
+  const fresh = buildReads({ games: withRows, logs }).map((row) => stampPrediction(priceRead(row, calibration)));
   rows = refreshReads(rows, fresh);
   calibration = learnCalibration(rows);
   publish(rows, calibration, trades);
