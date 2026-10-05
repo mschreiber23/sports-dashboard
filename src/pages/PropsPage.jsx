@@ -55,13 +55,35 @@ const LIKELY_MIN_RATE = 70;
 const LIKELY_PRICE_MIN = 0.43;
 const LIKELY_PRICE_MAX = 0.66;
 
+const YES_LEAN = new Set(['shot volume', 'chances', 'power play', 'hot vs opponent', 'high total', 'favorite', 'volume']);
+
+function leansNo(tag) {
+  return tag.endsWith(' down') || tag.endsWith(' back') || tag === 'low volume';
+}
+
+function leansYes(tag) {
+  return tag.endsWith(' up') || YES_LEAN.has(tag);
+}
+
 function likelyAgrees(model, yes, league) {
   if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) return false;
   if (model.rate / 100 + 0.10 < yes) return false;
   if (model.rate / 100 + 0.14 < model.p) return false;
-  if (model.tags.some((tag) => tag.endsWith(' down') || tag.endsWith(' back'))) return false;
+  if (model.tags.some(leansNo)) return false;
   if (league === 'nfl' && model.tags.includes('low volume')) return false;
   return true;
+}
+
+function likelyCall(model, yes, league) {
+  if (likelyAgrees(model, yes, league)) return 'yes';
+  const noEdge = yes - model.p;
+  const noP = 1 - model.p;
+  if (!(noEdge >= NHL_EDGE_MIN && noP >= 0.45)) return null;
+  const miss = 1 - model.rate / 100;
+  if (miss + 0.10 < 1 - yes) return null;
+  if (miss + 0.14 < noP) return null;
+  if (model.tags.some(leansYes)) return null;
+  return 'no';
 }
 const NFL_LIKELY_SKIP = new Set([
   'football_player_interceptions_thrown',
@@ -361,13 +383,20 @@ function likelyBoard(games, logs, calibration, forms) {
             calibration: calibration?.[game.league],
           });
           if (!model) continue;
-          if (ranked && !likelyAgrees(model, line.yes, game.league)) continue;
+          const call = ranked ? likelyCall(model, line.yes, game.league) : 'yes';
+          if (ranked && !call) continue;
+          const no = call === 'no';
+          const sideEdge = no ? line.yes - model.p : model.edge;
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
             hits: model.hits,
-            edge: model.edge,
-            edgePts: edgePoints(model.edge),
-            modelPct: Math.round(model.p * 100),
+            edge: sideEdge,
+            edgePts: edgePoints(sideEdge),
+            modelPct: Math.round((no ? 1 - model.p : model.p) * 100),
+            market: marketPct(no ? 1 - line.yes : line.yes),
+            yesEdge: model.edge,
+            yesModel: model.p,
+            prediction: no ? 'no' : 'yes',
             modeled: true,
             tags: model.tags,
           }));
@@ -760,13 +789,13 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
                   {model && (
                     <div className="pp-factor pp-factor-on">
                       <span>Model</span>
-                      <span>{Math.round(model.p * 100)}%</span>
+                      <span>{(-model.edge >= NHL_EDGE_MIN) ? `No ${Math.round((1 - model.p) * 100)}%` : `${Math.round(model.p * 100)}%`}</span>
                     </div>
                   )}
                   {model && (
-                    <div className={`pp-factor ${model.edge >= NHL_EDGE_MIN ? 'pp-factor-on' : ''}`}>
+                    <div className={`pp-factor ${(model.edge >= NHL_EDGE_MIN || -model.edge >= NHL_EDGE_MIN) ? 'pp-factor-on' : ''}`}>
                       <span>Edge</span>
-                      <span>{model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100)}</span>
+                      <span>{(-model.edge >= NHL_EDGE_MIN) ? `+${Math.round(-model.edge * 100)}` : (model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100))}</span>
                     </div>
                   )}
                   {factors.map((item) => (
@@ -796,7 +825,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
                     pick: 'yes',
                     edge: model ? model.edge : null,
                     modelP: model ? model.p : null,
-                  }} />
+                  }} recommend={model && -model.edge >= NHL_EDGE_MIN ? 'no' : (model && model.edge >= NHL_EDGE_MIN ? 'yes' : null)} />
                 </div>
               )}
               {(recent || versus) && (
@@ -908,8 +937,10 @@ function likelyDraft(item) {
     pick: item.pick || 'yes',
     pickAbbr: item.pickAbbr || '',
     teams: item.teams || [],
-    edge: item.modeled ? item.edge : null,
-    modelP: item.modeled && item.modelPct != null ? item.modelPct / 100 : null,
+    edge: item.modeled ? (typeof item.yesEdge === 'number' ? item.yesEdge : item.edge) : null,
+    modelP: item.modeled && typeof item.yesModel === 'number'
+      ? item.yesModel
+      : (item.modeled && item.modelPct != null ? item.modelPct / 100 : null),
   };
 }
 
@@ -918,7 +949,7 @@ function LikelyRow({ item, sport, onOpen }) {
     <div className="props-game">
       <button type="button" className="props-game-open" onClick={() => onOpen(item.gameKey)}>
         <div className="props-game-main">
-          <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prop}</span></div>
+          <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prediction === 'no' ? `No ${item.prop}` : item.prop}</span></div>
           <div className="props-game-meta">
             {sport === 'All' ? `${item.sport} · ` : ''}{item.game}
             {item.gameLine ? '' : ` · ${item.hits}/${item.total}`}
@@ -934,7 +965,7 @@ function LikelyRow({ item, sport, onOpen }) {
           <span>edge</span>
         </div>
       </button>
-      <TradeButton draft={likelyDraft(item)} compact />
+      <TradeButton draft={likelyDraft(item)} compact recommend={item.prediction === 'no' ? 'no' : (item.modeled || item.gameLine ? 'yes' : null)} />
     </div>
   );
 }
@@ -1199,7 +1230,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the last 10 games still support it. A drop in ice time, shots, or usage stays off the list. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
+                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the last 10 games still support that side. A Yes stays off when ice time, shots, or usage are down. A No stays off when those are up. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
