@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS prop_trades (
   prediction  TEXT,
   edge        NUMERIC,
   payout      NUMERIC,
+  edited_at   TIMESTAMPTZ,
   result      TEXT,
   actual      NUMERIC,
   graded_at   TIMESTAMPTZ,
@@ -94,6 +95,7 @@ CREATE TABLE IF NOT EXISTS prop_trades (
 ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS prediction TEXT;
 ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS edge NUMERIC;
 ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS payout NUMERIC;
+ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS prop_trades_user_start ON prop_trades (user_id, game_start);
 

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
-import { quoteForUnit, tradeId } from '../utils/propBook';
+import { expectedProfit, quoteForUnit, tradeId } from '../utils/propBook';
 
 const PropSyncContext = createContext(null);
 
@@ -101,6 +101,31 @@ export function PropSyncProvider({ children }) {
     return run;
   }, [unit, userId]);
 
+  const updateTrade = useCallback((id, patch) => {
+    const run = tradeLock.current.then(async () => {
+      const current = await loadTrades(userId);
+      const next = current.map((trade) => {
+        if (trade.id !== id) return trade;
+        const stake = patch.unit != null ? Number(patch.unit) : Number(trade.unit);
+        const profit = patch.profit != null ? Number(patch.profit) : expectedProfit(trade);
+        if (profit == null || !Number.isFinite(profit)) return trade;
+        const unit = Math.round(stake * 100) / 100;
+        const net = Math.round(profit * 100) / 100;
+        if (!(unit > 0) || unit > 1000000 || net < 0 || net > 1000000) return trade;
+        return {
+          ...trade,
+          unit,
+          payout: Math.round((unit + net) * 100) / 100,
+          editedAt: Date.now(),
+        };
+      });
+      await saveTrades(userId, next);
+      setTrades(next);
+    });
+    tradeLock.current = run.then(() => {}, () => {});
+    return run;
+  }, [userId]);
+
   const removeTrade = useCallback((id) => {
     const run = tradeLock.current.then(async () => {
       const current = await loadTrades(userId);
@@ -125,7 +150,7 @@ export function PropSyncProvider({ children }) {
   }, [refresh]);
 
   return (
-    <PropSyncContext.Provider value={{ reads, trades, unit, addTrade, removeTrade, setUnit, status, error, calibration, working, refresh }}>
+    <PropSyncContext.Provider value={{ reads, trades, unit, addTrade, updateTrade, removeTrade, setUnit, status, error, calibration, working, refresh }}>
       {children}
     </PropSyncContext.Provider>
   );
@@ -137,6 +162,7 @@ export function usePropSync() {
     trades: null,
     unit: 25,
     addTrade: () => {},
+    updateTrade: () => {},
     removeTrade: () => {},
     setUnit: () => {},
     status: '',

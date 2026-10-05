@@ -8458,7 +8458,20 @@ thead .dfs-sticky-player {
   border-radius: 8px;
   background: var(--bg2);
 }
-.trade-sheet { width: 100%; min-width: 920px; border-collapse: collapse; font-size: 12px; }
+.trade-sheet { width: 100%; min-width: 1040px; border-collapse: collapse; font-size: 12px; }
+.trade-money { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; font-weight: 800; }
+.trade-edit {
+  width: 76px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: right;
+}
 .trade-sheet th, .trade-sheet td {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);

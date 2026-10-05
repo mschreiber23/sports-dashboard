@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { bookReport, potentialWin, predictionWon, sheetMarket, sheetTrade, tradePayout } from '../utils/propBook';
+import { bookReport, expectedProfit, potentialWin, predictionWon, sheetMarket, sheetTrade, tradePayout } from '../utils/propBook';
 import { usePropSync } from './PropSync';
 
 function money(value) {
@@ -22,6 +22,37 @@ function resultText(value) {
   return rounded < 0 ? `-$${digits}` : `$${digits}`;
 }
 
+function MoneyEdit({ value, label, onCommit }) {
+  const shown = typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '';
+  const [text, setText] = useState(shown);
+  useEffect(() => { setText(shown); }, [shown]);
+  const commit = () => {
+    const next = Math.round(Number(text) * 100) / 100;
+    if (!Number.isFinite(next) || next < 0 || next > 1000000) {
+      setText(shown);
+      return;
+    }
+    if (Math.round(Number(value) * 100) !== Math.round(next * 100)) onCommit(next);
+  };
+  return (
+    <span className="trade-money">
+      <span>$</span>
+      <input
+        className="trade-edit"
+        type="number"
+        inputMode="decimal"
+        min="0"
+        step="0.01"
+        aria-label={label}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+      />
+    </span>
+  );
+}
+
 function edgeText(edge) {
   if (typeof edge !== 'number' || !Number.isFinite(edge)) return '';
   const points = Math.round(edge * 100);
@@ -29,7 +60,7 @@ function edgeText(edge) {
 }
 
 export default function TradeBook() {
-  const { trades, unit, setUnit, removeTrade } = usePropSync();
+  const { trades, unit, setUnit, updateTrade, removeTrade } = usePropSync();
   const [text, setText] = useState(String(unit));
   const report = useMemo(() => bookReport(trades || []), [trades]);
   const rows = useMemo(() => [...(trades || [])].sort((a, b) => (a.recordedAt || a.gameStart || 0) - (b.recordedAt || b.gameStart || 0)), [trades]);
@@ -45,7 +76,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. Today, this month, and lifetime add up those stakes.
+        Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. On this sheet, edit Unit for the amount wagered and Expected profit for what a correct trade makes. Potential becomes the wager plus that profit. Today, this month, and lifetime add up those stakes.
       </p>
       <label className="trade-unit">
         Unit
@@ -88,6 +119,7 @@ export default function TradeBook() {
                 <th>Trade</th>
                 <th>Prediction (Y/N)</th>
                 <th className="num">Unit</th>
+                <th className="num">Expected profit</th>
                 <th className="num">Potential</th>
                 <th className="num">Percentage</th>
                 <th className="num">Edge</th>
@@ -106,7 +138,20 @@ export default function TradeBook() {
                     <td>{sheetMarket(trade)}</td>
                     <td>{sheetTrade(trade)}</td>
                     <td>{trade.prediction === 'no' ? 'No' : 'Yes'}</td>
-                    <td className="num">{stakeText(trade.unit)}</td>
+                    <td className="num">
+                      <MoneyEdit
+                        value={Number(trade.unit)}
+                        label={`Amount wagered on ${sheetMarket(trade)}`}
+                        onCommit={(next) => { if (next > 0) updateTrade(trade.id, { unit: next }); }}
+                      />
+                    </td>
+                    <td className="num">
+                      <MoneyEdit
+                        value={expectedProfit(trade)}
+                        label={`Expected profit on ${sheetMarket(trade)}`}
+                        onCommit={(next) => updateTrade(trade.id, { profit: next })}
+                      />
+                    </td>
                     <td className="num">{resultText(potentialWin(trade))}</td>
                     <td className="num">{Math.round(Number(trade.price) * 100)}%</td>
                     <td className="num">{edgeText(trade.edge)}</td>

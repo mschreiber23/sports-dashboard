@@ -42,6 +42,7 @@ function fromRemote(row) {
     prediction: row.prediction === 'no' ? 'no' : 'yes',
     edge: row.edge == null ? null : Number(row.edge),
     payout: row.payout == null ? null : Number(row.payout),
+    editedAt: row.edited_at ? new Date(row.edited_at).getTime() : null,
     result: row.result || null,
     actual: row.actual == null ? null : Number(row.actual),
     gradedAt: row.graded_at ? new Date(row.graded_at).getTime() : null,
@@ -71,6 +72,7 @@ function toRemote(userId, trade) {
     prediction: trade.prediction === 'no' ? 'no' : 'yes',
     edge: trade.edge == null ? null : trade.edge,
     payout: trade.payout == null ? null : trade.payout,
+    edited_at: trade.editedAt ? new Date(trade.editedAt).toISOString() : null,
     result: trade.result,
     actual: trade.actual,
     graded_at: trade.gradedAt ? new Date(trade.gradedAt).toISOString() : null,
@@ -85,11 +87,16 @@ function prefer(local, remote) {
   const graded = [local, remote]
     .filter((row) => row.result)
     .sort((a, b) => (b.gradedAt || 0) - (a.gradedAt || 0))[0];
-  const payout = first.payout ?? local.payout ?? remote.payout ?? null;
-  if (!graded) return { ...first, payout };
+  const edited = (local.editedAt || remote.editedAt)
+    ? ((local.editedAt || 0) >= (remote.editedAt || 0) ? local : remote)
+    : first;
+  const payout = edited.payout ?? first.payout ?? local.payout ?? remote.payout ?? null;
+  if (!graded) return { ...first, unit: edited.unit, payout, editedAt: edited.editedAt || null };
   return {
     ...first,
+    unit: edited.unit,
     payout,
+    editedAt: edited.editedAt || null,
     result: graded.result,
     actual: graded.actual,
     gradedAt: graded.gradedAt,

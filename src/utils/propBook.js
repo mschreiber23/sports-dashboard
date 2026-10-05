@@ -112,6 +112,14 @@ export function potentialWin(trade) {
   return unit / price;
 }
 
+// Net if the trade is correct: money returned minus the amount wagered.
+export function expectedProfit(trade) {
+  const back = potentialWin(trade);
+  const stake = Number(trade?.unit);
+  if (!(back > 0) || !(stake > 0)) return null;
+  return Math.round((back - stake) * 100) / 100;
+}
+
 // Cash a taker puts up, fee included. Over 50% that cash profits one unit.
 export function quoteForUnit(price, unit) {
   return quoteContracts(price, unit);
