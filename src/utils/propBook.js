@@ -46,6 +46,13 @@ export function tradeProfit(trade) {
   return payout - Number(trade.unit);
 }
 
+export function potentialWin(trade) {
+  const unit = Number(trade.unit);
+  const price = Number(trade.price);
+  if (!(unit > 0) || !(price > 0 && price < 1)) return null;
+  return unit / price;
+}
+
 export function tradeId(draft) {
   const line = draft.line == null ? '' : draft.line;
   const pick = draft.pick || draft.side || 'yes';
@@ -77,11 +84,22 @@ export function sheetTrade(trade) {
 
 export function bookReport(trades, now = Date.now()) {
   const today = easternDay(now);
+  const month = today.slice(0, 7);
   let total = 0;
   let todayProfit = 0;
   let open = 0;
+  let tradedToday = 0;
+  let tradedMonth = 0;
+  let tradedLifetime = 0;
   const days = new Map();
   for (const trade of trades || []) {
+    const unit = Number(trade.unit);
+    if (unit > 0) {
+      tradedLifetime += unit;
+      const placed = easternDay(trade.recordedAt || trade.gameStart);
+      if (placed === today) tradedToday += unit;
+      if (placed.slice(0, 7) === month) tradedMonth += unit;
+    }
     const profit = tradeProfit(trade);
     const day = easternDay(trade.gameStart);
     if (!days.has(day)) days.set(day, { day, profit: 0, settled: 0, open: 0, trades: [] });
@@ -101,7 +119,7 @@ export function bookReport(trades, now = Date.now()) {
   for (const bucket of ordered) {
     bucket.trades.sort((a, b) => (a.gameStart - b.gameStart) || String(a.player || '').localeCompare(String(b.player || '')));
   }
-  return { total, today: todayProfit, open, days: ordered };
+  return { total, today: todayProfit, open, tradedToday, tradedMonth, tradedLifetime, days: ordered };
 }
 
 function seriesFor(rows) {

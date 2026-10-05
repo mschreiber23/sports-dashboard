@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { bookReport, predictionWon, sheetMarket, sheetTrade, tradePayout } from '../utils/propBook';
+import { bookReport, potentialWin, predictionWon, sheetMarket, sheetTrade, tradePayout } from '../utils/propBook';
 import { usePropSync } from './PropSync';
 
 function money(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '–';
   const sign = value > 0 ? '+' : value < 0 ? '−' : '';
   return `${sign}$${Math.abs(value).toFixed(2)}`;
+}
+
+function stakeText(value) {
+  const rounded = Math.round((Number(value) || 0) * 100) / 100;
+  const whole = Math.abs(rounded - Math.round(rounded)) < 0.001;
+  return whole ? `$${Math.round(Math.abs(rounded))}` : `$${Math.abs(rounded).toFixed(2)}`;
 }
 
 function resultText(value) {
@@ -39,7 +45,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Yes or No adds that side to the sheet. The percentage is the price of the side you took, and the edge is the model’s gap at that moment. A correct $25 trade at 50% returns $50. An incorrect trade loses the $25. Today and Running are the profit after the stake.
+        Yes or No adds that side to the sheet. Potential is the money returned if that trade is correct. A $25 trade at 50% can return $50. Profit is what is left after the stake. Today, this month, and lifetime are the units you have put on trades.
       </p>
       <label className="trade-unit">
         Unit
@@ -55,10 +61,17 @@ export default function TradeBook() {
           onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
         />
       </label>
+      <div className="props-likely-head">Profit</div>
       <div className="ledger-stats">
         <div className="ledger-stat"><b>{money(report.today)}</b><span>Today</span></div>
         <div className="ledger-stat"><b>{money(report.total)}</b><span>Running</span></div>
         <div className="ledger-stat"><b>{report.open}</b><span>Open</span></div>
+      </div>
+      <div className="props-likely-head">Trading</div>
+      <div className="ledger-stats">
+        <div className="ledger-stat"><b>{stakeText(report.tradedToday)}</b><span>Today</span></div>
+        <div className="ledger-stat"><b>{stakeText(report.tradedMonth)}</b><span>This month</span></div>
+        <div className="ledger-stat"><b>{stakeText(report.tradedLifetime)}</b><span>Lifetime</span></div>
       </div>
       {trades && rows.length === 0 && (
         <div className="empty-state">
@@ -75,6 +88,7 @@ export default function TradeBook() {
                 <th>Trade</th>
                 <th>Prediction (Y/N)</th>
                 <th className="num">Unit</th>
+                <th className="num">Potential</th>
                 <th className="num">Percentage</th>
                 <th className="num">Edge</th>
                 <th>Win/Loss</th>
@@ -93,6 +107,7 @@ export default function TradeBook() {
                     <td>{sheetTrade(trade)}</td>
                     <td>{trade.prediction === 'no' ? 'No' : 'Yes'}</td>
                     <td className="num">${Number(trade.unit).toFixed(0)}</td>
+                    <td className="num">{resultText(potentialWin(trade))}</td>
                     <td className="num">{Math.round(Number(trade.price) * 100)}%</td>
                     <td className="num">{edgeText(trade.edge)}</td>
                     <td className={verdict === 'Correct' ? 'trade-correct' : verdict === 'Incorrect' ? 'trade-incorrect' : ''}>{verdict}</td>

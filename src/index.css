@@ -8458,7 +8458,7 @@ thead .dfs-sticky-player {
   border-radius: 8px;
   background: var(--bg2);
 }
-.trade-sheet { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 12px; }
+.trade-sheet { width: 100%; min-width: 920px; border-collapse: collapse; font-size: 12px; }
 .trade-sheet th, .trade-sheet td {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
