@@ -8396,6 +8396,14 @@ thead .dfs-sticky-player {
 }
 .props-view-on { border-color: rgba(255,255,255,0.72); }
 .props-likely-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
+.props-likely-head {
+  margin: 12px 0 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
 .props-likely-line { color: var(--accent); font-weight: 700; }
 .props-likely-tags { color: var(--text); }
 .props-edge-down span:first-child { color: var(--text2); }

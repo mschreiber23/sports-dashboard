@@ -633,6 +633,33 @@ function lineKind(type) {
   return 'line';
 }
 
+function lineSides(market, quote) {
+  const type = market.sportsMarketType || '';
+  const sides = market.marketSides || [];
+  const long = sides.find((side) => side.long) || sides[0];
+  const short = sides.find((side) => side !== long);
+  if (/winner$/.test(type)) {
+    return [
+      { name: long?.team?.name || long?.description || '', price: quote.yes },
+      { name: short?.team?.name || short?.description || '', price: 1 - quote.yes },
+    ].filter((side) => side.name);
+  }
+  if (/total$/.test(type)) {
+    return [
+      { name: 'Over', price: quote.yes, line: lineNumber(market) },
+      { name: 'Under', price: 1 - quote.yes, line: lineNumber(market) },
+    ];
+  }
+  return null;
+}
+
+function eventTeams(event) {
+  return (event.teams || []).map((team) => ({
+    name: team.name || '',
+    abbr: String(team.displayAbbreviation || team.abbreviation || '').toUpperCase(),
+  })).filter((team) => team.abbr);
+}
+
 function normalizeUsMarket(market, event) {
   if (market.hidden || market.closed || market.active === false) return null;
   if (market.status && market.status !== 'MARKET_STATUS_OPEN') return null;
@@ -662,6 +689,8 @@ function normalizeUsMarket(market, event) {
       ou: true,
       section,
       side: headline,
+      sides: lineSides(market, quote),
+      teams: eventTeams(event),
     };
   }
   const label = pillLabel(type).toLowerCase();
