@@ -9,6 +9,7 @@ import { bookLabel } from '../utils/propHit';
 import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
 import { nflWeekSpan } from '../api/nfl';
+import PropLedger from '../components/PropLedger';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -888,6 +889,14 @@ export default function PropsPage() {
 
       {events && !openGame && (
         <>
+          <div className="props-view-nav">
+            <button type="button" className={`props-view-btn ${view === 'games' ? 'props-view-on' : ''}`} onClick={() => setView('games')}>Games</button>
+            <button type="button" className={`props-view-btn ${view === 'likely' ? 'props-view-on' : ''}`} onClick={() => setView('likely')}>Likely</button>
+            <button type="button" className={`props-view-btn ${view === 'results' ? 'props-view-on' : ''}`} onClick={() => setView('results')}>Results</button>
+          </div>
+
+          {view === 'results' ? <PropLedger /> : (
+          <>
           <div className="props-day-nav">
             <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
             <span className="props-day-label">{sport === 'NFL' && nflWeek ? nflWeek.label : formatDayLabel(day)}</span>
@@ -916,13 +925,6 @@ export default function PropsPage() {
                 ? `No NFL games in ${nflWeek.label}.`
                 : `No ${sport === 'All' ? '' : `${sport} `}games ${formatDayLabel(day) === 'Today' ? 'today' : `on ${formatDayLabel(day)}`}.`}
               </p>
-            </div>
-          )}
-
-          {games.length > 0 && (
-            <div className="props-view-nav">
-              <button type="button" className={`props-view-btn ${view === 'games' ? 'props-view-on' : ''}`} onClick={() => setView('games')}>Games</button>
-              <button type="button" className={`props-view-btn ${view === 'likely' ? 'props-view-on' : ''}`} onClick={() => setView('likely')}>Likely</button>
             </div>
           )}
 
@@ -978,6 +980,8 @@ export default function PropsPage() {
               );
             })}
           </div>
+          )}
+          </>
           )}
         </>
       )}

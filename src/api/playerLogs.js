@@ -368,3 +368,27 @@ export async function recentPlayerLogs(league, players) {
   await Promise.all(Array.from({ length: Math.min(4, unique.length) }, worker));
   return out;
 }
+
+/** The stat from the game closest to `gameStart`, using the same fields as the model. */
+export async function playerResultOnDate(league, name, type, gameStart) {
+  if (!LEAGUES[league] || !EXTRACT[type] || !name || !Number.isFinite(gameStart)) return { status: 'unknown' };
+  const id = await espnId(league, name);
+  if (!id) return { status: 'unknown' };
+  const years = espnSeasons(gameStart);
+  const chunks = await Promise.all(years.map((year) => seasonGames(league, id, year)));
+  let best = null;
+  let bestGap = Infinity;
+  for (const game of chunks.flat()) {
+    const time = new Date(game.date).getTime();
+    if (!Number.isFinite(time)) continue;
+    const gap = Math.abs(time - gameStart);
+    if (gap < bestGap) {
+      best = game;
+      bestGap = gap;
+    }
+  }
+  if (!best || bestGap > 20 * 60 * 60 * 1000) return { status: 'missing' };
+  const value = EXTRACT[type](best.stats);
+  if (typeof value !== 'number' || !Number.isFinite(value)) return { status: 'missing' };
+  return { status: 'played', value };
+}
