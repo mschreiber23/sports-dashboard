@@ -41,6 +41,7 @@ function fromRemote(row) {
     teams: Array.isArray(row.teams) ? row.teams : [],
     prediction: row.prediction === 'no' ? 'no' : 'yes',
     edge: row.edge == null ? null : Number(row.edge),
+    payout: row.payout == null ? null : Number(row.payout),
     result: row.result || null,
     actual: row.actual == null ? null : Number(row.actual),
     gradedAt: row.graded_at ? new Date(row.graded_at).getTime() : null,
@@ -69,6 +70,7 @@ function toRemote(userId, trade) {
     teams: trade.teams || [],
     prediction: trade.prediction === 'no' ? 'no' : 'yes',
     edge: trade.edge == null ? null : trade.edge,
+    payout: trade.payout == null ? null : trade.payout,
     result: trade.result,
     actual: trade.actual,
     graded_at: trade.gradedAt ? new Date(trade.gradedAt).toISOString() : null,
@@ -83,9 +85,11 @@ function prefer(local, remote) {
   const graded = [local, remote]
     .filter((row) => row.result)
     .sort((a, b) => (b.gradedAt || 0) - (a.gradedAt || 0))[0];
-  if (!graded) return first;
+  const payout = first.payout ?? local.payout ?? remote.payout ?? null;
+  if (!graded) return { ...first, payout };
   return {
     ...first,
+    payout,
     result: graded.result,
     actual: graded.actual,
     gradedAt: graded.gradedAt,

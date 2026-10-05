@@ -45,7 +45,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Yes or No adds that side to the sheet. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $50. Over 50%, the stake is raised so a win profits one unit: 67% takes $50.76 to profit $25, and a loss costs that stake. Today, this month, and lifetime add up those stakes.
+        Yes or No adds that side at the price a taker pays, including Polymarket&apos;s fee. Potential is the money returned if that trade is correct. At 50% or less you risk the unit, so $25 at 50% returns $48.32 after the fee. Over 50%, the stake is raised so a win profits one unit after the fee: 56% takes $34.12 to return $59.12. A loss costs that stake. Today, this month, and lifetime add up those stakes.
       </p>
       <label className="trade-unit">
         Unit

@@ -125,6 +125,8 @@ function likelyPick(game, sample, line, recent, extra) {
     gameStart: sample.gameStart,
     propType: sample.type,
     price: line.yes,
+    bid: line.bid,
+    ask: line.ask,
     kind: 'player',
     market: marketPct(line.yes),
     ...extra,
@@ -172,6 +174,12 @@ function teammateLogs(entries) {
     mates.push({ name: entry.name, recent: entry.recent || null, prior: entry.prior || null });
   }
   return mates;
+}
+
+function takersFor(sides, pickedName) {
+  const picked = listedSide(sides, { name: pickedName });
+  const other = (sides || []).find((side) => side !== picked);
+  return { takerYes: picked?.taker, takerNo: other?.taker };
 }
 
 function listedSide(sides, team) {
@@ -248,6 +256,7 @@ function addGameLines(picks, game, forms) {
     gameStart: game.gameStart,
     market: marketPct(read.winner.price),
     price: read.winner.price,
+    ...takersFor(winner?.sides, read.winner.name),
     league: game.league,
     kind: 'winner',
     propType: 'game_winner',
@@ -280,6 +289,7 @@ function addGameLines(picks, game, forms) {
     gameStart: game.gameStart,
     market: marketPct(read.total.price),
     price: read.total.price,
+    ...takersFor(total?.sides, read.total.label.startsWith('Over') ? 'Over' : 'Under'),
     league: game.league,
     kind: 'total',
     propType: 'game_total',
@@ -780,6 +790,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
                     line: group.selected,
                     side: 'yes',
                     price: group.current?.yes,
+                    bid: group.current?.bid,
+                    ask: group.current?.ask,
                     kind: 'player',
                     pick: 'yes',
                     edge: model ? model.edge : null,
@@ -888,6 +900,10 @@ function likelyDraft(item) {
     line: item.line,
     side: item.kind === 'player' ? 'yes' : (item.pick || 'yes'),
     price: item.price,
+    bid: item.bid,
+    ask: item.ask,
+    takerYes: item.takerYes,
+    takerNo: item.takerNo,
     kind: item.kind || 'player',
     pick: item.pick || 'yes',
     pickAbbr: item.pickAbbr || '',

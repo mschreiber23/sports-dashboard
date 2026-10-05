@@ -1,20 +1,79 @@
 // Model accuracy from graded reads, and the sheet of trades the user picked.
-// Price is the side they took. A win returns the unit divided by that price.
-// A loss is the unit. A void returns the stake, so the profit is zero.
+// Price is the side they took, at the price a taker pays. Polymarket US
+// charges Fee = 0.0695 × contracts × price × (1 − price), rounded to the
+// cent. Over 50%, the stake is the cash required to profit one unit after
+// that fee. At 50% or less, the stake is the unit. A win returns the
+// contracts. A loss costs the stake. A void returns nothing.
 
 import { easternDay } from '../api/polymarket';
 
+// Standard taker coefficient on polymarket.us. Straight trades, not combos.
+export const TAKER_FEE = 0.0695;
+
+function openPrice(value) {
+  const n = Number(value);
+  return n > 0 && n < 1 ? n : null;
+}
+
+function bankersCents(value) {
+  const sign = value < 0 ? -1 : 1;
+  const scaled = Math.abs(value) * 100;
+  const down = Math.floor(scaled + 1e-8);
+  const frac = scaled - down;
+  const cents = Math.abs(frac - 0.5) <= 1e-8
+    ? (down % 2 === 0 ? down : down + 1)
+    : Math.round(scaled);
+  return sign * cents;
+}
+
+function fillCash(contractsCents, price) {
+  const contracts = contractsCents / 100;
+  const cost = bankersCents(contracts * price);
+  const fee = bankersCents(TAKER_FEE * contracts * price * (1 - price));
+  return { cost, fee, stake: cost + fee };
+}
+
+function quoteContracts(price, unit) {
+  const p = Number(price);
+  const target = Number(unit);
+  if (!(target > 0) || !(p > 0 && p < 1)) return null;
+  const targetCents = Math.round(target * 100);
+  const favorite = p > 0.5;
+  const ideal = favorite
+    ? target / ((1 - p) * (1 - TAKER_FEE * p))
+    : target / (p * (1 + TAKER_FEE * (1 - p)));
+  const start = Math.round(ideal * 100);
+  let best = null;
+  for (let contractsCents = Math.max(1, start - 400); contractsCents <= start + 400; contractsCents += 1) {
+    const cash = fillCash(contractsCents, p);
+    const profit = contractsCents - cash.stake;
+    const err = favorite ? Math.abs(profit - targetCents) : Math.abs(cash.stake - targetCents);
+    const tie = Math.abs(contractsCents - Math.round(ideal * 100));
+    if (!best || err < best.err || (err === best.err && tie < best.tie)) {
+      best = { contractsCents, stake: cash.stake, err, tie };
+    }
+    if (err === 0 && contractsCents > start + 20) break;
+  }
+  if (!best) return null;
+  return {
+    stake: best.stake / 100,
+    payout: best.contractsCents / 100,
+  };
+}
+
 export function sideDraft(draft, prediction) {
-  const listed = Number(draft.price);
+  const listed = openPrice(draft.price);
   const takingNo = prediction === 'no';
-  const price = takingNo ? 1 - listed : listed;
+  const price = takingNo
+    ? (openPrice(draft.takerNo) ?? (openPrice(draft.bid) != null ? 1 - Number(draft.bid) : null) ?? (listed == null ? null : 1 - listed))
+    : (openPrice(draft.takerYes) ?? openPrice(draft.ask) ?? listed);
   const edge = typeof draft.edge !== 'number'
     ? null
     : (takingNo ? -Math.round(draft.edge * 100) / 100 : draft.edge);
   return {
     ...draft,
     prediction: takingNo ? 'no' : 'yes',
-    price,
+    price: price == null ? price : Math.round(price * 10000) / 10000,
     edge,
   };
 }
@@ -34,9 +93,7 @@ export function tradePayout(trade) {
   const won = predictionWon(trade);
   if (won == null) return null;
   if (!won) return -unit;
-  const price = Number(trade.price);
-  if (!(price > 0 && price < 1)) return null;
-  return unit / price;
+  return potentialWin(trade);
 }
 
 export function tradeProfit(trade) {
@@ -47,19 +104,21 @@ export function tradeProfit(trade) {
 }
 
 export function potentialWin(trade) {
-  const unit = Number(trade.unit);
-  const price = Number(trade.price);
+  const stored = Number(trade?.payout);
+  if (stored > 0) return Math.round(stored * 100) / 100;
+  const unit = Number(trade?.unit);
+  const price = Number(trade?.price);
   if (!(unit > 0) || !(price > 0 && price < 1)) return null;
   return unit / price;
 }
 
-// Over 50%, risk enough to profit one unit. At 50% or less, risk the unit.
+// Cash a taker puts up, fee included. Over 50% that cash profits one unit.
+export function quoteForUnit(price, unit) {
+  return quoteContracts(price, unit);
+}
+
 export function stakeForUnit(price, unit) {
-  const p = Number(price);
-  const target = Number(unit);
-  if (!(target > 0) || !(p > 0 && p < 1)) return null;
-  if (p <= 0.5) return target;
-  return Math.round((target * p / (1 - p)) * 100) / 100;
+  return quoteForUnit(price, unit)?.stake ?? null;
 }
 
 export function tradeId(draft) {

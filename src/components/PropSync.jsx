@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
-import { stakeForUnit, tradeId } from '../utils/propBook';
+import { quoteForUnit, tradeId } from '../utils/propBook';
 
 const PropSyncContext = createContext(null);
 
@@ -80,12 +80,15 @@ export function PropSyncProvider({ children }) {
   const addTrade = useCallback((draft) => {
     const run = tradeLock.current.then(async () => {
       const id = tradeId(draft);
+      const quote = quoteForUnit(draft.price, unit);
+      if (!quote) return;
       const current = await loadTrades(userId);
       if (current.some((trade) => trade.id === id)) return;
       const next = [...current, {
         ...draft,
         id,
-        unit: stakeForUnit(draft.price, unit),
+        unit: quote.stake,
+        payout: quote.payout,
         result: null,
         actual: null,
         gradedAt: null,
