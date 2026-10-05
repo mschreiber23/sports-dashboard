@@ -782,6 +782,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
                     price: group.current?.yes,
                     kind: 'player',
                     pick: 'yes',
+                    edge: model ? model.edge : null,
+                    modelP: model ? model.p : null,
                   }} />
                 </div>
               )}
@@ -890,6 +892,8 @@ function likelyDraft(item) {
     pick: item.pick || 'yes',
     pickAbbr: item.pickAbbr || '',
     teams: item.teams || [],
+    edge: item.modeled ? item.edge : null,
+    modelP: item.modeled && item.modelPct != null ? item.modelPct / 100 : null,
   };
 }
 

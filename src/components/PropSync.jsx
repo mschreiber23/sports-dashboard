@@ -32,6 +32,7 @@ export function PropSyncProvider({ children }) {
   const busy = useRef(false);
   const pendingForce = useRef(false);
   const stop = useRef(false);
+  const tradeLock = useRef(Promise.resolve());
 
   const refresh = useCallback((force = false) => {
     if (busy.current) {
@@ -76,28 +77,36 @@ export function PropSyncProvider({ children }) {
     return () => { cancel = true; };
   }, [userId]);
 
-  const addTrade = useCallback(async (draft) => {
-    const id = tradeId(draft);
-    const current = await loadTrades(userId);
-    if (current.some((trade) => trade.id === id)) return;
-    const next = [...current, {
-      ...draft,
-      id,
-      unit,
-      result: null,
-      actual: null,
-      gradedAt: null,
-      recordedAt: Date.now(),
-    }];
-    await saveTrades(userId, next);
-    setTrades(next);
+  const addTrade = useCallback((draft) => {
+    const run = tradeLock.current.then(async () => {
+      const id = tradeId(draft);
+      const current = await loadTrades(userId);
+      if (current.some((trade) => trade.id === id)) return;
+      const next = [...current, {
+        ...draft,
+        id,
+        unit,
+        result: null,
+        actual: null,
+        gradedAt: null,
+        recordedAt: Date.now(),
+      }];
+      await saveTrades(userId, next);
+      setTrades(next);
+    });
+    tradeLock.current = run.then(() => {}, () => {});
+    return run;
   }, [unit, userId]);
 
-  const removeTrade = useCallback(async (id) => {
-    const current = await loadTrades(userId);
-    const next = current.filter((trade) => trade.id !== id || trade.result);
-    await saveTrades(userId, next);
-    setTrades(next);
+  const removeTrade = useCallback((id) => {
+    const run = tradeLock.current.then(async () => {
+      const current = await loadTrades(userId);
+      const next = current.filter((trade) => trade.id !== id || trade.result);
+      await saveTrades(userId, next);
+      setTrades(next);
+    });
+    tradeLock.current = run.then(() => {}, () => {});
+    return run;
   }, [userId]);
 
   const setUnit = useCallback(async (value) => {

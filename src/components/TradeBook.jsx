@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { formatDayLabel } from '../api/polymarket';
-import { bookReport, tradeProfit } from '../utils/propBook';
+import { bookReport, predictionWon, sheetMarket, sheetTrade, tradePayout } from '../utils/propBook';
 import { usePropSync } from './PropSync';
 
 function money(value) {
@@ -9,14 +8,25 @@ function money(value) {
   return `${sign}$${Math.abs(value).toFixed(2)}`;
 }
 
-function ifHit(trade) {
-  return tradeProfit({ ...trade, result: 'hit' });
+function resultText(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '';
+  const rounded = Math.round(value * 100) / 100;
+  const whole = Math.abs(rounded - Math.round(rounded)) < 0.001;
+  const digits = whole ? String(Math.round(Math.abs(rounded))) : Math.abs(rounded).toFixed(2);
+  return rounded < 0 ? `-$${digits}` : `$${digits}`;
+}
+
+function edgeText(edge) {
+  if (typeof edge !== 'number' || !Number.isFinite(edge)) return '';
+  const points = Math.round(edge * 100);
+  return points > 0 ? `+${points}` : `${points}`;
 }
 
 export default function TradeBook() {
   const { trades, unit, setUnit, removeTrade } = usePropSync();
   const [text, setText] = useState(String(unit));
   const report = useMemo(() => bookReport(trades || []), [trades]);
+  const rows = useMemo(() => [...(trades || [])].sort((a, b) => (a.recordedAt || a.gameStart || 0) - (b.recordedAt || b.gameStart || 0)), [trades]);
 
   useEffect(() => { setText(String(unit)); }, [unit]);
 
@@ -29,7 +39,7 @@ export default function TradeBook() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Trade marks a prop you are taking. The unit is the amount at risk. A $25 trade at 62% wins $15.32 if it hits and loses $25 if it misses. If the player does not play, the unit comes back. Changing the unit applies to the next trade.
+        Yes or No adds that side to the sheet. The percentage is the price of the side you took, and the edge is the model’s gap at that moment. A correct $25 trade at 50% returns $50. An incorrect trade loses the $25. Today and Running are the profit after the stake.
       </p>
       <label className="trade-unit">
         Unit
@@ -50,46 +60,54 @@ export default function TradeBook() {
         <div className="ledger-stat"><b>{money(report.total)}</b><span>Running</span></div>
         <div className="ledger-stat"><b>{report.open}</b><span>Open</span></div>
       </div>
-      {trades && report.days.length === 0 && (
+      {trades && rows.length === 0 && (
         <div className="empty-state">
-          <p>No trades yet. On Likely or a player card, tap Trade to track that prop at today’s price.</p>
+          <p>No trades yet. On Likely or a player card, tap Yes or No to add that side.</p>
         </div>
       )}
-      {report.days.map((day) => (
-        <section className="ledger-section" key={day.day}>
-          <h3>
-            {formatDayLabel(day.day)}
-            <span className={day.profit < 0 ? 'trade-down' : ''}>{day.settled ? money(day.profit) : 'Open'}</span>
-          </h3>
-          <div className="props-list">
-            {day.trades.map((trade) => (
-              <div className="ledger-card" key={trade.id}>
-                <div>
-                  <div className="props-game-title">{trade.player} <span className="props-likely-line">{trade.propLabel}</span></div>
-                  <div className="props-game-meta">
-                    {String(trade.league || '').toUpperCase()} · {trade.game} · {Math.round(trade.price * 100)}% · ${Number(trade.unit).toFixed(0)}
-                    {trade.actual == null ? '' : ` · actual ${trade.actual}`}
-                  </div>
-                </div>
-                <div className="trade-result">
-                  {trade.result ? (
-                    <>
-                      <b className={trade.profit < 0 ? 'trade-down' : ''}>{money(trade.profit)}</b>
-                      <span className={`ledger-mark ledger-${trade.result}`}>{trade.result}</span>
-                    </>
-                  ) : (
-                    <>
-                      <b>{money(ifHit(trade))}</b>
-                      <span>if it hits</span>
-                      <button type="button" className="props-trade" onClick={() => removeTrade(trade.id)}>Remove</button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+      {rows.length > 0 && (
+        <div className="trade-sheet-wrap">
+          <table className="trade-sheet">
+            <thead>
+              <tr>
+                <th>Sport</th>
+                <th>Market</th>
+                <th>Trade</th>
+                <th>Prediction (Y/N)</th>
+                <th className="num">Unit</th>
+                <th className="num">Percentage</th>
+                <th className="num">Edge</th>
+                <th>Win/Loss</th>
+                <th className="num">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((trade) => {
+                const won = predictionWon(trade);
+                const payout = tradePayout(trade);
+                const verdict = !trade.result ? '' : trade.result === 'void' ? 'Void' : (won ? 'Correct' : 'Incorrect');
+                return (
+                  <tr key={trade.id}>
+                    <td>{String(trade.league || '').toUpperCase()}</td>
+                    <td>{sheetMarket(trade)}</td>
+                    <td>{sheetTrade(trade)}</td>
+                    <td>{trade.prediction === 'no' ? 'No' : 'Yes'}</td>
+                    <td className="num">${Number(trade.unit).toFixed(0)}</td>
+                    <td className="num">{Math.round(Number(trade.price) * 100)}%</td>
+                    <td className="num">{edgeText(trade.edge)}</td>
+                    <td className={verdict === 'Correct' ? 'trade-correct' : verdict === 'Incorrect' ? 'trade-incorrect' : ''}>{verdict}</td>
+                    <td className={`num ${payout < 0 ? 'trade-incorrect' : payout > 0 ? 'trade-correct' : ''}`}>
+                      {trade.result ? resultText(payout) : (
+                        <button type="button" className="props-trade" onClick={() => removeTrade(trade.id)}>Remove</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

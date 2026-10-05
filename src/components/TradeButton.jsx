@@ -1,5 +1,5 @@
 import { canGradeProp } from '../api/playerLogs';
-import { tradeId } from '../utils/propBook';
+import { predictionWon, sideDraft, tradeId } from '../utils/propBook';
 import { usePropSync } from './PropSync';
 
 function gradeable(draft) {
@@ -7,25 +7,42 @@ function gradeable(draft) {
   return canGradeProp(draft.propType);
 }
 
-export default function TradeButton({ draft, compact = false }) {
-  const { trades, unit, addTrade, removeTrade } = usePropSync();
-  if (!draft || !(draft.price > 0 && draft.price < 1)) return null;
-  const id = tradeId(draft);
+function SideButton({ draft, prediction, trades, unit, compact, addTrade, removeTrade }) {
+  const next = sideDraft(draft, prediction);
+  if (!(next.price > 0 && next.price < 1)) return null;
+  const id = tradeId(next);
   const existing = (trades || []).find((trade) => trade.id === id);
-  if (!existing && !gradeable(draft)) return null;
+  const label = prediction === 'no' ? 'No' : 'Yes';
   if (existing?.result) {
-    return <span className={`props-trade props-trade-done props-trade-${existing.result}`}>{existing.result}</span>;
+    const won = predictionWon(existing);
+    const text = existing.result === 'void' ? 'Void' : (won ? 'Correct' : 'Incorrect');
+    return <span className={`props-trade props-trade-done props-trade-${won ? 'hit' : existing.result}`}>{compact ? text : `${label} ${text}`}</span>;
   }
   if (existing) {
     return (
       <button type="button" className="props-trade props-trade-on" onClick={() => removeTrade(id)}>
-        Tracked
+        {label}
       </button>
     );
   }
   return (
-    <button type="button" className="props-trade" onClick={() => addTrade(draft)}>
-      {compact ? 'Trade' : `Trade $${unit}`}
+    <button type="button" className="props-trade" onClick={() => addTrade(next)}>
+      {compact ? label : `${label} $${unit}`}
     </button>
+  );
+}
+
+export default function TradeButton({ draft, compact = false }) {
+  const { trades, unit, addTrade, removeTrade } = usePropSync();
+  if (!draft || !(draft.price > 0 && draft.price < 1)) return null;
+  const yesId = tradeId(sideDraft(draft, 'yes'));
+  const noId = tradeId(sideDraft(draft, 'no'));
+  const existing = (trades || []).some((trade) => trade.id === yesId || trade.id === noId);
+  if (!existing && !gradeable(draft)) return null;
+  return (
+    <div className="props-trade-pair">
+      <SideButton draft={draft} prediction="yes" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} />
+      <SideButton draft={draft} prediction="no" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} />
+    </div>
   );
 }

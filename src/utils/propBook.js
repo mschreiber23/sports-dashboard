@@ -1,25 +1,55 @@
-// Model accuracy from graded reads, and the money on trades the user picked.
-// A trade risks the unit at the Yes price. A hit pays the unit times
-// (1 - price) / price. A miss loses the unit. A void returns it.
+// Model accuracy from graded reads, and the sheet of trades the user picked.
+// Price is the side they took. A win returns the unit divided by that price.
+// A loss is the unit. A void returns the stake, so the profit is zero.
 
 import { easternDay } from '../api/polymarket';
 
-export function tradeProfit(trade) {
+export function sideDraft(draft, prediction) {
+  const listed = Number(draft.price);
+  const takingNo = prediction === 'no';
+  const price = takingNo ? 1 - listed : listed;
+  const edge = typeof draft.edge !== 'number'
+    ? null
+    : (takingNo ? -Math.round(draft.edge * 100) / 100 : draft.edge);
+  return {
+    ...draft,
+    prediction: takingNo ? 'no' : 'yes',
+    price,
+    edge,
+  };
+}
+
+export function predictionWon(trade) {
+  if (!trade?.result || trade.result === 'void') return null;
+  if (trade.result !== 'hit' && trade.result !== 'miss') return null;
+  const listedHit = trade.result === 'hit';
+  return trade.prediction === 'no' ? !listedHit : listedHit;
+}
+
+export function tradePayout(trade) {
   if (!trade?.result) return null;
   if (trade.result === 'void') return 0;
   const unit = Number(trade.unit);
   if (!(unit > 0)) return null;
-  if (trade.result === 'miss') return -unit;
-  if (trade.result !== 'hit') return null;
+  const won = predictionWon(trade);
+  if (won == null) return null;
+  if (!won) return -unit;
   const price = Number(trade.price);
   if (!(price > 0 && price < 1)) return null;
-  return unit * (1 - price) / price;
+  return unit / price;
+}
+
+export function tradeProfit(trade) {
+  const payout = tradePayout(trade);
+  if (payout == null) return null;
+  if (payout <= 0) return payout;
+  return payout - Number(trade.unit);
 }
 
 export function tradeId(draft) {
   const line = draft.line == null ? '' : draft.line;
   const pick = draft.pick || draft.side || 'yes';
-  return [
+  const base = [
     draft.league,
     draft.eventSlug,
     draft.kind || 'player',
@@ -28,6 +58,21 @@ export function tradeId(draft) {
     line,
     pick,
   ].join('|');
+  return draft.prediction === 'no' ? `${base}|no` : base;
+}
+
+export function sheetMarket(trade) {
+  if (trade.kind === 'total') return trade.game;
+  return trade.player;
+}
+
+export function sheetTrade(trade) {
+  if (trade.kind === 'winner') return 'To Win';
+  if (trade.kind === 'total') {
+    const side = trade.pick || trade.propLabel;
+    return trade.line == null ? side : `${side} ${trade.line}`;
+  }
+  return trade.propLabel;
 }
 
 export function bookReport(trades, now = Date.now()) {
