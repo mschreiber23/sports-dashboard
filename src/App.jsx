@@ -25,6 +25,7 @@ import PlayerCardsPage from './pages/PlayerCardsPage';
 import MiLBPage from './pages/MiLBPage';
 import PropsPage from './pages/PropsPage';
 import MiLBPlayerPage from './pages/MiLBPlayerPage';
+import { PropSyncProvider } from './components/PropSync';
 import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
@@ -60,7 +61,8 @@ function AppShell({ userId }) {
 
   return (
     <FavoritesProvider userId={userId}>
-      <div className="app">
+      <PropSyncProvider>
+        <div className="app">
         <div className="app-sticky-header">
           <TopNav />
           <InstallBanner />
@@ -100,7 +102,8 @@ function AppShell({ userId }) {
           </Routes>
         </div>
         <BottomNav />
-      </div>
+        </div>
+      </PropSyncProvider>
     </FavoritesProvider>
   );
 }

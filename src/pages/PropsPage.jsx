@@ -10,6 +10,7 @@ import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
 import { nflWeekSpan } from '../api/nfl';
 import PropLedger from '../components/PropLedger';
+import { usePropSync } from '../components/PropSync';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -163,7 +164,7 @@ function teammateLogs(entries) {
   return mates;
 }
 
-function likelyBoard(games, logs) {
+function likelyBoard(games, logs, calibration) {
   const picks = [];
   for (const game of games) {
     if (!game.rows) continue;
@@ -215,6 +216,7 @@ function likelyBoard(games, logs) {
               const mate = logs[`${game.league}|${row.player}|${row.gameStart}`];
               return { name: row.player, recent: mate?.context, prior: mate?.priorContext };
             })) : undefined,
+            calibration: calibration?.[game.league],
           });
           if (!model) continue;
           if (ranked && !likelyAgrees(model, line.yes, game.league)) continue;
@@ -385,7 +387,7 @@ function shortOpp(name, abbr) {
   return abbr || word.split(/\s+/).pop() || 'opponent';
 }
 
-function PlayerPropBoard({ rows, league, slate }) {
+function PlayerPropBoard({ rows, league, slate, calibration }) {
   const groups = useMemo(() => groupPlayers(rows), [rows]);
   const pills = useMemo(() => {
     const present = new Set(groups.map((group) => group.type));
@@ -565,7 +567,7 @@ function PlayerPropBoard({ rows, league, slate }) {
           const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : null);
           const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : null);
           const factors = factorFn ? factorFn(factorInput) : [];
-          const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes }) : null;
+          const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes, calibration }) : null;
           const moved = new Set((model?.tags || []).map((tag) => {
             if (FACTOR_TAGS[tag]) return FACTOR_TAGS[tag];
             if (String(tag).endsWith(' back')) return 'usage';
@@ -658,7 +660,7 @@ function primaryLines(rows) {
     .map((entry) => entry[1].row);
 }
 
-function GameDetail({ game, rows, loading }) {
+function GameDetail({ game, rows, loading, calibration }) {
   const [section, setSection] = useState('players');
   const list = rows || [];
   const players = list.filter((row) => row.section === 'player');
@@ -675,7 +677,7 @@ function GameDetail({ game, rows, loading }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} rows={players} league={game.league} slate={slateContext(list)} />
+          : <PlayerPropBoard key={game.key} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
@@ -719,6 +721,7 @@ function PropCard({ row }) {
 }
 
 export default function PropsPage() {
+  const { calibration } = usePropSync();
   const [events, setEvents] = useState(null);
   const [loaded, setLoaded] = useState({});
   const [error, setError] = useState('');
@@ -802,7 +805,7 @@ export default function PropsPage() {
     return players;
   }, [view, games]);
   const logJobKey = logJob.map((player) => player.id).join(';');
-  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs) : []), [view, games, boardLogs]);
+  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration) : []), [view, games, boardLogs, calibration]);
   const gamesLoaded = games.filter((game) => game.rows).length;
 
   useEffect(() => {
@@ -998,6 +1001,7 @@ export default function PropsPage() {
             game={openGame}
             rows={openGame.rows}
             loading={loadingSlug === openGame.key || !openGame.rows}
+            calibration={calibration?.[openGame.league]}
           />
         </>
       )}

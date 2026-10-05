@@ -8755,6 +8755,15 @@ thead .dfs-sticky-player {
 .ledger-status { margin: 0; font-size: 13px; font-weight: 700; color: var(--text); }
 .ledger-again { align-self: flex-start; }
 .ledger-waiting { display: flex; flex-direction: column; gap: 8px; }
+.ledger-fit { margin-bottom: 10px; }
+.ledger-fit-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.ledger-fit-title span { color: var(--text2); font-weight: 700; }
 .ledger-wait {
   display: flex;
   justify-content: space-between;

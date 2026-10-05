@@ -35,6 +35,7 @@ function fromRemote(row) {
     line: Number(row.line),
     price: Number(row.price),
     modelP: Number(row.model_p),
+    baseP: row.base_p == null ? null : Number(row.base_p),
     edge: Number(row.edge),
     rate: row.rate,
     hits: row.hits,
@@ -44,6 +45,7 @@ function fromRemote(row) {
     actual: row.actual == null ? null : Number(row.actual),
     gradedAt: row.graded_at ? new Date(row.graded_at).getTime() : null,
     recordedAt: row.recorded_at ? new Date(row.recorded_at).getTime() : Date.now(),
+    pricedAt: row.priced_at ? new Date(row.priced_at).getTime() : null,
   };
 }
 
@@ -67,6 +69,7 @@ function toRemote(userId, read) {
     line: read.line,
     price: read.price,
     model_p: read.modelP,
+    base_p: typeof read.baseP === 'number' ? read.baseP : null,
     edge: read.edge,
     rate: read.rate,
     hits: read.hits,
@@ -76,6 +79,7 @@ function toRemote(userId, read) {
     actual: read.actual,
     graded_at: read.gradedAt ? new Date(read.gradedAt).toISOString() : null,
     recorded_at: new Date(read.recordedAt || Date.now()).toISOString(),
+    priced_at: read.pricedAt ? new Date(read.pricedAt).toISOString() : null,
   };
 }
 
@@ -83,15 +87,23 @@ function prefer(local, remote) {
   if (!local) return remote;
   if (!remote) return local;
   const first = (local.recordedAt || 0) <= (remote.recordedAt || 0) ? local : remote;
+  const latestPrice = (local.pricedAt || local.recordedAt || 0) >= (remote.pricedAt || remote.recordedAt || 0)
+    ? local
+    : remote;
   const graded = [local, remote]
     .filter((row) => row.result)
     .sort((a, b) => (b.gradedAt || 0) - (a.gradedAt || 0))[0];
-  if (!graded) return first;
   return {
     ...first,
-    result: graded.result,
-    actual: graded.actual,
-    gradedAt: graded.gradedAt,
+    price: latestPrice.price,
+    baseP: typeof latestPrice.baseP === 'number' ? latestPrice.baseP : first.baseP,
+    modelP: latestPrice.modelP,
+    edge: latestPrice.edge,
+    tags: latestPrice.tags || first.tags,
+    pricedAt: latestPrice.pricedAt || latestPrice.recordedAt || null,
+    result: graded?.result || null,
+    actual: graded ? graded.actual : null,
+    gradedAt: graded?.gradedAt || null,
   };
 }
 

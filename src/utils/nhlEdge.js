@@ -4,6 +4,8 @@
 // ice time, power-play points, the opponent, the game total, the favorite, and
 // a back-to-back. Edge is that probability minus the yes price.
 
+import { applyLearned } from './propCalibration';
+
 const GOALS = 'hockey_player_goals';
 const POINTS = 'hockey_player_points';
 
@@ -218,6 +220,7 @@ export function nhlPropEdge({
   opponentName,
   favoriteName,
   favoriteYes,
+  calibration,
 }) {
   if (type !== GOALS && type !== POINTS) return null;
   if (!recent || recent.length < 5 || line == null) return null;
@@ -290,7 +293,7 @@ export function nhlPropEdge({
     }
   }
 
-  p = clamp(p, 0.02, 0.92);
+  p = applyLearned(clamp(p, 0.02, 0.92), tags, calibration);
   return {
     p,
     edge: p - marketYes,

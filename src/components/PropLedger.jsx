@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { loadPropEvents, loadGameProps, formatGameTime } from '../api/polymarket';
-import { recentPlayerLogs, playerResultOnDate } from '../api/playerLogs';
-import { loadReads, saveReads } from '../api/propStore';
-import { upcomingSlate, buildReads, mergeReads, gradeRead, ledgerReport } from '../utils/propReads';
+import { useMemo, useState } from 'react';
+import { formatGameTime } from '../api/polymarket';
+import { ledgerReport } from '../utils/propReads';
+import { calibrationMoves } from '../utils/propCalibration';
+import { usePropSync } from './PropSync';
 
 function pct(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '–';
@@ -15,18 +14,30 @@ function points(value) {
   return n > 0 ? `+${n}` : `${n}`;
 }
 
-async function pool(items, limit, fn) {
-  const out = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const index = next;
-      next += 1;
-      out[index] = await fn(items[index], index);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
+function WeightFit({ name, fit }) {
+  const moves = calibrationMoves(fit);
+  return (
+    <div className="ledger-fit">
+      <div className="ledger-fit-title">
+        {name}
+        <span>{fit?.active ? `${fit.graded} graded` : `${fit?.graded || 0}/${fit?.need || 40} graded`}</span>
+      </div>
+      {fit?.active ? (
+        moves.length ? (
+          <div className="ledger-waiting">
+            {moves.map((move) => (
+              <div className="ledger-wait" key={move.label}>
+                <span>{move.label}</span>
+                <span>{points(move.delta)}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p className="props-likely-note">The graded props are lining up with the model, so this league’s weights are holding.</p>
+      ) : (
+        <p className="props-likely-note">Weights hold until {fit?.need || 40} graded props. A tag needs {fit?.tagNeed || 25} before it can move on its own.</p>
+      )}
+    </div>
+  );
 }
 
 function BandList({ rows }) {
@@ -45,123 +56,8 @@ function BandList({ rows }) {
 }
 
 export default function PropLedger() {
-  const { user } = useAuth();
-  const userId = user?.id || '';
-  const [reads, setReads] = useState(null);
-  const [status, setStatus] = useState('Loading the log…');
-  const [error, setError] = useState('');
+  const { reads, status, error, calibration, working, refresh } = usePropSync();
   const [showAll, setShowAll] = useState(false);
-  const [run, setRun] = useState(0);
-  const [working, setWorking] = useState(false);
-  const busy = useRef(false);
-  const again = useRef(false);
-
-  useEffect(() => {
-    let cancel = false;
-    async function go() {
-      if (busy.current) {
-        again.current = true;
-        return;
-      }
-      busy.current = true;
-      again.current = false;
-      setWorking(true);
-      setError('');
-      try {
-        let rows = await loadReads(userId);
-        if (cancel) return;
-        setReads(rows);
-
-        const pending = rows.filter((row) => !row.result && row.gameStart <= Date.now());
-        if (pending.length) {
-          let done = 0;
-          const graded = await pool(pending, 6, async (row) => {
-            const stat = await playerResultOnDate(row.league, row.player, row.propType, row.gameStart).catch(() => ({ status: 'unknown' }));
-            done += 1;
-            if (!cancel && (done % 10 === 0 || done === pending.length)) {
-              setStatus(`Grading finished games ${done}/${pending.length}…`);
-            }
-            return gradeRead(row, stat);
-          });
-          if (cancel) return;
-          const byId = new Map(graded.map((row) => [row.id, row]));
-          rows = rows.map((row) => byId.get(row.id) || row);
-          setReads(rows);
-          await saveReads(userId, rows);
-        }
-
-        const events = await loadPropEvents();
-        if (cancel) return;
-        const slate = upcomingSlate(events);
-        const seen = new Set(rows.map((row) => row.eventSlug));
-        const games = slate.filter((event) => !seen.has(event.key));
-        if (!games.length) {
-          setStatus(rows.length ? '' : 'No NHL or NFL games are waiting to be recorded.');
-          return;
-        }
-
-        let loaded = 0;
-        const withRows = await pool(games, 4, async (game) => {
-          const props = await loadGameProps(game.key).catch(() => []);
-          loaded += 1;
-          if (!cancel) setStatus(`Reading ${game.league.toUpperCase()} games ${loaded}/${games.length}…`);
-          return { ...game, rows: props };
-        });
-        if (cancel) return;
-
-        const players = [];
-        const playerSeen = new Set();
-        for (const game of withRows) {
-          for (const row of game.rows || []) {
-            if (row.section !== 'player') continue;
-            const id = `${game.league}|${row.player}|${row.gameStart}`;
-            if (playerSeen.has(id)) continue;
-            playerSeen.add(id);
-            players.push({
-              id,
-              league: game.league,
-              name: row.player,
-              opponentAbbr: row.opponentAbbr,
-              opponentName: row.opponentName,
-              before: row.gameStart,
-            });
-          }
-        }
-
-        const logs = {};
-        let checked = 0;
-        await pool(players, 6, async (player) => {
-          const result = await recentPlayerLogs(player.league, [player]).catch(() => ({}));
-          logs[player.id] = result[player.name] ?? null;
-          checked += 1;
-          if (!cancel && (checked % 15 === 0 || checked === players.length)) {
-            setStatus(`Checking players ${checked}/${players.length}…`);
-          }
-        });
-        if (cancel) return;
-
-        const fresh = buildReads({ games: withRows, logs });
-        rows = mergeReads(rows, fresh);
-        setReads(rows);
-        await saveReads(userId, rows);
-        const noun = games.length === 1 ? 'game' : 'games';
-        setStatus(fresh.length
-          ? `Saved ${fresh.length} reads from ${games.length} ${noun}.`
-          : `No modeled props were ready in ${games.length} ${noun}.`);
-      } catch (err) {
-        if (!cancel) setError(err?.message || 'Could not update the log.');
-      } finally {
-        busy.current = false;
-        if (!cancel) setWorking(false);
-        if (again.current) {
-          again.current = false;
-          setRun((n) => n + 1);
-        }
-      }
-    }
-    go();
-    return () => { cancel = true; };
-  }, [userId, run]);
 
   const report = useMemo(() => ledgerReport(reads || []), [reads]);
   const waitingGames = useMemo(() => {
@@ -181,13 +77,18 @@ export default function PropLedger() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Before an NHL or NFL game locks, this saves the yes price and the model’s read on the line closest to 50/50. After the game it grades a hit, a miss, or a void when the player did not play. Voids stay out of the hit rate. The model’s weights stay put until the same miss shows up for a few weeks.
+        Every NHL and NFL game in the next 8 days is recorded while the app is open. The price and the read update until the game starts, then the result is a hit, a miss, or a void if the player did not play. Voids stay out of the hit rate. After 40 graded props in a league, those results nudge that league’s probabilities.
       </p>
       {status && <p className="ledger-status">{status}</p>}
       {error && <p className="ledger-status">{error}</p>}
-      <button type="button" className="btn-primary ledger-again" disabled={working} onClick={() => setRun((n) => n + 1)}>
-        Record upcoming games
+      <button type="button" className="btn-primary ledger-again" disabled={working} onClick={() => refresh(true)}>
+        Update now
       </button>
+      <section className="ledger-section">
+        <h3>Weight adjustments</h3>
+        <WeightFit name="NFL" fit={calibration?.nfl} />
+        <WeightFit name="NHL" fit={calibration?.nhl} />
+      </section>
 
       {reads && report.graded === 0 && (
         <div className="empty-state">

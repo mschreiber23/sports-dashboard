@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS prop_reads (
   line        NUMERIC NOT NULL,
   price       NUMERIC NOT NULL,
   model_p     NUMERIC NOT NULL,
+  base_p      NUMERIC,
   edge        NUMERIC NOT NULL,
   rate        INTEGER,
   hits        INTEGER,
@@ -43,8 +44,12 @@ CREATE TABLE IF NOT EXISTS prop_reads (
   result      TEXT,
   actual      NUMERIC,
   graded_at   TIMESTAMPTZ,
-  recorded_at TIMESTAMPTZ DEFAULT NOW()
+  recorded_at TIMESTAMPTZ DEFAULT NOW(),
+  priced_at   TIMESTAMPTZ
 );
+
+ALTER TABLE prop_reads ADD COLUMN IF NOT EXISTS base_p NUMERIC;
+ALTER TABLE prop_reads ADD COLUMN IF NOT EXISTS priced_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS prop_reads_user_start ON prop_reads (user_id, game_start);
 

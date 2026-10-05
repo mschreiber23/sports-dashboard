@@ -1,12 +1,15 @@
-// A saved read is the model's probability and the yes price before lock.
-// After the game it becomes a hit, a miss, or a void. Voids stay out of the
-// hit rate. This log is for reading the model back. It does not change weights.
+// A saved read is the raw model probability and the yes price before lock.
+// The price updates until the game starts. After the game it becomes a hit,
+// a miss, or a void. Voids stay out of the hit rate.
 
 import { chartLabel } from '../api/playerLogs';
 import { nflModeled, nflPropEdge } from './nflEdge';
 import { nhlPropEdge } from './nhlEdge';
 
-const HORIZON_MS = 16 * 60 * 60 * 1000;
+export const LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
+const NEAR_MS = 12 * 60 * 60 * 1000;
+const NEAR_STALE_MS = 45 * 60 * 1000;
+const FAR_STALE_MS = 6 * 60 * 60 * 1000;
 const VOID_AFTER_MS = 18 * 60 * 60 * 1000;
 
 const MODEL_BANDS = [
@@ -90,8 +93,28 @@ export function upcomingSlate(events, now = Date.now()) {
   return (events || []).filter((event) => (
     (event.league === 'nfl' || event.league === 'nhl')
     && event.gameStart > now
-    && event.gameStart - now <= HORIZON_MS
+    && event.gameStart - now <= LOOKAHEAD_MS
   ));
+}
+
+export function needsPrice(row, now = Date.now()) {
+  if (!row || row.result || !(row.gameStart > now)) return false;
+  const age = now - (row.pricedAt || row.recordedAt || 0);
+  const stale = row.gameStart - now <= NEAR_MS ? NEAR_STALE_MS : FAR_STALE_MS;
+  return age >= stale;
+}
+
+export function gamesToRecord(events, reads, now = Date.now(), force = false) {
+  const bySlug = new Map();
+  for (const row of reads || []) {
+    if (!bySlug.has(row.eventSlug)) bySlug.set(row.eventSlug, []);
+    bySlug.get(row.eventSlug).push(row);
+  }
+  return upcomingSlate(events, now).filter((event) => {
+    const rows = bySlug.get(event.key) || [];
+    if (!rows.length || force) return true;
+    return rows.some((row) => needsPrice(row, now));
+  });
 }
 
 export function buildReads({ games, logs, now = Date.now() }) {
@@ -99,7 +122,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
   for (const game of games || []) {
     if (!game?.rows) continue;
     if (game.league !== 'nfl' && game.league !== 'nhl') continue;
-    if (!(game.gameStart > now) || game.gameStart - now > HORIZON_MS) continue;
+    if (!(game.gameStart > now) || game.gameStart - now > LOOKAHEAD_MS) continue;
     const slate = slateContext(game.rows);
     const mates = game.rows.filter((row) => row.section === 'player').map((row) => ({
       name: row.player,
@@ -160,6 +183,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
         propLabel: `${lineText(line.line)} ${chartLabel(sample.type)}`,
         line: line.line,
         price: line.yes,
+        baseP: model.p,
         modelP: model.p,
         edge: model.edge,
         rate: model.rate,
@@ -170,6 +194,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
         actual: null,
         gradedAt: null,
         recordedAt: now,
+        pricedAt: now,
       });
     }
   }
@@ -180,6 +205,35 @@ export function mergeReads(existing, incoming) {
   const map = new Map((existing || []).map((row) => [row.id, row]));
   for (const row of incoming || []) {
     if (!map.has(row.id)) map.set(row.id, row);
+  }
+  return [...map.values()];
+}
+
+/** Replace the price and the raw read until the game starts. A grade stays. */
+export function refreshReads(existing, incoming, now = Date.now()) {
+  const map = new Map((existing || []).map((row) => [row.id, row]));
+  for (const row of incoming || []) {
+    const prev = map.get(row.id);
+    if (!prev) {
+      map.set(row.id, row);
+      continue;
+    }
+    if (prev.result || !(prev.gameStart > now)) continue;
+    map.set(row.id, {
+      ...prev,
+      price: row.price,
+      baseP: row.baseP,
+      modelP: row.modelP,
+      edge: row.edge,
+      tags: row.tags,
+      rate: row.rate,
+      hits: row.hits,
+      sample: row.sample,
+      team: row.team || prev.team,
+      opponent: row.opponent || prev.opponent,
+      propLabel: row.propLabel || prev.propLabel,
+      pricedAt: now,
+    });
   }
   return [...map.values()];
 }
