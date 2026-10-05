@@ -965,7 +965,7 @@ function LikelyRow({ item, sport, onOpen }) {
           <span>edge</span>
         </div>
       </button>
-      <TradeButton draft={likelyDraft(item)} compact recommend={item.prediction === 'no' ? 'no' : (item.modeled || item.gameLine ? 'yes' : null)} />
+      <TradeButton draft={likelyDraft(item)} compact recommend={item.edge >= NHL_EDGE_MIN ? (item.prediction === 'no' ? 'no' : 'yes') : null} />
     </div>
   );
 }
