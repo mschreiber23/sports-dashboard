@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { easternDay } from '../api/polymarket';
 import { bookReport, expectedProfit, potentialWin, predictionWon, sheetMarket, sheetTrade, tradePayout } from '../utils/propBook';
 import { usePropSync } from './PropSync';
+
+const PAGE_SIZE = 50;
 
 function money(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '–';
@@ -91,11 +94,22 @@ function edgeText(edge) {
   return points > 0 ? `+${points}` : `${points}`;
 }
 
+function placedDay(trade) {
+  return easternDay(trade.recordedAt || trade.gameStart);
+}
+
 export default function TradeBook() {
   const { trades, unit, setUnit, updateTrade, removeTrade } = usePropSync();
   const [text, setText] = useState(String(unit));
+  const [sheet, setSheet] = useState('today');
+  const [page, setPage] = useState(0);
   const report = useMemo(() => bookReport(trades || []), [trades]);
   const rows = useMemo(() => [...(trades || [])].sort((a, b) => (a.recordedAt || a.gameStart || 0) - (b.recordedAt || b.gameStart || 0)), [trades]);
+  const today = easternDay(Date.now());
+  const todayRows = useMemo(() => rows.filter((trade) => placedDay(trade) === today), [rows, today]);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const shown = sheet === 'today' ? todayRows : rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   useEffect(() => { setText(String(unit)); }, [unit]);
 
@@ -142,6 +156,17 @@ export default function TradeBook() {
         </div>
       )}
       {rows.length > 0 && (
+        <>
+          <div className="props-view-nav trade-sheet-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={sheet === 'today'} className={`props-view-btn ${sheet === 'today' ? 'props-view-on' : ''}`} onClick={() => { setSheet('today'); setPage(0); }}>Today</button>
+            <button type="button" role="tab" aria-selected={sheet === 'all'} className={`props-view-btn ${sheet === 'all' ? 'props-view-on' : ''}`} onClick={() => { setSheet('all'); setPage(0); }}>All trades</button>
+          </div>
+          {shown.length === 0 && (
+            <div className="empty-state">
+              <p>No trades today.</p>
+            </div>
+          )}
+          {shown.length > 0 && (
         <div className="trade-sheet-wrap">
           <table className="trade-sheet">
             <thead>
@@ -160,7 +185,7 @@ export default function TradeBook() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((trade) => {
+              {shown.map((trade) => {
                 const won = predictionWon(trade);
                 const payout = tradePayout(trade);
                 const verdict = !trade.result ? '' : trade.result === 'void' ? 'Void' : (won ? 'Correct' : 'Incorrect');
@@ -205,6 +230,15 @@ export default function TradeBook() {
             </tbody>
           </table>
         </div>
+          )}
+          {sheet === 'all' && rows.length > PAGE_SIZE && (
+            <div className="trade-pager">
+              <button type="button" className="props-view-btn" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>Previous</button>
+              <span>{safePage * PAGE_SIZE + 1}–{Math.min(rows.length, (safePage + 1) * PAGE_SIZE)} of {rows.length}</span>
+              <button type="button" className="props-view-btn" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>Next</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

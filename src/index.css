@@ -8453,6 +8453,17 @@ thead .dfs-sticky-player {
 .props-trade-pair { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .pp-trade-row { display: flex; justify-content: flex-end; margin-top: 8px; }
 .pp-trade-row .props-trade-pair { flex-direction: row; }
+.trade-sheet-tabs { margin-top: 16px; }
+.trade-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.trade-pager button:disabled { opacity: 0.4; cursor: default; }
 .trade-sheet-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
