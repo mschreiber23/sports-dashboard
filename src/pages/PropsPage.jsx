@@ -52,37 +52,24 @@ function last10Hit(values, line) {
 
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
-const LIKELY_PRICE_MIN = 0.43;
-const LIKELY_PRICE_MAX = 0.66;
+const LIKELY_PRICE_MIN = 0.38;
+const LIKELY_PRICE_MAX = 0.72;
 
-const YES_LEAN = new Set(['shot volume', 'chances', 'power play', 'hot vs opponent', 'high total', 'favorite', 'volume']);
-
-function leansNo(tag) {
-  return tag.endsWith(' down') || tag.endsWith(' back') || tag === 'low volume';
-}
-
-function leansYes(tag) {
-  return tag.endsWith(' up') || YES_LEAN.has(tag);
-}
-
-function likelyAgrees(model, yes, league) {
+function likelyAgrees(model, yes) {
   if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) return false;
   if (model.rate / 100 + 0.10 < yes) return false;
   if (model.rate / 100 + 0.14 < model.p) return false;
-  if (model.tags.some(leansNo)) return false;
-  if (league === 'nfl' && model.tags.includes('low volume')) return false;
   return true;
 }
 
-function likelyCall(model, yes, league) {
-  if (likelyAgrees(model, yes, league)) return 'yes';
+function likelyCall(model, yes) {
+  if (likelyAgrees(model, yes)) return 'yes';
   const noEdge = yes - model.p;
   const noP = 1 - model.p;
   if (!(noEdge >= NHL_EDGE_MIN && noP >= 0.45)) return null;
   const miss = 1 - model.rate / 100;
   if (miss + 0.10 < 1 - yes) return null;
   if (miss + 0.14 < noP) return null;
-  if (model.tags.some(leansYes)) return null;
   return 'no';
 }
 const NFL_LIKELY_SKIP = new Set([
@@ -383,7 +370,7 @@ function likelyBoard(games, logs, calibration, forms) {
             calibration: calibration?.[game.league],
           });
           if (!model) continue;
-          const call = ranked ? likelyCall(model, line.yes, game.league) : 'yes';
+          const call = ranked ? likelyCall(model, line.yes) : 'yes';
           if (ranked && !call) continue;
           const no = call === 'no';
           const sideEdge = no ? line.yes - model.p : model.edge;
@@ -1230,7 +1217,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the last 10 games still support that side. A Yes stays off when ice time, shots, or usage are down. A No stays off when those are up. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
+                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and the last 10 games are still in the neighborhood. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
