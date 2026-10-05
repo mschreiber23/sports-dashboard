@@ -101,9 +101,21 @@ export async function getPlayerSplits(sport, playerId, year) {
   return data;
 }
 
+/** NHL seasons are named for the year they end. In October 2026 that is 2027. */
+export function nhlSeasonYear(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now);
+  const year = Number(parts.find((part) => part.type === 'year').value);
+  const month = Number(parts.find((part) => part.type === 'month').value);
+  return month >= 9 ? year + 1 : year;
+}
+
 export async function getPlayerGameLog(sport, playerId) {
   const { league } = SPORTS[sport];
-  const year = new Date().getFullYear();
+  const year = sport === 'nhl' ? nhlSeasonYear() : new Date().getFullYear();
   const { data } = await axios.get(
     `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/gamelog?season=${year}`
   );

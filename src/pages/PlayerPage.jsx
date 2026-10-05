@@ -469,8 +469,8 @@ export default function PlayerPage() {
           }
         } catch {}
       }
-      // Full gamelog for AB tracker (up to full season), display capped at 25
-      setGamelog(games.slice(0, 162));
+      // MLB keeps a full season for the at-bat tracker. NHL shows every game of the current season.
+      setGamelog(sport === 'nhl' ? games : games.slice(0, 162));
     }).catch(() => {});
 
     // Season stats — fetch from debut year to current
@@ -861,7 +861,7 @@ export default function PlayerPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {gamelog.slice(0, 25).map((g, i) => {
+                    {(sport === 'nhl' ? gamelog : gamelog.slice(0, 25)).map((g, i) => {
                       const date = g.date ? new Date(g.date) : null;
                       const dateStr = date
                         ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
