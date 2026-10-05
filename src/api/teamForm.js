@@ -1,5 +1,8 @@
 // Recent team scores for the game-line read. A new season is filled out
 // with the end of the previous one so the first weeks still have a sample.
+// A game from this season counts fully. A game from last season counts as a third.
+
+const PREVIOUS_SEASON_WEIGHT = 1 / 3;
 
 const PATH = {
   nhl: 'hockey/nhl',
@@ -65,17 +68,27 @@ async function loadTeam(league, abbr) {
   const used = schedule.events.some((event) => (
     (event.competitions?.[0]?.competitors || []).some((comp) => String(comp.team?.abbreviation || '').toUpperCase() === espn)
   )) ? espn : abbr.toUpperCase();
-  let rows = rowsFrom(schedule.events, used);
+  let rows = rowsFrom(schedule.events, used).map((row) => ({ ...row, current: true }));
   const done = rows.filter((row) => row.done).length;
   if (done < 10 && schedule.year) {
     const prev = await fetchSchedule(path, used, schedule.year - 1);
-    if (prev) rows = rowsFrom(prev.events, used).concat(rows);
+    if (prev) rows = rowsFrom(prev.events, used).map((row) => ({ ...row, current: false })).concat(rows);
   }
-  rows.sort((a, b) => a.date - b.date);
+  const byGame = new Map();
+  for (const row of rows) {
+    const id = `${row.date}|${row.opp}`;
+    const existing = byGame.get(id);
+    if (!existing || row.current) byGame.set(id, row);
+  }
+  rows = [...byGame.values()].sort((a, b) => a.date - b.date);
   return {
     abbr: used,
     rows,
-    recent: rows.filter((row) => row.done).slice(-10).map((row) => ({ gf: row.gf, ga: row.ga })),
+    recent: rows.filter((row) => row.done).slice(-10).map((row) => ({
+      gf: row.gf,
+      ga: row.ga,
+      weight: row.current ? 1 : PREVIOUS_SEASON_WEIGHT,
+    })),
   };
 }
 

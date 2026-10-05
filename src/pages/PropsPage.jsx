@@ -1179,7 +1179,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the last 10 games still support it. A drop in ice time, shots, or usage stays off the list. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
+                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the last 10 games still support it. A drop in ice time, shots, or usage stays off the list. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
