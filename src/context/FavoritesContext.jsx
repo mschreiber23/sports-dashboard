@@ -32,6 +32,7 @@ export function FavoritesProvider({ children, userId }) {
   const [sportOrder, setSportOrderState] = useState(() => readLocal(SPORT_ORDER_KEY, DEFAULT_SPORT_ORDER));
   const [synced, setSynced] = useState(false);
   const saveTimer = useRef(null);
+  const dirtyRef = useRef(false);
 
   /* ── Load from Supabase on login ── */
   useEffect(() => {
@@ -50,6 +51,12 @@ export function FavoritesProvider({ children, userId }) {
       .maybeSingle()
       .then(({ data, error }) => {
         if (error) { console.error('Load prefs error:', error); return; }
+        // A reorder started before this response came back. Keep that order;
+        // the save effect persists it once synced flips on.
+        if (dirtyRef.current) {
+          setSynced(true);
+          return;
+        }
         if (data) {
           setFavoritesState(data.preferences || DEFAULT_FAVORITES);
           setSportOrderState(data.sport_order || DEFAULT_SPORT_ORDER);
@@ -94,6 +101,12 @@ export function FavoritesProvider({ children, userId }) {
     });
   }, [scheduleSave, favorites]);
 
+  // A reorder that happened before the server prefs loaded still needs to be saved.
+  useEffect(() => {
+    if (!userId || !synced || !dirtyRef.current) return;
+    scheduleSave(favorites, sportOrder);
+  }, [userId, synced, scheduleSave, favorites, sportOrder]);
+
   /* ── CRUD helpers ── */
   const reorderSport = (from, to) => setSportOrder((prev) => {
     const next = [...prev];
@@ -111,13 +124,35 @@ export function FavoritesProvider({ children, userId }) {
   const removeTeam = (teamId, sport) =>
     setFavorites((f) => ({ ...f, teams: f.teams.filter((t) => !(t.team.id === teamId && t.sport === sport)) }));
 
-  const reorderTeam = (from, to) =>
+  // Patch color/alternateColor for a stored team (used when game data has fresher colors)
+  const updateTeamColor = (teamId, sport, color, alternateColor) =>
+    setFavorites((f) => ({
+      ...f,
+      teams: f.teams.map((t) =>
+        t.team.id === teamId && t.sport === sport
+          ? { ...t, team: { ...t.team, color, alternateColor } }
+          : t
+      ),
+    }));
+
+  // Move a team among the homepage list (MiLB entries stay put and don't steal the slot).
+  const reorderTeam = (teamId, sport, dir) => {
+    dirtyRef.current = true;
     setFavorites((f) => {
       const teams = [...f.teams];
-      const [m] = teams.splice(from, 1);
-      teams.splice(to, 0, m);
-      return { ...f, teams };
+      const visibleIdxs = teams
+        .map((t, i) => (t.sport !== 'milb' ? i : -1))
+        .filter((i) => i >= 0);
+      const pos = visibleIdxs.findIndex((i) => String(teams[i].team.id) === String(teamId) && teams[i].sport === sport);
+      const targetPos = pos + dir;
+      if (pos < 0 || targetPos < 0 || targetPos >= visibleIdxs.length) return f;
+      const a = visibleIdxs[pos];
+      const b = visibleIdxs[targetPos];
+      const next = [...teams];
+      [next[a], next[b]] = [next[b], next[a]];
+      return { ...f, teams: next };
     });
+  };
 
   const addPlayer = (player) =>
     setFavorites((f) => {
@@ -147,7 +182,7 @@ export function FavoritesProvider({ children, userId }) {
   return (
     <FavoritesContext.Provider value={{
       favorites, sportOrder,
-      addTeam, removeTeam, reorderTeam,
+      addTeam, removeTeam, reorderTeam, updateTeamColor,
       addPlayer, removePlayer, reorderPlayer, togglePlayerVisibility,
       reorderSport,
     }}>
