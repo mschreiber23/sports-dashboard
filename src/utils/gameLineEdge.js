@@ -1,5 +1,6 @@
 // Who wins, and the full-game total. Recent scoring is shrunk toward a
 // league average, so a short sample cannot run away from a normal game.
+// A game's weight lets this season count more than last season.
 
 const LEAGUE = {
   nhl: { avg: 3.05, prior: 8, homeBump: 0.18, kind: 'goals' },
@@ -10,10 +11,16 @@ function clamp(value, lo, hi) {
   return Math.min(hi, Math.max(lo, value));
 }
 
-function shrunkMean(values, avg, prior) {
-  if (!values.length) return avg;
-  const sum = values.reduce((total, value) => total + value, 0);
-  return (sum + avg * prior) / (values.length + prior);
+function shrunkMean(games, key, avg, prior) {
+  if (!games.length) return avg;
+  let sum = 0;
+  let weight = 0;
+  for (const game of games) {
+    const sample = game.weight > 0 ? game.weight : 1;
+    sum += game[key] * sample;
+    weight += sample;
+  }
+  return (sum + avg * prior) / (weight + prior);
 }
 
 function normalCdf(z) {
@@ -60,10 +67,10 @@ function poissonAtMost(k, lambda) {
 }
 
 function rates(homeGames, awayGames, cfg) {
-  const homeOff = shrunkMean(homeGames.map((game) => game.gf), cfg.avg, cfg.prior);
-  const homeDef = shrunkMean(homeGames.map((game) => game.ga), cfg.avg, cfg.prior);
-  const awayOff = shrunkMean(awayGames.map((game) => game.gf), cfg.avg, cfg.prior);
-  const awayDef = shrunkMean(awayGames.map((game) => game.ga), cfg.avg, cfg.prior);
+  const homeOff = shrunkMean(homeGames, 'gf', cfg.avg, cfg.prior);
+  const homeDef = shrunkMean(homeGames, 'ga', cfg.avg, cfg.prior);
+  const awayOff = shrunkMean(awayGames, 'gf', cfg.avg, cfg.prior);
+  const awayDef = shrunkMean(awayGames, 'ga', cfg.avg, cfg.prior);
   const floor = cfg.kind === 'goals' ? 1.6 : 10;
   const cap = cfg.kind === 'goals' ? 5.2 : 38;
   return {
