@@ -28,7 +28,7 @@ export function AccuracyPanel() {
   return (
     <section className="ledger-section">
       <h3>Accuracy over time</h3>
-      <p className="props-likely-note">Each point is how often the call was right after that day’s graded props. Yes means the model had it at 50% or more. No means it was under 50%. Goal props and prices outside 15% to 85% stay out. Voids stay out.</p>
+      <p className="props-likely-note">Each point is how often the call was right after that day’s graded props. Yes means the model had it at 50% or more. No means it was under 50%. The points score is the 1+ line. Goal props, higher point lines, and prices outside 15% to 85% stay out. Voids stay out.</p>
       {report.sports.map((sport) => (
         <div className="model-sport" key={sport.league}>
           <div className="model-sport-top">

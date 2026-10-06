@@ -81,7 +81,7 @@ export default function PropLedger() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Point props and modeled NFL props from the next 8 days are recorded while the app is open, when the price has both a bid and an ask between 15% and 85%. Goal props stay off, and so do penny quotes and empty-book asks. The model calls Yes at 50% or more and No under that. A Yes is a hit when the player clears the line. A No is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
+        The points score is the 1+ line, from games in the next 8 days, when the price has both a bid and an ask between 15% and 85%. Goal props stay off, and so do 2+ and 3+ lines, penny quotes, and empty-book asks. The model calls Yes at 50% or more and No under that. A Yes is a hit when the player clears the line. A No is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
       </p>
       {status && <p className="ledger-status">{status}</p>}
       {error && <p className="ledger-status">{error}</p>}

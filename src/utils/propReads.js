@@ -6,7 +6,7 @@ import { chartLabel } from '../api/playerLogs.js';
 import { nflModeled, nflPropEdge } from './nflEdge.js';
 import { nhlPropEdge } from './nhlEdge.js';
 import { callGrade } from './modelCall.js';
-import { countsInScore, GOAL_PROP } from './scoredProps.js';
+import { countsInScore, GOAL_PROP, POINTS_PROP } from './scoredProps.js';
 
 export const LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 const NEAR_MS = 12 * 60 * 60 * 1000;
@@ -41,6 +41,11 @@ function mainLine(lines) {
     .filter((line) => typeof line.yes === 'number' && Number.isFinite(line.yes))
     .slice()
     .sort((a, b) => Math.abs(a.yes - 0.5) - Math.abs(b.yes - 0.5) || a.line - b.line)[0] || null;
+}
+
+function scoredLine(lines, type) {
+  if (type === POINTS_PROP) return lines.find((line) => Number(line.line) === 1) || null;
+  return mainLine(lines);
 }
 
 function slateContext(rows) {
@@ -143,9 +148,9 @@ export function buildReads({ games, logs, now = Date.now() }) {
     }
     for (const lines of groups.values()) {
       const sample = lines[0];
-      const line = mainLine(lines);
+      const line = scoredLine(lines, sample.type);
       if (!line) continue;
-      if (!countsInScore({ type: sample.type, price: line.yes })) continue;
+      if (!countsInScore({ type: sample.type, line: line.line, price: line.yes })) continue;
       const logKey = `${game.league}|${sample.player}|${sample.gameStart}`;
       const log = logs[logKey];
       const recent = log?.series?.[sample.type];

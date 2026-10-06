@@ -28,6 +28,7 @@ const points = {
   edge: 0.1,
   gameStart: 1_700_000_000_000,
   player: 'Playmaker',
+  line: 1,
 };
 
 test('a graded goal prop stays out of the score and a points prop still counts', () => {
@@ -45,6 +46,26 @@ test('a graded goal prop stays out of the score and a points prop still counts',
 
   const fit = learnCalibration(rows);
   assert.equal(fit.nhl.graded, 1);
+});
+
+test('a 2+ points No stays out and the 1+ line still counts', () => {
+  const two = {
+    ...points,
+    id: 'two',
+    player: 'Depth',
+    line: 2,
+    propLabel: '2+ points',
+    price: 0.18,
+    modelP: 0.15,
+    edge: -0.03,
+    result: 'miss',
+    prediction: 'no',
+  };
+  const ledger = ledgerReport([two, points]);
+  assert.equal(ledger.graded, 1);
+  assert.equal(ledger.callHits, 1);
+  const next = refreshReads([two, points], []);
+  assert.deepEqual(next.map((row) => row.line), [1]);
 });
 
 test('a 2% quote and a 93% empty-book ask stay out of the score', () => {
@@ -75,11 +96,11 @@ test('new reads skip goal props and keep point props', () => {
       },
     },
   };
-  const row = (type, yes) => ({
+  const row = (type, yes, line = 1) => ({
     section: 'player',
     player,
     type,
-    line: 1,
+    line,
     yes,
     gameStart,
     teamName: 'X',
@@ -95,10 +116,12 @@ test('new reads skip goal props and keep point props', () => {
       gameStart,
       rows: [
         row('hockey_player_goals', 0.3),
-        row('hockey_player_points', 0.55),
+        row('hockey_player_points', 0.7, 1),
+        row('hockey_player_points', 0.48, 2),
       ],
     }],
   });
   assert.equal(reads.length, 1);
   assert.equal(reads[0].propType, 'hockey_player_points');
+  assert.equal(reads[0].line, 1);
 });
