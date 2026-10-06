@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatGameTime } from '../api/polymarket';
 import { ledgerReport } from '../utils/propReads';
-import { callGrade, modelSide } from '../utils/modelCall';
+import { callGrade, sideQuote } from '../utils/modelCall';
 import { countsInScore } from '../utils/scoredProps';
 import { calibrationMoves } from '../utils/propCalibration';
 import { usePropSync } from './PropSync';
@@ -81,7 +81,7 @@ export default function PropLedger() {
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Point props and modeled NFL props from the next 8 days are recorded while the app is open. Goal props stay off this score, because a goal is rare and those calls would mostly miss. The price and the read update until the game starts. A Yes is a hit when the player clears the line. A No is a hit when they stay under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
+        Point props and modeled NFL props from the next 8 days are recorded while the app is open, when the price has both a bid and an ask between 15% and 85%. Goal props stay off, and so do penny quotes and empty-book asks. The model calls Yes at 50% or more and No under that. A Yes is a hit when the player clears the line. A No is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
       </p>
       {status && <p className="ledger-status">{status}</p>}
       {error && <p className="ledger-status">{error}</p>}
@@ -159,15 +159,15 @@ export default function PropLedger() {
             <div className="props-list">
               {visible.map((row) => {
                 const grade = callGrade(row) || row.result;
-                const side = modelSide(row);
+                const quote = sideQuote(row);
                 return (
                   <div className="ledger-card" key={row.id}>
                     <div>
-                      <div className="props-game-title">{row.player} <span className="props-likely-line">{side === 'no' ? `No ${row.propLabel}` : row.propLabel}</span></div>
+                      <div className="props-game-title">{row.player} <span className="props-likely-line">{quote.side === 'no' ? `No ${row.propLabel}` : row.propLabel}</span></div>
                       <div className="props-game-meta">
                         {row.league.toUpperCase()} · {row.game} · {formatGameTime(row.gameStart)}
                         {row.actual == null ? '' : ` · actual ${row.actual}`}
-                        {` · model ${pct(row.modelP)} · price ${pct(row.price)} · ${points(row.edge)}`}
+                        {` · model ${pct(quote.modelP)} · price ${pct(quote.price)} · ${points(quote.edge)}`}
                       </div>
                     </div>
                     <div className={`ledger-mark ledger-${grade}`}>{grade}</div>

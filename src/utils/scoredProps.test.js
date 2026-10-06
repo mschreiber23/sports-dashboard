@@ -47,6 +47,16 @@ test('a graded goal prop stays out of the score and a points prop still counts',
   assert.equal(fit.nhl.graded, 1);
 });
 
+test('a 2% quote and a 93% empty-book ask stay out of the score', () => {
+  const penny = { ...points, id: 'penny', player: 'Depth', price: 0.02, modelP: 0.24, edge: 0.22, result: 'miss' };
+  const stub = { ...points, id: 'stub', player: 'Amadio', price: 0.93, modelP: 0.38, edge: -0.55, result: 'hit' };
+  const ledger = ledgerReport([penny, stub, points]);
+  assert.equal(ledger.graded, 1);
+  assert.equal(ledger.callHits, 1);
+  const next = refreshReads([penny, stub, points], []);
+  assert.deepEqual(next.map((row) => row.player), ['Playmaker']);
+});
+
 test('refreshing the log drops a goal read that was already saved', () => {
   const next = refreshReads([goal, points], []);
   assert.deepEqual(next.map((row) => row.propType), ['hockey_player_points']);

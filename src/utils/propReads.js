@@ -145,6 +145,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
       const sample = lines[0];
       const line = mainLine(lines);
       if (!line) continue;
+      if (!countsInScore({ type: sample.type, price: line.yes })) continue;
       const logKey = `${game.league}|${sample.player}|${sample.gameStart}`;
       const log = logs[logKey];
       const recent = log?.series?.[sample.type];

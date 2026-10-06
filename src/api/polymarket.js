@@ -286,18 +286,14 @@ async function fetchNhlGameMarkets() {
 function yesQuote(market) {
   const bid = Number(market.bestBidQuote?.value);
   const ask = Number(market.bestAskQuote?.value);
-  const hasBid = Number.isFinite(bid) && bid >= 0 && bid <= 1;
-  const hasAsk = Number.isFinite(ask) && ask >= 0 && ask <= 1;
-  const bookBid = hasBid && bid > 0 && bid < 1 ? bid : null;
-  const bookAsk = hasAsk && ask > 0 && ask < 1 ? ask : null;
-  if (hasBid && hasAsk && ask >= bid) {
-    const yes = (bid + ask) / 2;
-    if (!(yes > 0) || yes > 1) return null;
-    return { yes, no: 1 - yes, bid: bookBid, ask: bookAsk, spread: ask - bid };
-  }
-  const yes = hasAsk && ask > 0 ? ask : (hasBid && bid > 0 ? bid : null);
-  if (yes == null || yes > 1) return null;
-  return { yes, no: 1 - yes, bid: bookBid, ask: bookAsk, spread: null };
+  const hasBid = Number.isFinite(bid) && bid > 0 && bid < 1;
+  const hasAsk = Number.isFinite(ask) && ask > 0 && ask < 1;
+  // A lone ask at 94¢, or a lone 2¢ bid, is an empty book. It is not the chance
+  // the player scores.
+  if (!hasBid || !hasAsk || ask < bid) return null;
+  const yes = (bid + ask) / 2;
+  if (!(yes > 0) || yes > 1) return null;
+  return { yes, no: 1 - yes, bid, ask, spread: ask - bid };
 }
 
 function normalizeNhlProp(market, event) {

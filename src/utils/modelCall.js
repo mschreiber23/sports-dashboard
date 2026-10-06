@@ -1,10 +1,13 @@
-// The model’s call is the side with the edge. A Yes is right when the
-// player clears the line. A No is right when they stay under. The stored
-// result stays the line itself, so the weights still learn from that.
+// The call is the side the model thinks happens. At 50% or more, that is a
+// Yes. Under 50%, that is a No. A price gap is not a prediction that a 20%
+// chance will hit. The stored result stays the line itself, so the weights
+// still learn from whether the player cleared it.
 
 import { NHL_EDGE_MIN } from './nhlEdge.js';
 
 export function modelSide(read) {
+  const modelP = typeof read?.modelP === 'number' && Number.isFinite(read.modelP) ? read.modelP : null;
+  if (modelP != null) return modelP >= 0.5 ? 'yes' : 'no';
   if (read?.prediction === 'yes' || read?.prediction === 'no') return read.prediction;
   const edge = typeof read?.edge === 'number' ? read.edge : null;
   if (edge != null && -edge >= NHL_EDGE_MIN) return 'no';
@@ -13,8 +16,22 @@ export function modelSide(read) {
 
 export function stampPrediction(row) {
   if (!row) return row;
-  const edge = typeof row.edge === 'number' ? row.edge : null;
-  return { ...row, prediction: edge != null && -edge >= NHL_EDGE_MIN ? 'no' : 'yes' };
+  return { ...row, prediction: modelSide(row) };
+}
+
+// Percentages on a graded card belong to the side named in the title.
+export function sideQuote(read) {
+  const side = modelSide(read);
+  const modelP = typeof read?.modelP === 'number' && Number.isFinite(read.modelP) ? read.modelP : null;
+  const price = typeof read?.price === 'number' && Number.isFinite(read.price) ? read.price : null;
+  const edge = typeof read?.edge === 'number' && Number.isFinite(read.edge) ? read.edge : null;
+  if (side !== 'no') return { side, modelP, price, edge };
+  return {
+    side,
+    modelP: modelP == null ? null : 1 - modelP,
+    price: price == null ? null : 1 - price,
+    edge: edge == null ? null : -edge,
+  };
 }
 
 export function callGrade(read) {
