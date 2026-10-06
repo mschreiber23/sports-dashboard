@@ -1,6 +1,6 @@
-// The call is a bet: at least 4 points of edge, priced from 38% to 60%.
-// Laying 70 cents is not a call. The stored result stays the line itself,
-// so the weights still learn from whether the player cleared it.
+// The call is a bet: at least 4 points of edge, and winning $25 costs $36
+// or less after the fee (about 57% or under). The stored result stays the
+// line itself, so the weights still learn from whether the player cleared it.
 
 import { NHL_EDGE_MIN } from './nhlEdge.js';
 import { betSide } from './scoredProps.js';

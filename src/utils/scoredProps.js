@@ -1,20 +1,25 @@
 // The score is a bet the model would actually make. Goal props, 2+ point
-// lines, penny quotes, and empty-book asks stay out. So does a side priced
-// over 60 cents: laying 70 cents to win one unit is a lot of cash, and a
-// small edge does not cover the taker fee.
+// lines, penny quotes, and empty-book asks stay out. So does a side where
+// winning $25 costs more than $36 after the taker fee. At 57.3% that stake
+// is $35.98. At 57.4% it is $36.12, so the side has to be 57.3% or under.
 
 export const GOAL_PROP = 'hockey_player_goals';
 export const POINTS_PROP = 'hockey_player_points';
 export const SCORE_PRICE_MIN = 0.15;
 export const SCORE_PRICE_MAX = 0.85;
 export const BET_PRICE_MIN = 0.38;
-export const BET_PRICE_MAX = 0.60;
+export const BET_PRICE_MAX = 0.573;
 export const BET_EDGE_MIN = 0.04;
 const BET_P_MIN = 0.45;
 
 function number(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+export function affordablePrice(price) {
+  const n = number(price);
+  return n != null && n >= BET_PRICE_MIN && n <= BET_PRICE_MAX;
 }
 
 export function keptRead(row) {
@@ -27,7 +32,7 @@ export function keptRead(row) {
   return true;
 }
 
-// The side with at least a 4-point edge, priced from 38% to 60%.
+// The side with at least a 4-point edge, priced from 38% to 57.3%.
 export function betSide(row) {
   const modelP = number(row?.modelP);
   const price = number(row?.price ?? row?.yes);
@@ -36,8 +41,8 @@ export function betSide(row) {
   const noEdge = -yesEdge;
   const noPrice = 1 - price;
   const noP = 1 - modelP;
-  if (yesEdge >= BET_EDGE_MIN && price >= BET_PRICE_MIN && price <= BET_PRICE_MAX && modelP >= BET_P_MIN) return 'yes';
-  if (noEdge >= BET_EDGE_MIN && noPrice >= BET_PRICE_MIN && noPrice <= BET_PRICE_MAX && noP >= BET_P_MIN) return 'no';
+  if (yesEdge >= BET_EDGE_MIN && affordablePrice(price) && modelP >= BET_P_MIN) return 'yes';
+  if (noEdge >= BET_EDGE_MIN && affordablePrice(noPrice) && noP >= BET_P_MIN) return 'no';
   return null;
 }
 

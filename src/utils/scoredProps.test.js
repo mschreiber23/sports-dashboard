@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildReads, ledgerReport, refreshReads } from './propReads.js';
-import { accuracyReport } from './propBook.js';
+import { accuracyReport, stakeForUnit } from './propBook.js';
 import { learnCalibration } from './propCalibration.js';
+import { BET_PRICE_MAX, countsInScore } from './scoredProps.js';
 
 const goal = {
   league: 'nhl',
@@ -66,6 +67,42 @@ test('a 2+ points No stays out and the 1+ line still counts', () => {
   assert.equal(ledger.callHits, 1);
   const next = refreshReads([two, points], []);
   assert.deepEqual(next.map((row) => row.line), [1]);
+});
+
+test('winning $25 cannot cost more than $36', () => {
+  assert.ok(stakeForUnit(BET_PRICE_MAX, 25) <= 36);
+  assert.ok(stakeForUnit(0.574, 25) > 36);
+  const favorite = {
+    ...points,
+    id: '58',
+    player: 'Favorite',
+    price: 0.58,
+    modelP: 0.64,
+    edge: 0.06,
+  };
+  const fair = {
+    ...points,
+    id: '57',
+    player: 'Fair',
+    price: 0.57,
+    modelP: 0.62,
+    edge: 0.05,
+  };
+  const noFavorite = {
+    ...points,
+    id: 'no58',
+    player: 'NoFavorite',
+    price: 0.42,
+    modelP: 0.36,
+    edge: -0.06,
+    result: 'miss',
+  };
+  assert.equal(countsInScore(favorite), false);
+  assert.equal(countsInScore(fair), true);
+  assert.equal(countsInScore(noFavorite), false);
+  const ledger = ledgerReport([favorite, fair, noFavorite, points]);
+  assert.equal(ledger.graded, 2);
+  assert.equal(ledger.callHits, 2);
 });
 
 test('a 70% No touchdown stays out and a 52% No with an edge still counts', () => {

@@ -16,6 +16,7 @@ import ModelTicker from '../components/ModelTicker';
 import TradeBook from '../components/TradeBook';
 import TradeButton from '../components/TradeButton';
 import { usePropSync } from '../components/PropSync';
+import { BET_PRICE_MAX, affordablePrice } from '../utils/scoredProps';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -52,8 +53,6 @@ function last10Hit(values, line) {
 
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
-const LIKELY_PRICE_MIN = 0.38;
-const LIKELY_PRICE_MAX = 0.72;
 
 function likelyAgrees(model, yes) {
   if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) return false;
@@ -252,7 +251,7 @@ function addGameLines(picks, game, forms) {
     overPrice: over?.price,
   });
   if (!read?.winner) return;
-  picks.push({
+  if (read.winner.price <= BET_PRICE_MAX) picks.push({
     id: `win|${game.key}`,
     player: read.winner.name,
     prop: 'to win',
@@ -284,7 +283,7 @@ function addGameLines(picks, game, forms) {
     gameLine: true,
     tags: read.winner.tags,
   });
-  if (!read.total) return;
+  if (!read.total || read.total.price > BET_PRICE_MAX) return;
   picks.push({
     id: `total|${game.key}`,
     player: read.total.label,
@@ -340,7 +339,7 @@ function likelyBoard(games, logs, calibration, forms) {
         const ranked = game.league === 'nfl' || game.league === 'nhl';
         const candidates = ranked ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
-          if (ranked && (line.yes < LIKELY_PRICE_MIN || line.yes > LIKELY_PRICE_MAX)) continue;
+          if (ranked && !affordablePrice(line.yes) && !affordablePrice(1 - line.yes)) continue;
           if (game.league === 'nfl' && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]))) continue;
           const model = edgeFn({
             type: sample.type,
@@ -373,6 +372,7 @@ function likelyBoard(games, logs, calibration, forms) {
           const call = ranked ? likelyCall(model, line.yes) : 'yes';
           if (ranked && !call) continue;
           const no = call === 'no';
+          if (ranked && !affordablePrice(no ? 1 - line.yes : line.yes)) continue;
           const sideEdge = no ? line.yes - model.p : model.edge;
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
@@ -1217,7 +1217,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and the last 10 games are still in the neighborhood. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
+                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the price at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and the last 10 games are still in the neighborhood. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
