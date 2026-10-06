@@ -626,8 +626,12 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus }) {
         const current = group.lines.find((line) => line.line === selected) || group.lines[0];
         return { ...group, selected, current };
       })
-      .sort((a, b) => b.current.yes - a.current.yes || a.player.localeCompare(b.player));
-  }, [groups, activeStat, team, query, picked]);
+      .sort((a, b) => {
+        if (a.key === focusKey) return -1;
+        if (b.key === focusKey) return 1;
+        return b.current.yes - a.current.yes || a.player.localeCompare(b.player);
+      });
+  }, [groups, activeStat, team, query, picked, focusKey]);
 
   useEffect(() => {
     if (!focusKey || scrolledFocus.current === focusKey || !focusNode.current) return;
