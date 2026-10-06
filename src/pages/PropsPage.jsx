@@ -123,6 +123,7 @@ function likelyPick(game, sample, line, recent, extra) {
   return {
     id: line.id,
     player: sample.player,
+    playerId: sample.playerId || sample.player,
     prop: `${lineText(line.line)} ${chartLabel(sample.type)}`,
     line: line.line,
     total: recent.length,
@@ -548,7 +549,7 @@ function shortOpp(name, abbr) {
   return abbr || word.split(/\s+/).pop() || 'opponent';
 }
 
-function PlayerPropBoard({ rows, league, slate, calibration, game }) {
+function PlayerPropBoard({ rows, league, slate, calibration, game, focus }) {
   const groups = useMemo(() => groupPlayers(rows), [rows]);
   const pills = useMemo(() => {
     const present = new Set(groups.map((group) => group.type));
@@ -557,12 +558,17 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
     return ordered;
   }, [groups]);
   const [logs, setLogs] = useState({});
-  const [stat, setStat] = useState('');
+  const focusKey = focus?.propType ? `${focus.playerId || focus.player}|${focus.propType}` : '';
+  const [stat, setStat] = useState(focus?.propType || '');
   const [team, setTeam] = useState('all');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [picked, setPicked] = useState({});
+  const [picked, setPicked] = useState(() => (
+    focusKey && focus?.line != null ? { [focusKey]: focus.line } : {}
+  ));
   const [keyOpen, setKeyOpen] = useState(false);
+  const focusNode = useRef(null);
+  const scrolledFocus = useRef('');
 
   const activeStat = pills.includes(stat) ? stat : (pills[0] || '');
   const logKey = useMemo(() => groups.map((group) => `${group.player}|${group.opponentAbbr}|${group.gameStart}`).sort().join(';'), [groups]);
@@ -622,6 +628,12 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
       })
       .sort((a, b) => b.current.yes - a.current.yes || a.player.localeCompare(b.player));
   }, [groups, activeStat, team, query, picked]);
+
+  useEffect(() => {
+    if (!focusKey || scrolledFocus.current === focusKey || !focusNode.current) return;
+    scrolledFocus.current = focusKey;
+    focusNode.current.scrollIntoView({ block: 'center' });
+  }, [focusKey, visible]);
 
   function chooseLine(key, lines, dir) {
     setPicked((prev) => {
@@ -736,7 +748,11 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
             return null;
           }).filter(Boolean));
           return (
-            <div key={group.key} className="pp-player">
+            <div
+              key={group.key}
+              className={`pp-player${group.key === focusKey ? ' pp-player-focus' : ''}`}
+              ref={group.key === focusKey ? focusNode : null}
+            >
               <div className="pp-row">
                 <div className="pp-who">
                   {group.jersey ? (
@@ -843,13 +859,27 @@ function primaryLines(rows) {
     .map((entry) => entry[1].row);
 }
 
-function GameDetail({ game, rows, loading, calibration }) {
-  const [section, setSection] = useState('players');
+function lineMatchesFocus(row, focus) {
+  if (!focus || focus.section !== 'lines') return false;
+  if (focus.kind === 'total') return row.sideText === 'total';
+  if (focus.kind === 'winner') return row.sideText === 'moneyline';
+  return false;
+}
+
+function GameDetail({ game, rows, loading, calibration, focus }) {
+  const [section, setSection] = useState(focus?.section || 'players');
+  const lineNode = useRef(null);
+  const scrolledLine = useRef(false);
   const list = rows || [];
   const players = list.filter((row) => row.section === 'player');
   const lines = primaryLines(list.filter((row) => row.section === 'line'));
   const props = list.filter((row) => row.section === 'prop');
   const cards = section === 'lines' ? lines : props;
+  useEffect(() => {
+    if (scrolledLine.current || section !== 'lines' || !lineNode.current) return;
+    scrolledLine.current = true;
+    lineNode.current.scrollIntoView({ block: 'center' });
+  });
   return (
     <>
       <div className="pp-tabs">
@@ -860,7 +890,7 @@ function GameDetail({ game, rows, loading, calibration }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} />
+          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} focus={focus?.section === 'players' ? focus : null} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
@@ -868,7 +898,10 @@ function GameDetail({ game, rows, loading, calibration }) {
           : (
             <div className="props-list">
               {cards.length === 0 && <div className="empty-state"><p>No markets in this section.</p></div>}
-              {cards.map((row) => <PropCard key={row.id} row={row} />)}
+              {cards.map((row) => {
+                const focused = lineMatchesFocus(row, focus);
+                return <PropCard key={row.id} row={row} focused={focused} cardRef={focused ? lineNode : null} />;
+              })}
             </div>
           )
       )}
@@ -876,10 +909,10 @@ function GameDetail({ game, rows, loading, calibration }) {
   );
 }
 
-function PropCard({ row }) {
+function PropCard({ row, focused, cardRef }) {
   const spread = row.spread == null ? null : `${Math.round(row.spread * 100)}¢`;
   return (
-    <a className="props-card" href={row.url} target="_blank" rel="noopener noreferrer">
+    <a ref={cardRef} className={`props-card${focused ? ' props-card-focus' : ''}`} href={row.url} target="_blank" rel="noopener noreferrer">
       <div className="props-card-top">
         <div className="props-card-main">
           <div className="props-player">
@@ -934,7 +967,7 @@ function likelyDraft(item) {
 function LikelyRow({ item, sport, onOpen }) {
   return (
     <div className="props-game">
-      <button type="button" className="props-game-open" onClick={() => onOpen(item.gameKey)}>
+      <button type="button" className="props-game-open" onClick={() => onOpen(item)}>
         <div className="props-game-main">
           <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prediction === 'no' ? `No ${item.prop}` : item.prop}</span></div>
           <div className="props-game-meta">
@@ -965,6 +998,7 @@ export default function PropsPage() {
   const [sport, setSport] = useState('All');
   const [day, setDay] = useState(() => easternDay(Date.now()));
   const [gameKey, setGameKey] = useState(null);
+  const [propFocus, setPropFocus] = useState(null);
   const [view, setView] = useState('games');
   const [boardLogs, setBoardLogs] = useState({});
   const [logDone, setLogDone] = useState(0);
@@ -1151,6 +1185,21 @@ export default function PropsPage() {
     return () => { cancel = true; };
   }, [gameKey]);
 
+  function openLikely(item) {
+    setGameKey(item.gameKey);
+    if (item.gameLine) {
+      setPropFocus({ section: 'lines', kind: item.kind });
+      return;
+    }
+    setPropFocus({
+      section: 'players',
+      playerId: item.playerId || item.player,
+      player: item.player,
+      propType: item.propType,
+      line: item.line,
+    });
+  }
+
   return (
     <div className="page-content props-page">
       <div className="props-header">
@@ -1184,9 +1233,9 @@ export default function PropsPage() {
           {view === 'results' ? <PropLedger /> : view === 'trades' ? <TradeBook /> : (
           <>
           <div className="props-day-nav">
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
             <span className="props-day-label">{sport === 'NFL' && nflWeek ? nflWeek.label : formatDayLabel(day)}</span>
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
           </div>
 
           <div className="scores-sport-tabs">
@@ -1228,11 +1277,11 @@ export default function PropsPage() {
               <div className="props-list">
                 {likelyPicks.some((item) => item.gameLine) && <div className="props-likely-head">Game lines</div>}
                 {likelyPicks.filter((item) => item.gameLine).map((item) => (
-                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={setGameKey} />
+                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={openLikely} />
                 ))}
                 {likelyPicks.some((item) => !item.gameLine) && <div className="props-likely-head">Player props</div>}
                 {likelyPicks.filter((item) => !item.gameLine).map((item) => (
-                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={setGameKey} />
+                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={openLikely} />
                 ))}
               </div>
             </>
@@ -1244,7 +1293,7 @@ export default function PropsPage() {
               const totalLabel = mainTotalLabel(game.rows);
               const when = sport === 'NFL' ? formatGameTime(game.gameStart) : cardClock(game.gameStart);
               return (
-                <button key={game.key} type="button" className="props-game" onClick={() => setGameKey(game.key)}>
+                <button key={game.key} type="button" className="props-game" onClick={() => { setPropFocus(null); setGameKey(game.key); }}>
                   <div className="props-game-main">
                     <div className="props-game-title">{game.title}</div>
                     <div className="props-game-meta">
@@ -1264,7 +1313,7 @@ export default function PropsPage() {
 
       {openGame && (
         <>
-          <button type="button" className="props-back" onClick={() => setGameKey(null)}>{view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
+          <button type="button" className="props-back" onClick={() => { setGameKey(null); setPropFocus(null); }}>{view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
           <div className="props-sport-head">
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>
@@ -1275,6 +1324,7 @@ export default function PropsPage() {
             rows={openGame.rows}
             loading={loadingSlug === openGame.key || !openGame.rows}
             calibration={calibration?.[openGame.league]}
+            focus={propFocus}
           />
         </>
       )}

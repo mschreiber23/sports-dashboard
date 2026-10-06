@@ -8283,6 +8283,7 @@ thead .dfs-sticky-player {
 }
 .props-sport-head span { font-size: 12px; color: var(--text2); font-weight: 700; }
 .props-list { display: flex; flex-direction: column; gap: 8px; }
+.props-card-focus { box-shadow: inset 3px 0 0 var(--accent); }
 .props-card {
   display: flex;
   flex-direction: column;
@@ -8673,6 +8674,10 @@ thead .dfs-sticky-player {
 .pp-player {
   padding: 10px 0 12px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.pp-player-focus {
+  scroll-margin: 96px;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .pp-row {
   display: flex;
