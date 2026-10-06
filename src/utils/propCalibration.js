@@ -62,9 +62,10 @@ function fitLeague(rows, league) {
 }
 
 export function learnCalibration(rows) {
+  const scored = (rows || []).filter((row) => row?.propType !== 'hockey_player_goals');
   return {
-    nfl: fitLeague(rows, 'nfl'),
-    nhl: fitLeague(rows, 'nhl'),
+    nfl: fitLeague(scored, 'nfl'),
+    nhl: fitLeague(scored, 'nhl'),
   };
 }
 

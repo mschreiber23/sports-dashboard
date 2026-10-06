@@ -2,10 +2,11 @@
 // The price updates until the game starts. After the game it becomes a hit,
 // a miss, or a void. Voids stay out of the hit rate.
 
-import { chartLabel } from '../api/playerLogs';
-import { nflModeled, nflPropEdge } from './nflEdge';
-import { nhlPropEdge } from './nhlEdge';
-import { callGrade } from './modelCall';
+import { chartLabel } from '../api/playerLogs.js';
+import { nflModeled, nflPropEdge } from './nflEdge.js';
+import { nhlPropEdge } from './nhlEdge.js';
+import { callGrade } from './modelCall.js';
+import { countsInScore, GOAL_PROP } from './scoredProps.js';
 
 export const LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 const NEAR_MS = 12 * 60 * 60 * 1000;
@@ -133,6 +134,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
     const groups = new Map();
     for (const row of game.rows) {
       if (row.section !== 'player' || row.line == null) continue;
+      if (row.type === GOAL_PROP) continue;
       if (!edgeFn(game.league, row.type)) continue;
       const key = `${row.playerId || row.player}|${row.type}`;
       if (!groups.has(key)) groups.set(key, []);
@@ -203,8 +205,8 @@ export function buildReads({ games, logs, now = Date.now() }) {
 }
 
 export function mergeReads(existing, incoming) {
-  const map = new Map((existing || []).map((row) => [row.id, row]));
-  for (const row of incoming || []) {
+  const map = new Map((existing || []).filter(countsInScore).map((row) => [row.id, row]));
+  for (const row of (incoming || []).filter(countsInScore)) {
     if (!map.has(row.id)) map.set(row.id, row);
   }
   return [...map.values()];
@@ -212,8 +214,8 @@ export function mergeReads(existing, incoming) {
 
 /** Replace the price and the raw read until the game starts. A grade stays. */
 export function refreshReads(existing, incoming, now = Date.now()) {
-  const map = new Map((existing || []).map((row) => [row.id, row]));
-  for (const row of incoming || []) {
+  const map = new Map((existing || []).filter(countsInScore).map((row) => [row.id, row]));
+  for (const row of (incoming || []).filter(countsInScore)) {
     const prev = map.get(row.id);
     if (!prev) {
       map.set(row.id, row);
@@ -280,7 +282,7 @@ function bandRows(rows, bands, valueOf) {
 }
 
 export function ledgerReport(rows) {
-  const list = rows || [];
+  const list = (rows || []).filter(countsInScore);
   const graded = list.filter((row) => row.result === 'hit' || row.result === 'miss');
   const hits = graded.filter((row) => row.result === 'hit').length;
   const callHits = graded.filter((row) => callGrade(row) === 'hit').length;

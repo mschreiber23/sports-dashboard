@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { formatGameTime } from '../api/polymarket';
 import { ledgerReport } from '../utils/propReads';
 import { callGrade, modelSide } from '../utils/modelCall';
+import { countsInScore } from '../utils/scoredProps';
 import { calibrationMoves } from '../utils/propCalibration';
 import { usePropSync } from './PropSync';
 import { AccuracyPanel } from './ModelTicker';
@@ -61,25 +62,26 @@ export default function PropLedger() {
   const { reads, status, error, calibration, working, refresh } = usePropSync();
   const [showAll, setShowAll] = useState(false);
 
-  const report = useMemo(() => ledgerReport(reads || []), [reads]);
+  const scored = useMemo(() => (reads || []).filter(countsInScore), [reads]);
+  const report = useMemo(() => ledgerReport(scored), [scored]);
   const waitingGames = useMemo(() => {
     const map = new Map();
-    for (const row of reads || []) {
+    for (const row of scored) {
       if (row.result || map.has(row.eventSlug)) continue;
       map.set(row.eventSlug, row);
     }
     return [...map.values()].sort((a, b) => a.gameStart - b.gameStart);
-  }, [reads]);
-  const recent = useMemo(() => (reads || [])
+  }, [scored]);
+  const recent = useMemo(() => scored
     .filter((row) => row.result)
     .slice()
-    .sort((a, b) => (b.gradedAt || b.gameStart) - (a.gradedAt || a.gameStart) || a.player.localeCompare(b.player)), [reads]);
+    .sort((a, b) => (b.gradedAt || b.gameStart) - (a.gradedAt || a.gameStart) || a.player.localeCompare(b.player)), [scored]);
   const visible = showAll ? recent : recent.slice(0, 20);
 
   return (
     <div className="ledger">
       <p className="props-likely-note">
-        Every NHL and NFL game in the next 8 days is recorded while the app is open. The price and the read update until the game starts. A Yes is a hit when the player clears the line. A No is a hit when they stay under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
+        Point props and modeled NFL props from the next 8 days are recorded while the app is open. Goal props stay off this score, because a goal is rare and those calls would mostly miss. The price and the read update until the game starts. A Yes is a hit when the player clears the line. A No is a hit when they stay under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
       </p>
       {status && <p className="ledger-status">{status}</p>}
       {error && <p className="ledger-status">{error}</p>}

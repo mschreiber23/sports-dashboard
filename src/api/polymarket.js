@@ -1,4 +1,4 @@
-import { scoreProp } from '../utils/propHit';
+import { scoreProp } from '../utils/propHit.js';
 
 const GAMMA = 'https://gamma-api.polymarket.com';
 const US_GATEWAY = 'https://web.polymarket.us';

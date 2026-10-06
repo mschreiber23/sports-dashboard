@@ -28,7 +28,7 @@ export function AccuracyPanel() {
   return (
     <section className="ledger-section">
       <h3>Accuracy over time</h3>
-      <p className="props-likely-note">Each point is how often the call was right after that day’s graded props. A Yes is right when the player clears the line. A No is right when they stay under. Voids stay out.</p>
+      <p className="props-likely-note">Each point is how often the call was right after that day’s graded props. A Yes is right when the player clears the line. A No is right when they stay under. Goal props stay out. Voids stay out.</p>
       {report.sports.map((sport) => (
         <div className="model-sport" key={sport.league}>
           <div className="model-sport-top">

@@ -7,7 +7,7 @@
 // set a pass or run script and a team implied point total, and a short week
 // or extra rest can still move it. Edge is that probability minus the yes price.
 
-import { applyLearned } from './propCalibration';
+import { applyLearned } from './propCalibration.js';
 
 const PASS_YDS = 'football_player_passing_yards';
 const RUSH_YDS = 'football_player_rushing_yards';

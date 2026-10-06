@@ -6,6 +6,7 @@ import { finalScore, gradeMarketTrade } from './gameResult';
 import { gamesToRecord, buildReads, refreshReads, gradeRead } from '../utils/propReads';
 import { learnCalibration, priceRead } from '../utils/propCalibration';
 import { stampPrediction } from '../utils/modelCall';
+import { countsInScore } from '../utils/scoredProps';
 
 async function pool(items, limit, fn) {
   const out = new Array(items.length);
@@ -50,10 +51,12 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
     onUpdate?.({ reads: nextRows, calibration, trades });
     return { reads: nextRows, calibration, trades };
   };
-  let rows = await loadReads(userId);
+  const stored = await loadReads(userId);
+  let rows = stored.filter(countsInScore);
   let calibration = learnCalibration(rows);
   let trades = await gradeTrades(userId);
   publish(rows, calibration, trades);
+  if (rows.length !== stored.length) await saveReads(userId, rows);
   if (stop()) return { reads: rows, calibration };
 
   const pending = rows.filter((row) => !row.result && row.gameStart <= Date.now());

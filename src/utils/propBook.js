@@ -5,8 +5,9 @@
 // that fee. At 50% or less, the stake is the unit. A win returns the
 // contracts. A loss costs the stake. A void returns nothing.
 
-import { easternDay } from '../api/polymarket';
-import { callGrade } from './modelCall';
+import { easternDay } from '../api/polymarket.js';
+import { callGrade } from './modelCall.js';
+import { countsInScore } from './scoredProps.js';
 
 // Standard taker coefficient on polymarket.us. Straight trades, not combos.
 export const TAKER_FEE = 0.0695;
@@ -225,7 +226,7 @@ function seriesFor(rows) {
 }
 
 export function accuracyReport(reads) {
-  const graded = (reads || []).filter((row) => row.result === 'hit' || row.result === 'miss');
+  const graded = (reads || []).filter((row) => countsInScore(row) && (row.result === 'hit' || row.result === 'miss'));
   const byLeague = new Map([['nhl', []], ['nfl', []]]);
   for (const row of graded) {
     const league = row.league || 'other';
