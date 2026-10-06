@@ -1,13 +1,14 @@
-// The call is the side the model thinks happens. At 50% or more, that is a
-// Yes. Under 50%, that is a No. A price gap is not a prediction that a 20%
-// chance will hit. The stored result stays the line itself, so the weights
-// still learn from whether the player cleared it.
+// The call is a bet: at least 4 points of edge, priced from 38% to 60%.
+// Laying 70 cents is not a call. The stored result stays the line itself,
+// so the weights still learn from whether the player cleared it.
 
 import { NHL_EDGE_MIN } from './nhlEdge.js';
+import { betSide } from './scoredProps.js';
 
 export function modelSide(read) {
   const modelP = typeof read?.modelP === 'number' && Number.isFinite(read.modelP) ? read.modelP : null;
-  if (modelP != null) return modelP >= 0.5 ? 'yes' : 'no';
+  const price = typeof read?.price === 'number' && Number.isFinite(read.price) ? read.price : null;
+  if (modelP != null && price != null) return betSide(read);
   if (read?.prediction === 'yes' || read?.prediction === 'no') return read.prediction;
   const edge = typeof read?.edge === 'number' ? read.edge : null;
   if (edge != null && -edge >= NHL_EDGE_MIN) return 'no';
@@ -38,7 +39,9 @@ export function callGrade(read) {
   if (!read?.result) return null;
   if (read.result === 'void') return 'void';
   if (read.result !== 'hit' && read.result !== 'miss') return null;
+  const side = modelSide(read);
+  if (side !== 'yes' && side !== 'no') return null;
   const lineHit = read.result === 'hit';
-  const correct = modelSide(read) === 'no' ? !lineHit : lineHit;
+  const correct = side === 'no' ? !lineHit : lineHit;
   return correct ? 'hit' : 'miss';
 }

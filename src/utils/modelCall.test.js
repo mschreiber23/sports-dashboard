@@ -24,11 +24,16 @@ test('a smaller edge stays a Yes', () => {
   assert.equal(callGrade({ result: 'void' }), 'void');
 });
 
-test('a model under 50% is a No even when it is above a 2% price', () => {
-  const read = { modelP: 0.24, price: 0.02, edge: 0.22, result: 'miss' };
+test('a 70% No with a small edge is not a bet', () => {
+  const read = { modelP: 0.28, price: 0.3, edge: -0.02, result: 'miss' };
+  assert.equal(modelSide(read), null);
+  assert.equal(callGrade(read), null);
+});
+
+test('a No at 52% with a 10-point edge is a hit when the line misses', () => {
+  const read = { modelP: 0.38, price: 0.48, edge: -0.1, result: 'miss' };
   assert.equal(modelSide(read), 'no');
   assert.equal(callGrade(read), 'hit');
-  assert.equal(stampPrediction(read).prediction, 'no');
 });
 
 test('a No card quotes the No side, not the Yes price', () => {
