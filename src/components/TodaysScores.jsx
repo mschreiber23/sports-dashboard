@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import { readLastSport, rememberSport } from '../utils/lastSport';
 import { useFavorites } from '../context/FavoritesContext';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { getNflWeekGames, getNflWeekInfo, getNflWeekLabel } from '../api/nfl';
@@ -382,13 +383,22 @@ export default function TodaysScores({ compact = false, onCollapse }) {
 
   // Restore last-selected sport from localStorage, fall back to sportOrder default
   const [activeSport, setActiveSport] = useState(() => {
-    try { return localStorage.getItem(SPORT_KEY) || defaultSport; } catch { return defaultSport; }
+    try { return readLastSport() || localStorage.getItem(SPORT_KEY) || defaultSport; } catch { return defaultSport; }
   });
 
   const handleSetActiveSport = (sport) => {
     try { localStorage.setItem(SPORT_KEY, sport); } catch {}
+    rememberSport(sport);
     setActiveSport(sport);
   };
+
+  useEffect(() => {
+    const onSport = (event) => {
+      if (event.detail && event.detail !== activeSport) setActiveSport(event.detail);
+    };
+    window.addEventListener('shribely-sport', onSport);
+    return () => window.removeEventListener('shribely-sport', onSport);
+  }, [activeSport]);
 
   // Seed rawGames from cache immediately — zero flicker on remount
   const [rawGames, setRawGames] = useState(() => readSbCache(activeSport, todayDateStr) || []);

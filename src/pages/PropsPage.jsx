@@ -17,6 +17,7 @@ import TradeBook from '../components/TradeBook';
 import TradeButton from '../components/TradeButton';
 import { usePropSync } from '../components/PropSync';
 import { BET_PRICE_MAX, affordablePrice } from '../utils/scoredProps';
+import { rememberSport } from '../utils/lastSport';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -1250,7 +1251,7 @@ export default function PropsPage() {
                   ? counts.nfl
                   : (counts.bySport.get(name) || 0);
               return (
-                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => setSport(name)}>
+                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => { setSport(name); if (name !== 'All') rememberSport(name); }}>
                   {name}
                   <span className="props-tab-count">{count}</span>
                 </button>

@@ -61,10 +61,15 @@ export async function getTeamRoster(sport, teamId) {
   return data.athletes || [];
 }
 
+export function leadersSeasonYear(sport, now = new Date()) {
+  if (sport === 'nhl') return nhlSeasonYear(now);
+  return new Date(now).getFullYear();
+}
+
 export async function getStatLeaders(sport) {
   const coreLeague = { nba: 'basketball/leagues/nba', nfl: 'football/leagues/nfl', mlb: 'baseball/leagues/mlb', nhl: 'hockey/leagues/nhl' }[sport];
-  const year = new Date().getFullYear();
-  // NFL: try current year, fall back to previous (offseason)
+  const year = leadersSeasonYear(sport);
+  // Try the current season, then the one before it when that slate is empty.
   const tryYear = async (y) => {
     const { data } = await axios.get(
       `https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${y}/types/2/leaders`
