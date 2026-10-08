@@ -1,5 +1,6 @@
 import { loadPropEvents, loadGameProps } from './polymarket';
 import { recentPlayerLogs, playerResultOnDate } from './playerLogs';
+import { loadTeamRoles, sameName, sameTeam } from './nflInjuries';
 import { loadReads, saveReads } from './propStore';
 import { loadTrades, saveTrades } from './tradeStore';
 import { finalScore, gradeMarketTrade } from './gameResult';
@@ -121,7 +122,44 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   });
   if (stop()) return { reads: rows, calibration };
 
-  const fresh = buildReads({ games: withRows, logs }).map((row) => stampPrediction(priceRead(row, calibration)));
+  let roles = [];
+  const opportunityLogs = {};
+  if (withRows.some((game) => game.league === 'nfl')) {
+    const teamNames = [];
+    for (const game of withRows) {
+      for (const row of game.rows || []) {
+        if (row.teamName && !teamNames.includes(row.teamName)) teamNames.push(row.teamName);
+      }
+    }
+    roles = await loadTeamRoles(teamNames).catch(() => []);
+    if (stop()) return { reads: rows, calibration };
+    const missing = [];
+    const queued = new Set();
+    for (const team of roles) {
+      let before = Infinity;
+      for (const game of withRows) {
+        for (const row of game.rows || []) {
+          if (sameTeam(row.teamName, team.teamName) && row.gameStart < before) before = row.gameStart;
+        }
+      }
+      for (const role of team.roles) {
+        if (!(role.miss > 0) || !role.group) continue;
+        if (players.some((player) => sameName(player.name, role.name))) continue;
+        const key = role.name;
+        if (queued.has(key)) continue;
+        queued.add(key);
+        missing.push({ key, name: role.name, before: Number.isFinite(before) ? before : Date.now() });
+      }
+    }
+    if (missing.length) onStatus?.('Checking injury reports…');
+    await pool(missing, 4, async (player) => {
+      const result = await recentPlayerLogs('nfl', [player]).catch(() => ({}));
+      opportunityLogs[player.key] = result[player.name] ?? null;
+    });
+    if (stop()) return { reads: rows, calibration };
+  }
+
+  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs }).map((row) => stampPrediction(priceRead(row, calibration)));
   rows = refreshReads(rows, fresh);
   calibration = learnCalibration(rows);
   publish(rows, calibration, trades);

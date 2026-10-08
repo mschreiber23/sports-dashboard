@@ -3,6 +3,7 @@
 // a miss, or a void. Voids stay out of the hit rate.
 
 import { chartLabel } from '../api/playerLogs.js';
+import { mergeTeammates, playerRole, rolesForTeam, sameName } from '../api/nflInjuries.js';
 import { nflModeled, nflPropEdge } from './nflEdge.js';
 import { nhlPropEdge } from './nhlEdge.js';
 import { callGrade } from './modelCall.js';
@@ -79,19 +80,6 @@ function slateContext(rows) {
   return { total, favorite, favoriteYes, spreadLine, spreadLabel };
 }
 
-function teammateLogs(entries, logs) {
-  const mates = [];
-  const seen = new Set();
-  for (const entry of entries) {
-    if (!entry?.name || seen.has(entry.name)) continue;
-    seen.add(entry.name);
-    const mate = logs[entry.id];
-    if (!mate?.context && !mate?.priorContext) continue;
-    mates.push({ name: entry.name, recent: mate.context || null, prior: mate.priorContext || null });
-  }
-  return mates;
-}
-
 function lineText(line) {
   return `${line}+`;
 }
@@ -124,18 +112,44 @@ export function gamesToRecord(events, reads, now = Date.now(), force = false) {
   });
 }
 
-export function buildReads({ games, logs, now = Date.now() }) {
+function nflContext(game, sample, logs, roles, opportunityLogs) {
+  const teamRoles = rolesForTeam(roles, sample.teamName);
+  const board = [];
+  const seen = new Set();
+  for (const row of game.rows || []) {
+    if (row.section !== 'player' || !row.player || row.player === sample.player) continue;
+    if (!row.teamName || row.teamName !== sample.teamName || seen.has(row.player)) continue;
+    seen.add(row.player);
+    const mate = logs[`${game.league}|${row.player}|${row.gameStart}`];
+    board.push({
+      name: row.player,
+      recent: mate?.context || null,
+      prior: mate?.priorContext || null,
+      position: mate?.position || '',
+    });
+  }
+  const logFor = (name) => {
+    const onBoard = logs[`${game.league}|${name}|${sample.gameStart}`];
+    if (onBoard) return onBoard;
+    if (!opportunityLogs) return null;
+    if (opportunityLogs[name]) return opportunityLogs[name];
+    const hit = Object.entries(opportunityLogs).find(([key]) => sameName(key, name));
+    return hit ? hit[1] : null;
+  };
+  const selfLog = logs[`${game.league}|${sample.player}|${sample.gameStart}`];
+  return {
+    teammates: mergeTeammates(teamRoles, sample.player, board, logFor),
+    role: playerRole(teamRoles, sample.player, selfLog?.position),
+  };
+}
+
+export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {} }) {
   const reads = [];
   for (const game of games || []) {
     if (!game?.rows) continue;
     if (game.league !== 'nfl' && game.league !== 'nhl') continue;
     if (!(game.gameStart > now) || game.gameStart - now > LOOKAHEAD_MS) continue;
     const slate = slateContext(game.rows);
-    const mates = game.rows.filter((row) => row.section === 'player').map((row) => ({
-      name: row.player,
-      id: `${game.league}|${row.player}|${row.gameStart}`,
-      teamName: row.teamName,
-    }));
     const groups = new Map();
     for (const row of game.rows) {
       if (row.section !== 'player' || row.line == null) continue;
@@ -174,9 +188,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
         spreadLine: slate.spreadLine,
         spreadLabel: slate.spreadLabel,
         matchup: log?.matchup,
-        teammates: game.league === 'nfl'
-          ? teammateLogs(mates.filter((mate) => mate.name !== sample.player && mate.teamName && mate.teamName === sample.teamName), logs)
-          : undefined,
+        ...(game.league === 'nfl' ? nflContext(game, sample, logs, roles, opportunityLogs) : {}),
       });
       if (!model) continue;
       reads.push({
