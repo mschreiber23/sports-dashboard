@@ -907,7 +907,7 @@ function lineMatchesFocus(row, focus) {
   return false;
 }
 
-function GameDetail({ game, rows, loading, calibration, focus }) {
+function GameDetail({ game, rows, loading, calibration, focus, roles, opportunityLogs }) {
   const [section, setSection] = useState(focus?.section || 'players');
   const lineNode = useRef(null);
   const scrolledLine = useRef(false);
@@ -931,7 +931,7 @@ function GameDetail({ game, rows, loading, calibration, focus }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} focus={focus?.section === 'players' ? focus : null} roles={roleReport} opportunityLogs={hurtLogs} />
+          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} focus={focus?.section === 'players' ? focus : null} roles={roles} opportunityLogs={opportunityLogs} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
@@ -1429,6 +1429,8 @@ export default function PropsPage() {
             loading={loadingSlug === openGame.key || !openGame.rows}
             calibration={calibration?.[openGame.league]}
             focus={propFocus}
+            roles={roleReport}
+            opportunityLogs={hurtLogs}
           />
         </>
       )}

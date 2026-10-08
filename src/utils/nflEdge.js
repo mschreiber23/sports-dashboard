@@ -37,9 +37,13 @@ function clamp(value, lo, hi) {
   return Math.min(hi, Math.max(lo, value));
 }
 
+function asRows(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function avg(rows, key) {
   const values = [];
-  for (const row of rows || []) {
+  for (const row of asRows(rows)) {
     const value = row?.[key];
     if (typeof value === 'number' && Number.isFinite(value)) values.push(value);
   }
@@ -94,7 +98,7 @@ function fallbackRate(type, line) {
 
 function nums(rows, key) {
   const values = [];
-  for (const row of rows || []) {
+  for (const row of asRows(rows)) {
     const value = row?.[key];
     if (typeof value === 'number' && Number.isFinite(value)) values.push(value);
   }
@@ -163,7 +167,7 @@ function teammateBack(recent, prior, key, teammates) {
   const mateSets = [];
   for (const mate of teammates) {
     if (mateMiss(mate) > 0) continue;
-    const mateRows = [...(mate?.prior || []), ...(mate?.recent || [])];
+    const mateRows = [...asRows(mate?.prior), ...asRows(mate?.recent)];
     const days = new Set(mateRows.map((row) => gameDay(row?.date)).filter(Boolean));
     if (days.size < 3) continue;
     const anchor = avg(mateRows, key);
@@ -213,7 +217,7 @@ const USAGE_CAP = { rushAtt: 24, targets: 14, passAtt: 42 };
 const ROLE_SHARE = { 1: [1], 2: [0.68, 0.32], 3: [0.55, 0.3, 0.15] };
 
 function mateDays(mate) {
-  const rows = [...(mate?.prior || []), ...(mate?.recent || [])];
+  const rows = [...asRows(mate?.prior), ...asRows(mate?.recent)];
   return new Set(rows.map((row) => gameDay(row?.date)).filter(Boolean));
 }
 

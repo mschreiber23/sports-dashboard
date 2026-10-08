@@ -182,6 +182,11 @@ export function roleFor(roles, name) {
   return (roles || []).find((role) => sameName(role.name, name)) || null;
 }
 
+function gameRows(log, key) {
+  const value = log?.[key];
+  return Array.isArray(value) ? value : null;
+}
+
 export function mergeTeammates(roles, selfName, boardMates, logFor) {
   const mates = [];
   const seen = [];
@@ -195,8 +200,8 @@ export function mergeTeammates(roles, selfName, boardMates, logFor) {
     const log = (logFor ? logFor(role.name) : null) || {};
     mates.push({
       name: role.name,
-      recent: log.context || log.recent || null,
-      prior: log.priorContext || log.prior || null,
+      recent: gameRows(log, 'context') || gameRows(log, 'recent'),
+      prior: gameRows(log, 'priorContext') || gameRows(log, 'prior'),
       miss: role.miss || 0,
       group: role.group || skillGroup(log.position),
       rank: role.rank || 99,
@@ -207,8 +212,8 @@ export function mergeTeammates(roles, selfName, boardMates, logFor) {
     const log = (logFor ? logFor(mate.name) : null) || {};
     mates.push({
       name: mate.name,
-      recent: mate.recent || log.context || null,
-      prior: mate.prior || log.priorContext || null,
+      recent: gameRows(mate, 'recent') || gameRows(log, 'context') || gameRows(log, 'recent'),
+      prior: gameRows(mate, 'prior') || gameRows(log, 'priorContext') || gameRows(log, 'prior'),
       miss: 0,
       group: skillGroup(mate.position || log.position),
       rank: 99,
