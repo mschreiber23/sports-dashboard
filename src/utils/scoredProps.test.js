@@ -49,6 +49,35 @@ test('a graded goal prop stays out of the score and a points prop still counts',
   assert.equal(fit.nhl.graded, 1);
 });
 
+test('a day’s accuracy record does not include earlier days', () => {
+  const first = {
+    ...points,
+    id: 'day-one',
+    gameStart: Date.parse('2026-10-05T23:00:00Z'),
+    result: 'hit',
+  };
+  const second = {
+    ...points,
+    id: 'day-two',
+    player: 'Next',
+    gameStart: Date.parse('2026-10-06T23:00:00Z'),
+    result: 'miss',
+    modelP: 0.62,
+    price: 0.5,
+    edge: 0.12,
+  };
+  const sport = accuracyReport([first, second]).sports.find((item) => item.league === 'nhl');
+  assert.equal(sport.series.length, 2);
+  assert.equal(sport.series[0].dayHits, 1);
+  assert.equal(sport.series[0].dayCount, 1);
+  assert.equal(sport.series[0].hits, 1);
+  assert.equal(sport.series[0].graded, 1);
+  assert.equal(sport.series[1].dayHits, 0);
+  assert.equal(sport.series[1].dayCount, 1);
+  assert.equal(sport.series[1].hits, 1);
+  assert.equal(sport.series[1].graded, 2);
+});
+
 test('a 2+ points No stays out and the 1+ line still counts', () => {
   const two = {
     ...points,
