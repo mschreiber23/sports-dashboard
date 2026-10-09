@@ -2,9 +2,12 @@
 // The price updates until the game starts. After the game it becomes a hit,
 // a miss, or a void. Voids stay out of the hit rate.
 
-import { chartLabel } from '../api/playerLogs';
-import { nflModeled, nflPropEdge } from './nflEdge';
-import { nhlPropEdge } from './nhlEdge';
+import { chartLabel } from '../api/playerLogs.js';
+import { mergeTeammates, playerRole, rolesForTeam, sameName } from '../api/nflInjuries.js';
+import { nflModeled, nflPropEdge } from './nflEdge.js';
+import { nhlPropEdge } from './nhlEdge.js';
+import { callGrade } from './modelCall.js';
+import { countsInScore, GOAL_PROP, POINTS_PROP } from './scoredProps.js';
 
 export const LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 const NEAR_MS = 12 * 60 * 60 * 1000;
@@ -41,6 +44,11 @@ function mainLine(lines) {
     .sort((a, b) => Math.abs(a.yes - 0.5) - Math.abs(b.yes - 0.5) || a.line - b.line)[0] || null;
 }
 
+function scoredLine(lines, type) {
+  if (type === POINTS_PROP) return lines.find((line) => Number(line.line) === 1) || null;
+  return mainLine(lines);
+}
+
 function slateContext(rows) {
   let total = null;
   let totalDist = Infinity;
@@ -70,19 +78,6 @@ function slateContext(rows) {
     }
   }
   return { total, favorite, favoriteYes, spreadLine, spreadLabel };
-}
-
-function teammateLogs(entries, logs) {
-  const mates = [];
-  const seen = new Set();
-  for (const entry of entries) {
-    if (!entry?.name || seen.has(entry.name)) continue;
-    seen.add(entry.name);
-    const mate = logs[entry.id];
-    if (!mate?.context && !mate?.priorContext) continue;
-    mates.push({ name: entry.name, recent: mate.context || null, prior: mate.priorContext || null });
-  }
-  return mates;
 }
 
 function lineText(line) {
@@ -117,21 +112,48 @@ export function gamesToRecord(events, reads, now = Date.now(), force = false) {
   });
 }
 
-export function buildReads({ games, logs, now = Date.now() }) {
+function nflContext(game, sample, logs, roles, opportunityLogs) {
+  const teamRoles = rolesForTeam(roles, sample.teamName);
+  const board = [];
+  const seen = new Set();
+  for (const row of game.rows || []) {
+    if (row.section !== 'player' || !row.player || row.player === sample.player) continue;
+    if (!row.teamName || row.teamName !== sample.teamName || seen.has(row.player)) continue;
+    seen.add(row.player);
+    const mate = logs[`${game.league}|${row.player}|${row.gameStart}`];
+    board.push({
+      name: row.player,
+      recent: mate?.context || null,
+      prior: mate?.priorContext || null,
+      position: mate?.position || '',
+    });
+  }
+  const logFor = (name) => {
+    const onBoard = logs[`${game.league}|${name}|${sample.gameStart}`];
+    if (onBoard) return onBoard;
+    if (!opportunityLogs) return null;
+    if (opportunityLogs[name]) return opportunityLogs[name];
+    const hit = Object.entries(opportunityLogs).find(([key]) => sameName(key, name));
+    return hit ? hit[1] : null;
+  };
+  const selfLog = logs[`${game.league}|${sample.player}|${sample.gameStart}`];
+  return {
+    teammates: mergeTeammates(teamRoles, sample.player, board, logFor),
+    role: playerRole(teamRoles, sample.player, selfLog?.position),
+  };
+}
+
+export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {} }) {
   const reads = [];
   for (const game of games || []) {
     if (!game?.rows) continue;
     if (game.league !== 'nfl' && game.league !== 'nhl') continue;
     if (!(game.gameStart > now) || game.gameStart - now > LOOKAHEAD_MS) continue;
     const slate = slateContext(game.rows);
-    const mates = game.rows.filter((row) => row.section === 'player').map((row) => ({
-      name: row.player,
-      id: `${game.league}|${row.player}|${row.gameStart}`,
-      teamName: row.teamName,
-    }));
     const groups = new Map();
     for (const row of game.rows) {
       if (row.section !== 'player' || row.line == null) continue;
+      if (row.type === GOAL_PROP) continue;
       if (!edgeFn(game.league, row.type)) continue;
       const key = `${row.playerId || row.player}|${row.type}`;
       if (!groups.has(key)) groups.set(key, []);
@@ -140,8 +162,9 @@ export function buildReads({ games, logs, now = Date.now() }) {
     }
     for (const lines of groups.values()) {
       const sample = lines[0];
-      const line = mainLine(lines);
+      const line = scoredLine(lines, sample.type);
       if (!line) continue;
+      if (!countsInScore({ type: sample.type, line: line.line, price: line.yes })) continue;
       const logKey = `${game.league}|${sample.player}|${sample.gameStart}`;
       const log = logs[logKey];
       const recent = log?.series?.[sample.type];
@@ -165,9 +188,7 @@ export function buildReads({ games, logs, now = Date.now() }) {
         spreadLine: slate.spreadLine,
         spreadLabel: slate.spreadLabel,
         matchup: log?.matchup,
-        teammates: game.league === 'nfl'
-          ? teammateLogs(mates.filter((mate) => mate.name !== sample.player && mate.teamName && mate.teamName === sample.teamName), logs)
-          : undefined,
+        ...(game.league === 'nfl' ? nflContext(game, sample, logs, roles, opportunityLogs) : {}),
       });
       if (!model) continue;
       reads.push({
@@ -202,8 +223,8 @@ export function buildReads({ games, logs, now = Date.now() }) {
 }
 
 export function mergeReads(existing, incoming) {
-  const map = new Map((existing || []).map((row) => [row.id, row]));
-  for (const row of incoming || []) {
+  const map = new Map((existing || []).filter(countsInScore).map((row) => [row.id, row]));
+  for (const row of (incoming || []).filter(countsInScore)) {
     if (!map.has(row.id)) map.set(row.id, row);
   }
   return [...map.values()];
@@ -211,8 +232,8 @@ export function mergeReads(existing, incoming) {
 
 /** Replace the price and the raw read until the game starts. A grade stays. */
 export function refreshReads(existing, incoming, now = Date.now()) {
-  const map = new Map((existing || []).map((row) => [row.id, row]));
-  for (const row of incoming || []) {
+  const map = new Map((existing || []).filter(countsInScore).map((row) => [row.id, row]));
+  for (const row of (incoming || []).filter(countsInScore)) {
     const prev = map.get(row.id);
     if (!prev) {
       map.set(row.id, row);
@@ -232,6 +253,7 @@ export function refreshReads(existing, incoming, now = Date.now()) {
       team: row.team || prev.team,
       opponent: row.opponent || prev.opponent,
       propLabel: row.propLabel || prev.propLabel,
+      prediction: row.prediction || prev.prediction,
       pricedAt: now,
     });
   }
@@ -278,9 +300,10 @@ function bandRows(rows, bands, valueOf) {
 }
 
 export function ledgerReport(rows) {
-  const list = rows || [];
+  const list = (rows || []).filter(countsInScore);
   const graded = list.filter((row) => row.result === 'hit' || row.result === 'miss');
   const hits = graded.filter((row) => row.result === 'hit').length;
+  const callHits = graded.filter((row) => callGrade(row) === 'hit').length;
   const voids = list.filter((row) => row.result === 'void').length;
   const open = list.filter((row) => !row.result).length;
   const tags = new Map();
@@ -307,6 +330,8 @@ export function ledgerReport(rows) {
     graded: graded.length,
     hits,
     hitRate: graded.length ? hits / graded.length : null,
+    callHits,
+    callRate: graded.length ? callHits / graded.length : null,
     voids,
     open,
     model: graded.length ? graded.reduce((sum, row) => sum + row.modelP, 0) / graded.length : null,

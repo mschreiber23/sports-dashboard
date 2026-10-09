@@ -2,12 +2,15 @@
 // targets, blended with the longer sample, times a shrunk efficiency rate.
 // When a high-usage teammate is back after missing the games where this
 // player's usage spiked, the expectation uses the games they played together.
-// A defense that funnels targets to a position nudges that position's props.
-// The last-10 hit rate is the smaller piece. Then the spread and the total
-// set a pass or run script and a team implied point total, and a short week
-// or extra rest can still move it. Edge is that probability minus the yes price.
+// When a quarterback, back, receiver, or tight end is out tonight, the next
+// player at that position takes his carries, targets, or attempts. Questionable
+// moves part of that work. A defense that funnels targets to a position nudges
+// that position's props. The last-10 hit rate is the smaller piece. Then the
+// spread and the total set a pass or run script and a team implied point total,
+// and a short week or extra rest can still move it. Edge is that probability
+// minus the yes price.
 
-import { applyLearned } from './propCalibration';
+import { applyLearned } from './propCalibration.js';
 
 const PASS_YDS = 'football_player_passing_yards';
 const RUSH_YDS = 'football_player_rushing_yards';
@@ -34,9 +37,13 @@ function clamp(value, lo, hi) {
   return Math.min(hi, Math.max(lo, value));
 }
 
+function asRows(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function avg(rows, key) {
   const values = [];
-  for (const row of rows || []) {
+  for (const row of asRows(rows)) {
     const value = row?.[key];
     if (typeof value === 'number' && Number.isFinite(value)) values.push(value);
   }
@@ -91,7 +98,7 @@ function fallbackRate(type, line) {
 
 function nums(rows, key) {
   const values = [];
-  for (const row of rows || []) {
+  for (const row of asRows(rows)) {
     const value = row?.[key];
     if (typeof value === 'number' && Number.isFinite(value)) values.push(value);
   }
@@ -148,12 +155,19 @@ function isQuarterback(rows) {
   return Boolean(attempts && attempts.n >= 3 && attempts.mean >= 15);
 }
 
+function mateMiss(mate) {
+  const miss = Number(mate?.miss);
+  if (!Number.isFinite(miss) || miss <= 0) return 0;
+  return Math.min(1, miss);
+}
+
 function teammateBack(recent, prior, key, teammates) {
   const spec = USAGE_BACK[key];
   if (!spec || !teammates?.length) return null;
   const mateSets = [];
   for (const mate of teammates) {
-    const mateRows = [...(mate?.prior || []), ...(mate?.recent || [])];
+    if (mateMiss(mate) > 0) continue;
+    const mateRows = [...asRows(mate?.prior), ...asRows(mate?.recent)];
     const days = new Set(mateRows.map((row) => gameDay(row?.date)).filter(Boolean));
     if (days.size < 3) continue;
     const anchor = avg(mateRows, key);
@@ -194,16 +208,149 @@ function teammateBack(recent, prior, key, teammates) {
   return best;
 }
 
-function expectedUsage(prior, recent, key, teammates) {
+const ABSORB = {
+  rushAtt: new Set(['RB']),
+  targets: new Set(['RB', 'WR', 'TE']),
+  passAtt: new Set(['QB']),
+};
+const USAGE_CAP = { rushAtt: 24, targets: 14, passAtt: 42 };
+const ROLE_SHARE = { 1: [1], 2: [0.68, 0.32], 3: [0.55, 0.3, 0.15] };
+
+function mateDays(mate) {
+  const rows = [...asRows(mate?.prior), ...asRows(mate?.recent)];
+  return new Set(rows.map((row) => gameDay(row?.date)).filter(Boolean));
+}
+
+function playedRecently(recent, days) {
+  if (!days.size) return true;
+  const last3 = (recent || []).slice(-3);
+  if (last3.length < 2) return true;
+  let apart = 0;
+  for (const row of last3) {
+    const day = gameDay(row?.date);
+    if (day && !days.has(day)) apart += 1;
+  }
+  return apart < 2;
+}
+
+function splitMeans(prior, recent, mate, key) {
+  const days = mateDays(mate);
+  if (days.size < 3) return null;
+  const debut = [...days].sort()[0];
+  const together = [];
+  for (const row of [...(prior || []), ...(recent || [])]) {
+    const day = gameDay(row?.date);
+    const value = row?.[key];
+    if (!day || !days.has(day) || typeof value !== 'number' || !Number.isFinite(value)) continue;
+    together.push(value);
+  }
+  const apart = (recent || []).slice(-5).filter((row) => {
+    const day = gameDay(row?.date);
+    const value = row?.[key];
+    return Boolean(day && day > debut && !days.has(day) && typeof value === 'number' && Number.isFinite(value));
+  }).map((row) => row[key]);
+  if (together.length < 3 || apart.length < 2) return null;
+  return {
+    together: together.reduce((sum, value) => sum + value, 0) / together.length,
+    apart: apart.reduce((sum, value) => sum + value, 0) / apart.length,
+  };
+}
+
+function playerGroup(self, prior, recent, key) {
+  const group = String(self?.group || '').toUpperCase();
+  if (ABSORB[key]?.has(group)) return group;
+  const rows = [...(prior || []), ...(recent || [])];
+  if (key === 'passAtt') return isQuarterback(rows) ? 'QB' : '';
+  if (key === 'rushAtt') return isQuarterback(rows) ? '' : (group === 'RB' ? 'RB' : '');
+  return '';
+}
+
+function shareAt(index, count) {
+  if (count <= 1) return 1;
+  if (count === 2 || count === 3) return ROLE_SHARE[count][index] || 0;
+  const head = [0.48, 0.26, 0.14];
+  if (index < 3) return head[index];
+  return 0.12 / Math.max(1, count - 3);
+}
+
+function absenceBoost(prior, recent, key, teammates, self) {
+  const spec = USAGE_BACK[key];
+  const group = playerGroup(self, prior, recent, key);
+  if (!spec || !group) return null;
+  const selfMiss = mateMiss(self);
+  const actives = [];
+  if (selfMiss === 0) actives.push({ rank: Number.isFinite(self?.rank) ? self.rank : 99, self: true });
+  const pool = [];
+  let pull = null;
+  let pullLabel = '';
+  for (const mate of teammates || []) {
+    if (String(mate?.group || '').toUpperCase() !== group) continue;
+    const miss = mateMiss(mate);
+    if (miss === 0) {
+      actives.push({ rank: Number.isFinite(mate?.rank) ? mate.rank : 99, self: false });
+      continue;
+    }
+    const who = roleName(mate.name);
+    const usage = baselineUsage(mate.prior, mate.recent, key);
+    if (!who || !usage || usage.mean < spec.minAnchor) continue;
+    const tag = `${who} ${miss >= 1 ? 'out' : 'Q'}`;
+    if (!playedRecently(recent, mateDays(mate))) {
+      if (miss < 1) {
+        const split = splitMeans(prior, recent, mate, key);
+        if (split && split.apart > split.together + spec.minGap * 0.5) {
+          const target = split.apart * miss + split.together * (1 - miss);
+          if (pull == null || target < pull) {
+            pull = target;
+            pullLabel = tag;
+          }
+        }
+      }
+      continue;
+    }
+    pool.push({ miss, mean: usage.mean, tag, rank: Number.isFinite(mate?.rank) ? mate.rank : 99 });
+  }
+  actives.sort((a, b) => a.rank - b.rank || (a.self === b.self ? 0 : a.self ? -1 : 1));
+  const selfIndex = actives.findIndex((item) => item.self);
+  const share = selfIndex < 0 ? 0 : shareAt(selfIndex, actives.length);
+  let added = 0;
+  const labels = [];
+  for (const item of pool) {
+    const chunk = item.mean * item.miss * share;
+    if (chunk < 0.5) continue;
+    added += chunk;
+    labels.push({ tag: item.tag, chunk, rank: item.rank });
+  }
+  labels.sort((a, b) => a.rank - b.rank || b.chunk - a.chunk);
+  let label = '';
+  if (selfMiss >= 1) label = 'Out';
+  else if (selfMiss > 0) label = 'Questionable';
+  else if (pullLabel && (added < 0.5)) label = pullLabel;
+  else label = labels.slice(0, 2).map((item) => item.tag).join(', ');
+  if (!label && pullLabel) label = pullLabel;
+  const selfScale = selfMiss >= 1 ? 0.15 : 1 - selfMiss;
+  if (!(added >= 0.5) && pull == null && selfScale === 1) return null;
+  return { added, pull, label, selfScale };
+}
+
+function expectedUsage(prior, recent, key, teammates, self) {
   const base = baselineUsage(prior, recent, key);
   const back = teammateBack(recent, prior, key, teammates);
-  if (!back) return base;
-  const floor = USAGE_BACK[key].minGap * 0.4;
-  if (base && back.mean <= base.mean - floor) {
-    return { mean: back.mean, n: base.n, back: back.label, gap: back.gap };
+  const floor = USAGE_BACK[key] ? USAGE_BACK[key].minGap * 0.4 : 0;
+  let next = base;
+  if (back && next && back.mean <= next.mean - floor) {
+    next = { mean: back.mean, n: next.n, back: back.label, gap: back.gap };
+  } else if (back && !next && back.n >= 5) {
+    next = { mean: back.mean, n: back.n, back: back.label, gap: back.gap };
   }
-  if (!base && back.n >= 5) return { mean: back.mean, n: back.n, back: back.label, gap: back.gap };
-  return base;
+  const boost = absenceBoost(prior, recent, key, teammates, self);
+  if (!boost || !next) return next;
+  let start = next.mean * boost.selfScale;
+  if (boost.pull != null && !next.back && boost.pull < start) start = boost.pull;
+  let mean = start + boost.added;
+  const cap = USAGE_CAP[key];
+  if (cap) mean = Math.min(mean, cap);
+  if (Math.abs(mean - next.mean) < 0.35) return next;
+  return { ...next, mean, out: boost.label || null };
 }
 
 function roleBack(...usages) {
@@ -213,6 +360,16 @@ function roleBack(...usages) {
     if (!best || (usage.gap || 0) > (best.gap || 0)) best = usage;
   }
   return best?.back || null;
+}
+
+function roleOut(...usages) {
+  const labels = [];
+  for (const usage of usages) {
+    const label = usage?.out;
+    if (!label || labels.includes(label)) continue;
+    labels.push(label);
+  }
+  return labels.join(', ') || null;
 }
 
 function usageDelta(recent, prior, key) {
@@ -244,15 +401,15 @@ function receivingShape(targets, ypt, matchup) {
   return { targets: next, ypt: ypt * yptMul };
 }
 
-function volumeRead(type, line, recentContext, priorContext, teammates, matchup) {
+function volumeRead(type, line, recentContext, priorContext, teammates, matchup, role) {
   const recent = recentContext || [];
   const prior = priorContext || [];
   const all = [...prior, ...recent];
   const last5 = recent.slice(-5);
-  const blank = { p: null, rows: [], back: null };
+  const blank = { p: null, rows: [], back: null, out: null };
 
   if (type === PASS_YDS || type === PASS_TD || type === COMP || type === PASS_ATT || type === INT) {
-    const attempts = expectedUsage(prior, recent, 'passAtt', teammates);
+    const attempts = expectedUsage(prior, recent, 'passAtt', teammates, role);
     if (!attempts || attempts.n < 5) return { ...blank, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt') };
     const ypa = shrunk(all, 'passYds', 'passAtt', 7 * 100, 100);
     const compRate = shrunk(all, 'completions', 'passAtt', 0.64 * 80, 80);
@@ -280,11 +437,11 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup)
       rateLabel = 'INT/att';
       rateValue = intRate.toFixed(3);
     }
-    return { p, back: attempts.back || null, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt', rateLabel, rateValue) };
+    return { p, back: attempts.back || null, out: attempts.out || null, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt', rateLabel, rateValue) };
   }
 
   if (type === RUSH_YDS || type === RUSH_ATT) {
-    const carries = expectedUsage(prior, recent, 'rushAtt', teammates);
+    const carries = expectedUsage(prior, recent, 'rushAtt', teammates, role);
     if (!carries || carries.n < 5) return { ...blank, rows: usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt') };
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
     let p = null;
@@ -296,12 +453,13 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup)
     return {
       p,
       back: carries.back || null,
+      out: carries.out || null,
       rows: usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt', type === RUSH_YDS ? 'YPC' : null, ypc == null ? null : ypc.toFixed(1)),
     };
   }
 
   if (type === REC_YDS || type === RECS || type === LONG) {
-    const baseTargets = expectedUsage(prior, recent, 'targets', teammates);
+    const baseTargets = expectedUsage(prior, recent, 'targets', teammates, role);
     const baseYpt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
     const shaped = receivingShape(baseTargets, baseYpt, matchup);
     const targets = shaped.targets;
@@ -321,13 +479,14 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup)
     return {
       p,
       back: targets?.back || null,
+      out: targets?.out || null,
       rows: usageRows('Targets', 'Prior tgt', last5, prior, 'targets', type === LONG ? null : rateLabel, type === LONG ? null : rateValue),
     };
   }
 
   if (type === SCRIM || type === TD) {
-    const carries = expectedUsage(prior, recent, 'rushAtt', teammates);
-    const baseTargets = expectedUsage(prior, recent, 'targets', teammates);
+    const carries = expectedUsage(prior, recent, 'rushAtt', teammates, role);
+    const baseTargets = expectedUsage(prior, recent, 'targets', teammates, role);
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
     const baseYpt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
     const shaped = receivingShape(baseTargets, baseYpt, matchup);
@@ -353,7 +512,7 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup)
       ...usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt'),
       ...usageRows('Targets', 'Prior tgt', last5, prior, 'targets'),
     ];
-    return { p, back: roleBack(carries, targets), rows };
+    return { p, back: roleBack(carries, targets), out: roleOut(carries, targets), rows };
   }
 
   return blank;
@@ -429,7 +588,7 @@ function sameTeam(a, b) {
 export function nflFactorLines({
   type, line, recent, prior, recentContext, priorContext, versus,
   lastPlayed, gameStart, gameTotal, teamName, opponentName, favoriteName, favoriteYes,
-  spreadLine, spreadLabel, opponentLabel, teammates, matchup,
+  spreadLine, spreadLabel, opponentLabel, teammates, matchup, role,
 }) {
   if (!nflModeled(type) || line == null) return [];
   const lines = [];
@@ -443,9 +602,10 @@ export function nflFactorLines({
   } else {
     lines.push({ id: 'prior', label: 'Long sample', value: `${Math.round(fallbackRate(type, line) * 100)}% typical` });
   }
-  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup);
+  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role);
   lines.push(...volume.rows);
   if (volume.back) lines.push({ id: 'usage', label: 'Role', value: `${volume.back} back` });
+  if (volume.out) lines.push({ id: 'usage', label: 'Injuries', value: volume.out });
   const receivingType = type === REC_YDS || type === RECS || type === LONG || type === SCRIM || type === TD;
   if (receivingType && matchupReady(matchup)) {
     lines.push({ id: 'pos', label: `vs ${matchup.group}`, value: `${Math.round(matchup.share * 100)}% tgt` });
@@ -481,8 +641,8 @@ export function nflFactorLines({
 export function nflPropEdge(input) {
   const {
     type, line, recent, prior, recentContext, priorContext, versus, marketYes,
-    lastPlayed, gameStart, gameTotal, teamName, opponentName, spreadLine, spreadLabel,
-    teammates, matchup,
+    lastPlayed, gameStart, gameTotal, teamName, opponentName,     spreadLine, spreadLabel,
+    teammates, matchup, role,
   } = input;
   if (!nflModeled(type)) return null;
   if (!recent || recent.length < 5 || line == null) return null;
@@ -497,8 +657,11 @@ export function nflPropEdge(input) {
   let p = (hits + anchor * strength) / (n + strength);
   const tags = [];
 
-  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup);
+  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role);
   if (volume.back) tags.push(`${volume.back} back`);
+  if (volume.out) {
+    for (const part of volume.out.split(', ')) if (part) tags.push(part);
+  }
   if (volume.p != null) {
     const hitWeight = VOLATILE.has(type) ? 0.5 : 0.4;
     const blended = hitWeight * p + (1 - hitWeight) * volume.p;

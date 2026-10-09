@@ -1,4 +1,4 @@
-import { scoreProp } from '../utils/propHit';
+import { scoreProp } from '../utils/propHit.js';
 
 const GAMMA = 'https://gamma-api.polymarket.com';
 const US_GATEWAY = 'https://web.polymarket.us';
@@ -286,16 +286,14 @@ async function fetchNhlGameMarkets() {
 function yesQuote(market) {
   const bid = Number(market.bestBidQuote?.value);
   const ask = Number(market.bestAskQuote?.value);
-  const hasBid = Number.isFinite(bid) && bid >= 0 && bid <= 1;
-  const hasAsk = Number.isFinite(ask) && ask >= 0 && ask <= 1;
-  if (hasBid && hasAsk && ask >= bid) {
-    const yes = (bid + ask) / 2;
-    if (!(yes > 0) || yes > 1) return null;
-    return { yes, no: 1 - yes, spread: ask - bid };
-  }
-  const yes = hasAsk && ask > 0 ? ask : (hasBid && bid > 0 ? bid : null);
-  if (yes == null || yes > 1) return null;
-  return { yes, no: 1 - yes, spread: null };
+  const hasBid = Number.isFinite(bid) && bid > 0 && bid < 1;
+  const hasAsk = Number.isFinite(ask) && ask > 0 && ask < 1;
+  // A lone ask at 94¢, or a lone 2¢ bid, is an empty book. It is not the chance
+  // the player scores.
+  if (!hasBid || !hasAsk || ask < bid) return null;
+  const yes = (bid + ask) / 2;
+  if (!(yes > 0) || yes > 1) return null;
+  return { yes, no: 1 - yes, bid, ask, spread: ask - bid };
 }
 
 function normalizeNhlProp(market, event) {
@@ -341,6 +339,8 @@ function normalizeNhlProp(market, event) {
     liquidity: null,
     spread: quote.spread,
     url: `https://polymarket.us/sports/nhl/${event.slug}`,
+    bid: quote.bid,
+    ask: quote.ask,
     playerId: market.metadata?.playerId || playerName,
     jersey: market.image || '',
     jerseyNumber: Number.isFinite(jerseyNumber) ? jerseyNumber : null,
@@ -590,6 +590,8 @@ function baseRow(market, event, sport, quote, scored) {
     gameStart: parseGameStart(market.gameStartTime || event.startTime),
     yes: quote.yes,
     no: quote.no,
+    bid: quote.bid,
+    ask: quote.ask,
     liquidity: null,
     spread: quote.spread,
     url: `https://polymarket.us/sports/${sport.tag}/${event.slug}`,
@@ -633,21 +635,30 @@ function lineKind(type) {
   return 'line';
 }
 
+function takerBook(quote) {
+  const ask = Number(quote.ask);
+  const bid = Number(quote.bid);
+  const yesTaker = ask > 0 && ask < 1 ? ask : quote.yes;
+  const noTaker = bid > 0 && bid < 1 ? 1 - bid : 1 - quote.yes;
+  return { yesTaker, noTaker };
+}
+
 function lineSides(market, quote) {
   const type = market.sportsMarketType || '';
   const sides = market.marketSides || [];
   const long = sides.find((side) => side.long) || sides[0];
   const short = sides.find((side) => side !== long);
+  const book = takerBook(quote);
   if (/winner$/.test(type)) {
     return [
-      { name: long?.team?.name || long?.description || '', price: quote.yes },
-      { name: short?.team?.name || short?.description || '', price: 1 - quote.yes },
+      { name: long?.team?.name || long?.description || '', price: quote.yes, taker: book.yesTaker },
+      { name: short?.team?.name || short?.description || '', price: 1 - quote.yes, taker: book.noTaker },
     ].filter((side) => side.name);
   }
   if (/total$/.test(type)) {
     return [
-      { name: 'Over', price: quote.yes, line: lineNumber(market) },
-      { name: 'Under', price: 1 - quote.yes, line: lineNumber(market) },
+      { name: 'Over', price: quote.yes, taker: book.yesTaker, line: lineNumber(market) },
+      { name: 'Under', price: 1 - quote.yes, taker: book.noTaker, line: lineNumber(market) },
     ];
   }
   return null;

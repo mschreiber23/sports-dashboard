@@ -3,6 +3,8 @@
 // and only after 25 graded props carried it. The nudge shrinks toward zero
 // when the sample is small, and it is recomputed from the whole log.
 
+import { countsInScore } from './scoredProps.js';
+
 const MIN_LEAGUE = 40;
 const MIN_TAG = 25;
 const PRIOR = 80;
@@ -62,9 +64,10 @@ function fitLeague(rows, league) {
 }
 
 export function learnCalibration(rows) {
+  const scored = (rows || []).filter(countsInScore);
   return {
-    nfl: fitLeague(rows, 'nfl'),
-    nhl: fitLeague(rows, 'nhl'),
+    nfl: fitLeague(scored, 'nfl'),
+    nhl: fitLeague(scored, 'nhl'),
   };
 }
 

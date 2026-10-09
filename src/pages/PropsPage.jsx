@@ -8,6 +8,7 @@ import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
 import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
+import { loadTeamRoles, mergeTeammates, playerRole, rolesForTeam, sameName, sameTeam } from '../api/nflInjuries';
 import { nflWeekSpan } from '../api/nfl';
 import { espnAbbr, homeSide, teamRecentGames } from '../api/teamForm';
 import { gameLineRead } from '../utils/gameLineEdge';
@@ -16,6 +17,8 @@ import ModelTicker from '../components/ModelTicker';
 import TradeBook from '../components/TradeBook';
 import TradeButton from '../components/TradeButton';
 import { usePropSync } from '../components/PropSync';
+import { BET_PRICE_MAX, affordablePrice } from '../utils/scoredProps';
+import { rememberSport } from '../utils/lastSport';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -52,16 +55,23 @@ function last10Hit(values, line) {
 
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
-const LIKELY_PRICE_MIN = 0.43;
-const LIKELY_PRICE_MAX = 0.66;
 
-function likelyAgrees(model, yes, league) {
+function likelyAgrees(model, yes) {
   if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) return false;
   if (model.rate / 100 + 0.10 < yes) return false;
   if (model.rate / 100 + 0.14 < model.p) return false;
-  if (model.tags.some((tag) => tag.endsWith(' down') || tag.endsWith(' back'))) return false;
-  if (league === 'nfl' && model.tags.includes('low volume')) return false;
   return true;
+}
+
+function likelyCall(model, yes) {
+  if (likelyAgrees(model, yes)) return 'yes';
+  const noEdge = yes - model.p;
+  const noP = 1 - model.p;
+  if (!(noEdge >= NHL_EDGE_MIN && noP >= 0.45)) return null;
+  const miss = 1 - model.rate / 100;
+  if (miss + 0.10 < 1 - yes) return null;
+  if (miss + 0.14 < noP) return null;
+  return 'no';
 }
 const NFL_LIKELY_SKIP = new Set([
   'football_player_interceptions_thrown',
@@ -115,6 +125,7 @@ function likelyPick(game, sample, line, recent, extra) {
   return {
     id: line.id,
     player: sample.player,
+    playerId: sample.playerId || sample.player,
     prop: `${lineText(line.line)} ${chartLabel(sample.type)}`,
     line: line.line,
     total: recent.length,
@@ -125,6 +136,8 @@ function likelyPick(game, sample, line, recent, extra) {
     gameStart: sample.gameStart,
     propType: sample.type,
     price: line.yes,
+    bid: line.bid,
+    ask: line.ask,
     kind: 'player',
     market: marketPct(line.yes),
     ...extra,
@@ -172,6 +185,12 @@ function teammateLogs(entries) {
     mates.push({ name: entry.name, recent: entry.recent || null, prior: entry.prior || null });
   }
   return mates;
+}
+
+function takersFor(sides, pickedName) {
+  const picked = listedSide(sides, { name: pickedName });
+  const other = (sides || []).find((side) => side !== picked);
+  return { takerYes: picked?.taker, takerNo: other?.taker };
 }
 
 function listedSide(sides, team) {
@@ -235,7 +254,7 @@ function addGameLines(picks, game, forms) {
     overPrice: over?.price,
   });
   if (!read?.winner) return;
-  picks.push({
+  if (read.winner.price <= BET_PRICE_MAX) picks.push({
     id: `win|${game.key}`,
     player: read.winner.name,
     prop: 'to win',
@@ -248,6 +267,7 @@ function addGameLines(picks, game, forms) {
     gameStart: game.gameStart,
     market: marketPct(read.winner.price),
     price: read.winner.price,
+    ...takersFor(winner?.sides, read.winner.name),
     league: game.league,
     kind: 'winner',
     propType: 'game_winner',
@@ -266,7 +286,7 @@ function addGameLines(picks, game, forms) {
     gameLine: true,
     tags: read.winner.tags,
   });
-  if (!read.total) return;
+  if (!read.total || read.total.price > BET_PRICE_MAX) return;
   picks.push({
     id: `total|${game.key}`,
     player: read.total.label,
@@ -280,6 +300,7 @@ function addGameLines(picks, game, forms) {
     gameStart: game.gameStart,
     market: marketPct(read.total.price),
     price: read.total.price,
+    ...takersFor(total?.sides, read.total.label.startsWith('Over') ? 'Over' : 'Under'),
     league: game.league,
     kind: 'total',
     propType: 'game_total',
@@ -295,7 +316,24 @@ function addGameLines(picks, game, forms) {
   });
 }
 
-function likelyBoard(games, logs, calibration, forms) {
+function boardLog(logs, league, name, gameStart) {
+  const direct = logs?.[`${league}|${name}|${gameStart}`];
+  if (direct) return direct;
+  const hit = Object.entries(logs || {}).find(([key, value]) => {
+    const [rowLeague, rowName, rowStart] = key.split('|');
+    return rowLeague === league && rowStart === String(gameStart) && sameName(rowName, name) && value;
+  });
+  return hit ? hit[1] : null;
+}
+
+function hurtLog(logs, name) {
+  if (!logs) return null;
+  if (logs[name]) return logs[name];
+  const hit = Object.entries(logs).find(([key]) => sameName(key, name));
+  return hit ? hit[1] : null;
+}
+
+function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs) {
   const picks = [];
   for (const game of games) {
     if (!game.rows) continue;
@@ -321,7 +359,7 @@ function likelyBoard(games, logs, calibration, forms) {
         const ranked = game.league === 'nfl' || game.league === 'nhl';
         const candidates = ranked ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
-          if (ranked && (line.yes < LIKELY_PRICE_MIN || line.yes > LIKELY_PRICE_MAX)) continue;
+          if (ranked && !affordablePrice(line.yes) && !affordablePrice(1 - line.yes)) continue;
           if (game.league === 'nfl' && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]))) continue;
           const model = edgeFn({
             type: sample.type,
@@ -342,22 +380,38 @@ function likelyBoard(games, logs, calibration, forms) {
             spreadLine: slate.spreadLine,
             spreadLabel: slate.spreadLabel,
             matchup: log?.matchup,
-            teammates: game.league === 'nfl' ? teammateLogs(game.rows.filter((row) => (
-              row.section === 'player' && row.player !== sample.player && row.teamName && row.teamName === sample.teamName
-            )).map((row) => {
-              const mate = logs[`${game.league}|${row.player}|${row.gameStart}`];
-              return { name: row.player, recent: mate?.context, prior: mate?.priorContext };
-            })) : undefined,
+            ...(game.league === 'nfl' ? (() => {
+              const teamRoles = rolesForTeam(roles, sample.teamName);
+              const board = teammateLogs(game.rows.filter((row) => (
+                row.section === 'player' && row.player !== sample.player && row.teamName && row.teamName === sample.teamName
+              )).map((row) => {
+                const mate = boardLog(logs, game.league, row.player, row.gameStart);
+                return { name: row.player, recent: mate?.context, prior: mate?.priorContext, position: mate?.position };
+              }));
+              const logFor = (name) => boardLog(logs, game.league, name, sample.gameStart) || hurtLog(opportunityLogs, name);
+              return {
+                teammates: mergeTeammates(teamRoles, sample.player, board, logFor),
+                role: playerRole(teamRoles, sample.player, log?.position),
+              };
+            })() : {}),
             calibration: calibration?.[game.league],
           });
           if (!model) continue;
-          if (ranked && !likelyAgrees(model, line.yes, game.league)) continue;
+          const call = ranked ? likelyCall(model, line.yes) : 'yes';
+          if (ranked && !call) continue;
+          const no = call === 'no';
+          if (ranked && !affordablePrice(no ? 1 - line.yes : line.yes)) continue;
+          const sideEdge = no ? line.yes - model.p : model.edge;
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
             hits: model.hits,
-            edge: model.edge,
-            edgePts: edgePoints(model.edge),
-            modelPct: Math.round(model.p * 100),
+            edge: sideEdge,
+            edgePts: edgePoints(sideEdge),
+            modelPct: Math.round((no ? 1 - model.p : model.p) * 100),
+            market: marketPct(no ? 1 - line.yes : line.yes),
+            yesEdge: model.edge,
+            yesModel: model.p,
+            prediction: no ? 'no' : 'yes',
             modeled: true,
             tags: model.tags,
           }));
@@ -474,6 +528,7 @@ const NFL_FACTOR_KEY = [
   ['Attempts, carries, targets', 'Average usage over the last five games. This is the main input. Passing props use attempts, rushing props use carries, and receiving props use targets. Receptions then use catch rate. Receiving yards use yards per target.'],
   ['Prior attempts, carries, targets', 'The same usage number in the earlier games. Expected usage is about two thirds the last five and one third this longer rate.'],
   ['Role', 'When a high-usage teammate missed games and this player’s targets, carries, or attempts jumped, and that teammate is in the lineup tonight, the read uses the games they played together. The chip names who is back. Those props stay off Likely.'],
+  ['Injuries', 'Out, doubtful, and injured reserve clear a quarterback, back, receiver, or tight end. The next players on the depth chart take his carries, targets, or attempts, with the first in line taking most of them. Questionable moves about 40% of that work. The chip names who is hurt. A player who is himself questionable or out is scaled down.'],
   ['Y/A, YPC, catch rate', 'Efficiency pulled toward a typical NFL rate, so a short hot or cold stretch does not take over. Touchdowns use a per-attempt or per-target rate.'],
   ['Volume', 'The chance that tonight’s expected usage and that efficiency imply at this exact line. This is most of the model percent.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent. A small nudge, and only with at least three of those games.'],
@@ -522,7 +577,7 @@ function shortOpp(name, abbr) {
   return abbr || word.split(/\s+/).pop() || 'opponent';
 }
 
-function PlayerPropBoard({ rows, league, slate, calibration, game }) {
+function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles, opportunityLogs }) {
   const groups = useMemo(() => groupPlayers(rows), [rows]);
   const pills = useMemo(() => {
     const present = new Set(groups.map((group) => group.type));
@@ -531,12 +586,17 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
     return ordered;
   }, [groups]);
   const [logs, setLogs] = useState({});
-  const [stat, setStat] = useState('');
+  const focusKey = focus?.propType ? `${focus.playerId || focus.player}|${focus.propType}` : '';
+  const [stat, setStat] = useState(focus?.propType || '');
   const [team, setTeam] = useState('all');
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [picked, setPicked] = useState({});
+  const [picked, setPicked] = useState(() => (
+    focusKey && focus?.line != null ? { [focusKey]: focus.line } : {}
+  ));
   const [keyOpen, setKeyOpen] = useState(false);
+  const focusNode = useRef(null);
+  const scrolledFocus = useRef('');
 
   const activeStat = pills.includes(stat) ? stat : (pills[0] || '');
   const logKey = useMemo(() => groups.map((group) => `${group.player}|${group.opponentAbbr}|${group.gameStart}`).sort().join(';'), [groups]);
@@ -594,8 +654,18 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
         const current = group.lines.find((line) => line.line === selected) || group.lines[0];
         return { ...group, selected, current };
       })
-      .sort((a, b) => b.current.yes - a.current.yes || a.player.localeCompare(b.player));
-  }, [groups, activeStat, team, query, picked]);
+      .sort((a, b) => {
+        if (a.key === focusKey) return -1;
+        if (b.key === focusKey) return 1;
+        return b.current.yes - a.current.yes || a.player.localeCompare(b.player);
+      });
+  }, [groups, activeStat, team, query, picked, focusKey]);
+
+  useEffect(() => {
+    if (!focusKey || scrolledFocus.current === focusKey || !focusNode.current) return;
+    scrolledFocus.current = focusKey;
+    focusNode.current.scrollIntoView({ block: 'center' });
+  }, [focusKey, visible]);
 
   function chooseLine(key, lines, dir) {
     setPicked((prev) => {
@@ -691,13 +761,22 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
             spreadLabel: slate?.spreadLabel,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
             matchup: log?.matchup,
-            teammates: league === 'nfl' ? teammateLogs(groups.filter((other) => (
-              other.player !== group.player && other.teamName && other.teamName === group.teamName
-            )).map((other) => ({
-              name: other.player,
-              recent: logs[other.player]?.context,
-              prior: logs[other.player]?.priorContext,
-            }))) : undefined,
+            ...(league === 'nfl' ? (() => {
+              const teamRoles = rolesForTeam(roles, group.teamName);
+              const board = teammateLogs(groups.filter((other) => (
+                other.player !== group.player && other.teamName && other.teamName === group.teamName
+              )).map((other) => ({
+                name: other.player,
+                recent: logs[other.player]?.context,
+                prior: logs[other.player]?.priorContext,
+                position: logs[other.player]?.position,
+              })));
+              const logFor = (name) => logs[name] || hurtLog(opportunityLogs, name);
+              return {
+                teammates: mergeTeammates(teamRoles, group.player, board, logFor),
+                role: playerRole(teamRoles, group.player, log?.position),
+              };
+            })() : {}),
           };
           const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : null);
           const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : null);
@@ -705,12 +784,16 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
           const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes, calibration }) : null;
           const moved = new Set((model?.tags || []).map((tag) => {
             if (FACTOR_TAGS[tag]) return FACTOR_TAGS[tag];
-            if (String(tag).endsWith(' back')) return 'usage';
+            if (String(tag).endsWith(' back') || String(tag).endsWith(' out') || String(tag).endsWith(' Q') || tag === 'Out' || tag === 'Questionable') return 'usage';
             if (/^(TE|WR|RB) targets/.test(tag)) return 'pos';
             return null;
           }).filter(Boolean));
           return (
-            <div key={group.key} className="pp-player">
+            <div
+              key={group.key}
+              className={`pp-player${group.key === focusKey ? ' pp-player-focus' : ''}`}
+              ref={group.key === focusKey ? focusNode : null}
+            >
               <div className="pp-row">
                 <div className="pp-who">
                   {group.jersey ? (
@@ -750,13 +833,13 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
                   {model && (
                     <div className="pp-factor pp-factor-on">
                       <span>Model</span>
-                      <span>{Math.round(model.p * 100)}%</span>
+                      <span>{(-model.edge >= NHL_EDGE_MIN) ? `No ${Math.round((1 - model.p) * 100)}%` : `${Math.round(model.p * 100)}%`}</span>
                     </div>
                   )}
                   {model && (
-                    <div className={`pp-factor ${model.edge >= NHL_EDGE_MIN ? 'pp-factor-on' : ''}`}>
+                    <div className={`pp-factor ${(model.edge >= NHL_EDGE_MIN || -model.edge >= NHL_EDGE_MIN) ? 'pp-factor-on' : ''}`}>
                       <span>Edge</span>
-                      <span>{model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100)}</span>
+                      <span>{(-model.edge >= NHL_EDGE_MIN) ? `+${Math.round(-model.edge * 100)}` : (model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100))}</span>
                     </div>
                   )}
                   {factors.map((item) => (
@@ -780,9 +863,13 @@ function PlayerPropBoard({ rows, league, slate, calibration, game }) {
                     line: group.selected,
                     side: 'yes',
                     price: group.current?.yes,
+                    bid: group.current?.bid,
+                    ask: group.current?.ask,
                     kind: 'player',
                     pick: 'yes',
-                  }} />
+                    edge: model ? model.edge : null,
+                    modelP: model ? model.p : null,
+                  }} recommend={model && -model.edge >= NHL_EDGE_MIN ? 'no' : (model && model.edge >= NHL_EDGE_MIN ? 'yes' : null)} />
                 </div>
               )}
               {(recent || versus) && (
@@ -813,13 +900,27 @@ function primaryLines(rows) {
     .map((entry) => entry[1].row);
 }
 
-function GameDetail({ game, rows, loading, calibration }) {
-  const [section, setSection] = useState('players');
+function lineMatchesFocus(row, focus) {
+  if (!focus || focus.section !== 'lines') return false;
+  if (focus.kind === 'total') return row.sideText === 'total';
+  if (focus.kind === 'winner') return row.sideText === 'moneyline';
+  return false;
+}
+
+function GameDetail({ game, rows, loading, calibration, focus, roles, opportunityLogs }) {
+  const [section, setSection] = useState(focus?.section || 'players');
+  const lineNode = useRef(null);
+  const scrolledLine = useRef(false);
   const list = rows || [];
   const players = list.filter((row) => row.section === 'player');
   const lines = primaryLines(list.filter((row) => row.section === 'line'));
   const props = list.filter((row) => row.section === 'prop');
   const cards = section === 'lines' ? lines : props;
+  useEffect(() => {
+    if (scrolledLine.current || section !== 'lines' || !lineNode.current) return;
+    scrolledLine.current = true;
+    lineNode.current.scrollIntoView({ block: 'center' });
+  });
   return (
     <>
       <div className="pp-tabs">
@@ -830,7 +931,7 @@ function GameDetail({ game, rows, loading, calibration }) {
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} />
+          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} focus={focus?.section === 'players' ? focus : null} roles={roles} opportunityLogs={opportunityLogs} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
@@ -838,7 +939,10 @@ function GameDetail({ game, rows, loading, calibration }) {
           : (
             <div className="props-list">
               {cards.length === 0 && <div className="empty-state"><p>No markets in this section.</p></div>}
-              {cards.map((row) => <PropCard key={row.id} row={row} />)}
+              {cards.map((row) => {
+                const focused = lineMatchesFocus(row, focus);
+                return <PropCard key={row.id} row={row} focused={focused} cardRef={focused ? lineNode : null} />;
+              })}
             </div>
           )
       )}
@@ -846,10 +950,10 @@ function GameDetail({ game, rows, loading, calibration }) {
   );
 }
 
-function PropCard({ row }) {
+function PropCard({ row, focused, cardRef }) {
   const spread = row.spread == null ? null : `${Math.round(row.spread * 100)}¢`;
   return (
-    <a className="props-card" href={row.url} target="_blank" rel="noopener noreferrer">
+    <a ref={cardRef} className={`props-card${focused ? ' props-card-focus' : ''}`} href={row.url} target="_blank" rel="noopener noreferrer">
       <div className="props-card-top">
         <div className="props-card-main">
           <div className="props-player">
@@ -886,19 +990,27 @@ function likelyDraft(item) {
     line: item.line,
     side: item.kind === 'player' ? 'yes' : (item.pick || 'yes'),
     price: item.price,
+    bid: item.bid,
+    ask: item.ask,
+    takerYes: item.takerYes,
+    takerNo: item.takerNo,
     kind: item.kind || 'player',
     pick: item.pick || 'yes',
     pickAbbr: item.pickAbbr || '',
     teams: item.teams || [],
+    edge: item.modeled ? (typeof item.yesEdge === 'number' ? item.yesEdge : item.edge) : null,
+    modelP: item.modeled && typeof item.yesModel === 'number'
+      ? item.yesModel
+      : (item.modeled && item.modelPct != null ? item.modelPct / 100 : null),
   };
 }
 
 function LikelyRow({ item, sport, onOpen }) {
   return (
     <div className="props-game">
-      <button type="button" className="props-game-open" onClick={() => onOpen(item.gameKey)}>
+      <button type="button" className="props-game-open" onClick={() => onOpen(item)}>
         <div className="props-game-main">
-          <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prop}</span></div>
+          <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prediction === 'no' ? `No ${item.prop}` : item.prop}</span></div>
           <div className="props-game-meta">
             {sport === 'All' ? `${item.sport} · ` : ''}{item.game}
             {item.gameLine ? '' : ` · ${item.hits}/${item.total}`}
@@ -914,7 +1026,7 @@ function LikelyRow({ item, sport, onOpen }) {
           <span>edge</span>
         </div>
       </button>
-      <TradeButton draft={likelyDraft(item)} compact />
+      <TradeButton draft={likelyDraft(item)} compact recommend={item.edge >= NHL_EDGE_MIN ? (item.prediction === 'no' ? 'no' : 'yes') : null} />
     </div>
   );
 }
@@ -927,11 +1039,15 @@ export default function PropsPage() {
   const [sport, setSport] = useState('All');
   const [day, setDay] = useState(() => easternDay(Date.now()));
   const [gameKey, setGameKey] = useState(null);
+  const [propFocus, setPropFocus] = useState(null);
   const [view, setView] = useState('games');
   const [boardLogs, setBoardLogs] = useState({});
   const [logDone, setLogDone] = useState(0);
   const [teamForms, setTeamForms] = useState({});
   const [teamDone, setTeamDone] = useState(0);
+  const [roleReport, setRoleReport] = useState([]);
+  const [hurtLogs, setHurtLogs] = useState({});
+  const hurtTried = useRef(new Set());
   const [reloadKey, setReloadKey] = useState(0);
   const [loadingSlug, setLoadingSlug] = useState('');
 
@@ -1024,7 +1140,18 @@ export default function PropsPage() {
     return teams;
   }, [view, games]);
   const teamJobKey = teamJob.map((team) => team.id).join(';');
-  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms) : []), [view, games, boardLogs, calibration, teamForms]);
+  const injuryTeams = useMemo(() => {
+    const names = [];
+    for (const game of games) {
+      if (game.league !== 'nfl') continue;
+      for (const row of game.rows || []) {
+        if (row.teamName && !names.some((name) => sameTeam(name, row.teamName))) names.push(row.teamName);
+      }
+    }
+    return names;
+  }, [games]);
+  const injuryKey = injuryTeams.join('|');
+  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs) : []), [view, games, boardLogs, calibration, teamForms, roleReport, hurtLogs]);
   const gamesLoaded = games.filter((game) => game.rows).length;
 
   useEffect(() => {
@@ -1098,6 +1225,55 @@ export default function PropsPage() {
   }, [teamJobKey, teamJob]);
 
   useEffect(() => {
+    hurtTried.current = new Set();
+    if (!injuryKey) {
+      setRoleReport([]);
+      return undefined;
+    }
+    let cancel = false;
+    loadTeamRoles(injuryTeams)
+      .then((report) => { if (!cancel) setRoleReport(report); })
+      .catch(() => { if (!cancel) setRoleReport([]); });
+    return () => { cancel = true; };
+  }, [injuryKey, injuryTeams]);
+
+  useEffect(() => {
+    if (!roleReport.length) return undefined;
+    let cancel = false;
+    const missing = [];
+    for (const team of roleReport) {
+      let before = Infinity;
+      for (const game of games) {
+        for (const row of game.rows || []) {
+          if (sameTeam(row.teamName, team.teamName) && row.gameStart < before) before = row.gameStart;
+        }
+      }
+      for (const role of team.roles) {
+        if (!(role.miss > 0) || !role.group) continue;
+        if (logJob.some((player) => sameName(player.name, role.name))) continue;
+        if (hurtTried.current.has(role.name)) continue;
+        hurtTried.current.add(role.name);
+        missing.push({ name: role.name, before: Number.isFinite(before) ? before : Date.now() });
+      }
+    }
+    if (!missing.length) return undefined;
+    let next = 0;
+    async function worker() {
+      while (next < missing.length) {
+        const player = missing[next++];
+        try {
+          const result = await recentPlayerLogs('nfl', [player]);
+          if (!cancel) setHurtLogs((prev) => (player.name in prev ? prev : { ...prev, [player.name]: result[player.name] ?? null }));
+        } catch {
+          if (!cancel) setHurtLogs((prev) => (player.name in prev ? prev : { ...prev, [player.name]: null }));
+        }
+      }
+    }
+    Promise.all(Array.from({ length: Math.min(4, missing.length) }, worker));
+    return () => { cancel = true; };
+  }, [roleReport, games, logJob]);
+
+  useEffect(() => {
     if (!gameKey) return undefined;
     let cancel = false;
     setLoadingSlug(gameKey);
@@ -1112,6 +1288,21 @@ export default function PropsPage() {
       .finally(() => { if (!cancel) setLoadingSlug(''); });
     return () => { cancel = true; };
   }, [gameKey]);
+
+  function openLikely(item) {
+    setGameKey(item.gameKey);
+    if (item.gameLine) {
+      setPropFocus({ section: 'lines', kind: item.kind });
+      return;
+    }
+    setPropFocus({
+      section: 'players',
+      playerId: item.playerId || item.player,
+      player: item.player,
+      propType: item.propType,
+      line: item.line,
+    });
+  }
 
   return (
     <div className="page-content props-page">
@@ -1146,9 +1337,9 @@ export default function PropsPage() {
           {view === 'results' ? <PropLedger /> : view === 'trades' ? <TradeBook /> : (
           <>
           <div className="props-day-nav">
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
             <span className="props-day-label">{sport === 'NFL' && nflWeek ? nflWeek.label : formatDayLabel(day)}</span>
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setGameKey(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
           </div>
 
           <div className="scores-sport-tabs">
@@ -1159,7 +1350,7 @@ export default function PropsPage() {
                   ? counts.nfl
                   : (counts.bySport.get(name) || 0);
               return (
-                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => setSport(name)}>
+                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => { setSport(name); if (name !== 'All') rememberSport(name); }}>
                   {name}
                   <span className="props-tab-count">{count}</span>
                 </button>
@@ -1179,7 +1370,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the last 10 games still support it. A drop in ice time, shots, or usage stays off the list. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. Other sports stay when they hit in 70% or more of the last 10.
+                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the price at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and the last 10 games are still in the neighborhood. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. If a quarterback, back, receiver, or tight end is out or doubtful, the next player at that position takes on that work. Questionable moves about 40% of it. Other sports stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}
@@ -1190,11 +1381,11 @@ export default function PropsPage() {
               <div className="props-list">
                 {likelyPicks.some((item) => item.gameLine) && <div className="props-likely-head">Game lines</div>}
                 {likelyPicks.filter((item) => item.gameLine).map((item) => (
-                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={setGameKey} />
+                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={openLikely} />
                 ))}
                 {likelyPicks.some((item) => !item.gameLine) && <div className="props-likely-head">Player props</div>}
                 {likelyPicks.filter((item) => !item.gameLine).map((item) => (
-                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={setGameKey} />
+                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={openLikely} />
                 ))}
               </div>
             </>
@@ -1206,7 +1397,7 @@ export default function PropsPage() {
               const totalLabel = mainTotalLabel(game.rows);
               const when = sport === 'NFL' ? formatGameTime(game.gameStart) : cardClock(game.gameStart);
               return (
-                <button key={game.key} type="button" className="props-game" onClick={() => setGameKey(game.key)}>
+                <button key={game.key} type="button" className="props-game" onClick={() => { setPropFocus(null); setGameKey(game.key); }}>
                   <div className="props-game-main">
                     <div className="props-game-title">{game.title}</div>
                     <div className="props-game-meta">
@@ -1226,7 +1417,7 @@ export default function PropsPage() {
 
       {openGame && (
         <>
-          <button type="button" className="props-back" onClick={() => setGameKey(null)}>{view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
+          <button type="button" className="props-back" onClick={() => { setGameKey(null); setPropFocus(null); }}>{view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
           <div className="props-sport-head">
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>
@@ -1237,6 +1428,9 @@ export default function PropsPage() {
             rows={openGame.rows}
             loading={loadingSlug === openGame.key || !openGame.rows}
             calibration={calibration?.[openGame.league]}
+            focus={propFocus}
+            roles={roleReport}
+            opportunityLogs={hurtLogs}
           />
         </>
       )}

@@ -1,10 +1,13 @@
 import { loadPropEvents, loadGameProps } from './polymarket';
 import { recentPlayerLogs, playerResultOnDate } from './playerLogs';
+import { loadTeamRoles, sameName, sameTeam } from './nflInjuries';
 import { loadReads, saveReads } from './propStore';
 import { loadTrades, saveTrades } from './tradeStore';
 import { finalScore, gradeMarketTrade } from './gameResult';
 import { gamesToRecord, buildReads, refreshReads, gradeRead } from '../utils/propReads';
 import { learnCalibration, priceRead } from '../utils/propCalibration';
+import { stampPrediction } from '../utils/modelCall';
+import { countsInScore } from '../utils/scoredProps';
 
 async function pool(items, limit, fn) {
   const out = new Array(items.length);
@@ -40,8 +43,7 @@ async function gradeTrades(userId) {
     if (!update?.result || trade.result) return trade;
     return { ...trade, result: update.result, actual: update.actual, gradedAt: update.gradedAt };
   });
-  await saveTrades(userId, next);
-  return next;
+  return saveTrades(userId, next);
 }
 
 export async function runPropSync({ userId, force = false, onStatus, onUpdate, shouldStop }) {
@@ -50,10 +52,12 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
     onUpdate?.({ reads: nextRows, calibration, trades });
     return { reads: nextRows, calibration, trades };
   };
-  let rows = await loadReads(userId);
+  const stored = await loadReads(userId);
+  let rows = stored.filter(countsInScore);
   let calibration = learnCalibration(rows);
   let trades = await gradeTrades(userId);
   publish(rows, calibration, trades);
+  if (rows.length !== stored.length) await saveReads(userId, rows);
   if (stop()) return { reads: rows, calibration };
 
   const pending = rows.filter((row) => !row.result && row.gameStart <= Date.now());
@@ -118,7 +122,44 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   });
   if (stop()) return { reads: rows, calibration };
 
-  const fresh = buildReads({ games: withRows, logs }).map((row) => priceRead(row, calibration));
+  let roles = [];
+  const opportunityLogs = {};
+  if (withRows.some((game) => game.league === 'nfl')) {
+    const teamNames = [];
+    for (const game of withRows) {
+      for (const row of game.rows || []) {
+        if (row.teamName && !teamNames.includes(row.teamName)) teamNames.push(row.teamName);
+      }
+    }
+    roles = await loadTeamRoles(teamNames).catch(() => []);
+    if (stop()) return { reads: rows, calibration };
+    const missing = [];
+    const queued = new Set();
+    for (const team of roles) {
+      let before = Infinity;
+      for (const game of withRows) {
+        for (const row of game.rows || []) {
+          if (sameTeam(row.teamName, team.teamName) && row.gameStart < before) before = row.gameStart;
+        }
+      }
+      for (const role of team.roles) {
+        if (!(role.miss > 0) || !role.group) continue;
+        if (players.some((player) => sameName(player.name, role.name))) continue;
+        const key = role.name;
+        if (queued.has(key)) continue;
+        queued.add(key);
+        missing.push({ key, name: role.name, before: Number.isFinite(before) ? before : Date.now() });
+      }
+    }
+    if (missing.length) onStatus?.('Checking injury reports…');
+    await pool(missing, 4, async (player) => {
+      const result = await recentPlayerLogs('nfl', [player]).catch(() => ({}));
+      opportunityLogs[player.key] = result[player.name] ?? null;
+    });
+    if (stop()) return { reads: rows, calibration };
+  }
+
+  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs }).map((row) => stampPrediction(priceRead(row, calibration)));
   rows = refreshReads(rows, fresh);
   calibration = learnCalibration(rows);
   publish(rows, calibration, trades);
