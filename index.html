@@ -34,6 +34,39 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet" />
+
+    <!-- iOS Home Screen reports a short viewport (WebKit 254868). Size the shell to the glass before paint. -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        function standalone() {
+          return window.navigator.standalone === true;
+        }
+        function pin() {
+          if (!standalone()) return;
+          root.classList.add('home-screen');
+          var screenH = window.screen.height;
+          var inner = window.innerHeight || screenH;
+          // Old iOS reported screen.height in device pixels. Ignore that and use 100vh.
+          if (screenH > 0 && screenH < inner * 2 && screenH <= 1600) {
+            root.style.setProperty('--screen-fill', screenH + 'px');
+          } else {
+            root.style.setProperty('--screen-fill', '100vh');
+          }
+          // black-translucent shifts the document down on launch and leaves a band at the bottom.
+          window.scrollTo(0, 0);
+        }
+        pin();
+        window.addEventListener('resize', pin);
+        window.addEventListener('orientationchange', pin);
+        window.addEventListener('pageshow', pin);
+        window.addEventListener('load', function () {
+          pin();
+          setTimeout(pin, 50);
+          setTimeout(pin, 300);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
