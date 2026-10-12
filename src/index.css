@@ -10,7 +10,6 @@
 html {
   touch-action: pan-x pan-y;
   height: 100%;
-  height: 100dvh;
   overflow: hidden;
   max-width: 100%;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -59,7 +58,16 @@ body {
 #root { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ── App Layout ── */
-.app { display: flex; flex-direction: column; flex: 1; min-height: 0; max-width: 100%; min-width: 0; }
+/* Fixed to the visible screen. 100dvh stops short on the phone and leaves a band under the bar. */
+.app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 100%;
+  min-width: 0;
+}
 
 .main {
   max-width: 1200px;
@@ -3956,7 +3964,15 @@ body {
 /* ── Navigation ── */
 
 /* App layout with bottom nav */
-.app { display: flex; flex-direction: column; flex: 1; min-height: 0; max-width: 100%; min-width: 0; }
+.app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 100%;
+  min-width: 0;
+}
 /* The list scrolls here. The bar sits under it, so a scroll cannot pick the bar up. */
 .app-body {
   flex: 1;
