@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -176,6 +176,24 @@ export function BottomNav() {
   const { pathname } = useLocation();
   const [showMore, setShowMore] = useState(false);
   const moreActive = MORE_ITEMS.some(i => pathname === i.path);
+
+  useEffect(() => {
+    if (window.navigator.standalone !== true) return undefined;
+    const nav = document.querySelector('.bottom-nav');
+    if (!nav) return undefined;
+    const sync = () => {
+      if (nav.offsetHeight > 0) {
+        document.documentElement.style.setProperty('--home-nav-offset', `${nav.offsetHeight}px`);
+      }
+    };
+    sync();
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+    };
+  }, []);
 
   return (
     <>
