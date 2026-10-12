@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS prop_reads (
   model_p     NUMERIC NOT NULL,
   base_p      NUMERIC,
   edge        NUMERIC NOT NULL,
+  prediction  TEXT,
   rate        INTEGER,
   hits        INTEGER,
   sample      INTEGER,
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS prop_reads (
 
 ALTER TABLE prop_reads ADD COLUMN IF NOT EXISTS base_p NUMERIC;
 ALTER TABLE prop_reads ADD COLUMN IF NOT EXISTS priced_at TIMESTAMPTZ;
+ALTER TABLE prop_reads ADD COLUMN IF NOT EXISTS prediction TEXT;
 
 CREATE INDEX IF NOT EXISTS prop_reads_user_start ON prop_reads (user_id, game_start);
 
@@ -82,11 +84,20 @@ CREATE TABLE IF NOT EXISTS prop_trades (
   pick        TEXT,
   pick_abbr   TEXT,
   teams       JSONB NOT NULL DEFAULT '[]',
+  prediction  TEXT,
+  edge        NUMERIC,
+  payout      NUMERIC,
+  edited_at   TIMESTAMPTZ,
   result      TEXT,
   actual      NUMERIC,
   graded_at   TIMESTAMPTZ,
   recorded_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS prediction TEXT;
+ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS edge NUMERIC;
+ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS payout NUMERIC;
+ALTER TABLE prop_trades ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS prop_trades_user_start ON prop_trades (user_id, game_start);
 

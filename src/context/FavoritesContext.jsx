@@ -57,8 +57,12 @@ export function FavoritesProvider({ children, userId }) {
           setSynced(true);
           return;
         }
-        if (data) {
-          setFavoritesState(data.preferences || DEFAULT_FAVORITES);
+        if (data && Array.isArray(data.preferences?.teams)) {
+          const prefs = data.preferences;
+          setFavoritesState({
+            teams: prefs.teams,
+            players: Array.isArray(prefs.players) ? prefs.players : [],
+          });
           setSportOrderState(data.sport_order || DEFAULT_SPORT_ORDER);
         } else {
           // First time — migrate from localStorage if data exists
@@ -78,8 +82,22 @@ export function FavoritesProvider({ children, userId }) {
     saveTimer.current = setTimeout(() => {
       supabase
         .from('user_preferences')
-        .upsert({ user_id: userId, preferences: newFavs, sport_order: newOrder, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-        .then(({ error }) => { if (error) console.error('Save prefs error:', error); });
+        .select('preferences')
+        .eq('user_id', userId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) { console.error('Save prefs error:', error); return null; }
+          const prev = data?.preferences && typeof data.preferences === 'object' ? data.preferences : {};
+          const preferences = {
+            ...prev,
+            teams: newFavs.teams || [],
+            players: newFavs.players || [],
+          };
+          return supabase
+            .from('user_preferences')
+            .upsert({ user_id: userId, preferences, sport_order: newOrder, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+        })
+        .then((result) => { if (result?.error) console.error('Save prefs error:', result.error); });
     }, 1000);
   }, [userId, synced]);
 

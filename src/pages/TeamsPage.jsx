@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchTeams } from '../api/espn';
+import { readLastSport, rememberSport } from '../utils/lastSport';
 
 const VIEWED_KEY = 'shribely_viewed_teams';
 const MAX_VIEWED = 16;
@@ -87,7 +88,7 @@ function ViewedTeams({ teams, onClear }) {
 /* ── Main Teams Page ─────────────────────────────────────────────────── */
 export default function TeamsPage() {
   const navigate = useNavigate();
-  const [activeSport, setActiveSport] = useState('mlb');
+  const [activeSport, setActiveSport] = useState(() => readLastSport());
   const [teams, setTeams]             = useState({});  // sport → team[]
   const [query, setQuery]             = useState('');
   const [viewed, setViewed]           = useState(loadViewed);
@@ -138,7 +139,7 @@ export default function TeamsPage() {
             key={s.key}
             className={`teams-sport-tab ${activeSport === s.key ? 'teams-sport-tab-active' : ''}`}
             style={activeSport === s.key ? { borderBottomColor: s.color, color: s.color } : {}}
-            onClick={() => { setActiveSport(s.key); setQuery(''); }}
+            onClick={() => { rememberSport(s.key); setActiveSport(s.key); setQuery(''); }}
           >
             {s.label}
           </button>

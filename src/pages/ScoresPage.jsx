@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS } from '../api/espn';
+import { readLastSport, rememberSport } from '../utils/lastSport';
 import { useFavorites } from '../context/FavoritesContext';
 import { MlbPreCard, MlbLiveCard, MlbFinalCard, SportPreCard, SportLiveCard, SportFinalCard, NhlFinalCard, NhlLiveCard } from '../components/TeamRow';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
@@ -55,12 +56,24 @@ export default function ScoresPage() {
 
   // Restore last-selected sport on mount
   const [activeSport, setActiveSport] = useState(() => {
-    try { return localStorage.getItem(SCORES_SPORT_KEY) || 'mlb'; } catch { return 'mlb'; }
+    try { return readLastSport() || localStorage.getItem(SCORES_SPORT_KEY) || 'mlb'; } catch { return 'mlb'; }
   });
   const handleSetSport = (sport) => {
     try { localStorage.setItem(SCORES_SPORT_KEY, sport); } catch {}
+    rememberSport(sport);
     setActiveSport(sport);
   };
+
+  useEffect(() => {
+    const onSport = (event) => {
+      const next = event.detail;
+      if (!next || next === activeSport) return;
+      try { localStorage.setItem(SCORES_SPORT_KEY, next); } catch {}
+      setActiveSport(next);
+    };
+    window.addEventListener('shribely-sport', onSport);
+    return () => window.removeEventListener('shribely-sport', onSport);
+  }, [activeSport]);
 
   const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
   const [rawGames, setRawGames] = useState(() => {

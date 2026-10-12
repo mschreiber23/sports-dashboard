@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getStandings, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import { readLastSport, rememberSport } from '../utils/lastSport';
 
 /* ── View configs ──────────────────────────────────── */
 const VIEWS = {
@@ -509,16 +510,28 @@ function SportStandings({ sport, view }) {
 
 /* ── Page ───────────────────────────────────────────── */
 export default function StandingsPage() {
-  const [activeSport, setActiveSport] = useState('mlb');
+  const [activeSport, setActiveSport] = useState(() => readLastSport());
   const [activeViewIdx, setActiveViewIdx] = useState(0);
 
   const views = VIEWS[activeSport] || VIEWS.mlb;
   const activeView = views[activeViewIdx] || views[0];
 
   const handleSportChange = (sport) => {
+    rememberSport(sport);
     setActiveSport(sport);
     setActiveViewIdx(0);
   };
+
+  useEffect(() => {
+    const onSport = (event) => {
+      if (event.detail && VIEWS[event.detail] && event.detail !== activeSport) {
+        setActiveSport(event.detail);
+        setActiveViewIdx(0);
+      }
+    };
+    window.addEventListener('shribely-sport', onSport);
+    return () => window.removeEventListener('shribely-sport', onSport);
+  }, [activeSport]);
 
   return (
     <div className="page-content">

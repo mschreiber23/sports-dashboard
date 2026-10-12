@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getStatLeaders, getAthleteInfo, SPORTS } from '../api/espn';
+import { readLastSport, rememberSport } from '../utils/lastSport';
 
 /* ── Category config per sport ─────────────────────── */
 const CATEGORIES = {
@@ -100,8 +101,9 @@ function CategoryList({ leaders, catKey, sport, loading }) {
 
 /* ── Main Component ────────────────────────────────── */
 export default function StatLeaders({ embedded = false }) {
-  const [activeSport, setActiveSport] = useState('mlb');
-  const [activeCategory, setActiveCategory] = useState(CATEGORIES['mlb'][0].key);
+  const startingSport = readLastSport();
+  const [activeSport, setActiveSport] = useState(CATEGORIES[startingSport] ? startingSport : 'mlb');
+  const [activeCategory, setActiveCategory] = useState((CATEGORIES[startingSport] || CATEGORIES.mlb)[0].key);
   const [expanded, setExpanded] = useState(embedded);
 
   // Per-sport cache: { [sport]: { [catKey]: leaders[] } }
@@ -111,7 +113,16 @@ export default function StatLeaders({ embedded = false }) {
 
   const categories = CATEGORIES[activeSport] || [];
 
-  // Reset category when sport changes
+  // Reset category when sport changes, including a sport picked on another page.
+  useEffect(() => {
+    const onSport = (event) => {
+      const next = event.detail;
+      if (CATEGORIES[next]) setActiveSport(next);
+    };
+    window.addEventListener('shribely-sport', onSport);
+    return () => window.removeEventListener('shribely-sport', onSport);
+  }, []);
+
   useEffect(() => {
     const cats = CATEGORIES[activeSport] || [];
     if (cats.length) setActiveCategory(cats[0].key);
@@ -183,7 +194,7 @@ export default function StatLeaders({ embedded = false }) {
     <>
       <div className="ts-tabs">
         {Object.entries(SPORTS).map(([key, { label }]) => (
-          <button key={key} className={`ts-tab ${activeSport === key ? 'ts-tab-active' : ''}`} onClick={() => setActiveSport(key)}>
+          <button key={key} className={`ts-tab ${activeSport === key ? 'ts-tab-active' : ''}`} onClick={() => { setActiveSport(key); rememberSport(key); }}>
             {label}
           </button>
         ))}

@@ -98,6 +98,31 @@ export function teamRecentGames(league, abbr) {
   return cache.get(key);
 }
 
+export function goalsAllowed(form) {
+  const rows = form?.recent || [];
+  if (rows.length < 5) return null;
+  let weight = 0;
+  let goals = 0;
+  for (const row of rows) {
+    if (typeof row.ga !== 'number') continue;
+    const share = row.weight || 1;
+    goals += row.ga * share;
+    weight += share;
+  }
+  if (!(weight > 0)) return null;
+  return goals / weight;
+}
+
+export function matchupContext(forms, league, teamAbbr, opponentAbbr, gameStart) {
+  const opp = forms?.[`${league}|${espnAbbr(opponentAbbr)}`] || null;
+  const team = forms?.[`${league}|${espnAbbr(teamAbbr)}`] || null;
+  const home = team ? homeSide(team.rows, opponentAbbr, gameStart) : null;
+  return {
+    opponentGoalsAgainst: goalsAllowed(opp),
+    home,
+  };
+}
+
 export function homeSide(rows, oppAbbr, gameStart) {
   const opp = espnAbbr(oppAbbr);
   let best = null;

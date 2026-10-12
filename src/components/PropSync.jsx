@@ -3,20 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
-import { tradeId } from '../utils/propBook';
+import { expectedProfit, quoteForUnit, tradeId } from '../utils/propBook';
+import { mergeTradeLists } from '../utils/tradeSync';
 
 const PropSyncContext = createContext(null);
 
 function mergeTradeSnapshot(current, incoming) {
-  if (!current) return incoming;
-  const byId = new Map(incoming.map((trade) => [trade.id, trade]));
-  return current.map((trade) => {
-    const update = byId.get(trade.id);
-    if (update?.result && !trade.result) {
-      return { ...trade, result: update.result, actual: update.actual, gradedAt: update.gradedAt };
-    }
-    return trade;
-  });
+  if (!current) return incoming || [];
+  return mergeTradeLists(current, incoming);
 }
 
 export function PropSyncProvider({ children }) {
@@ -32,6 +26,7 @@ export function PropSyncProvider({ children }) {
   const busy = useRef(false);
   const pendingForce = useRef(false);
   const stop = useRef(false);
+  const tradeLock = useRef(Promise.resolve());
 
   const refresh = useCallback((force = false) => {
     if (busy.current) {
@@ -76,28 +71,70 @@ export function PropSyncProvider({ children }) {
     return () => { cancel = true; };
   }, [userId]);
 
-  const addTrade = useCallback(async (draft) => {
-    const id = tradeId(draft);
-    const current = await loadTrades(userId);
-    if (current.some((trade) => trade.id === id)) return;
-    const next = [...current, {
-      ...draft,
-      id,
-      unit,
-      result: null,
-      actual: null,
-      gradedAt: null,
-      recordedAt: Date.now(),
-    }];
-    await saveTrades(userId, next);
-    setTrades(next);
+  const addTrade = useCallback((draft) => {
+    const run = tradeLock.current.then(async () => {
+      const id = tradeId(draft);
+      const quote = quoteForUnit(draft.price, unit);
+      if (!quote) return;
+      const current = await loadTrades(userId);
+      if (current.some((trade) => trade.id === id)) return;
+      const next = [...current, {
+        ...draft,
+        id,
+        unit: quote.stake,
+        payout: quote.payout,
+        result: null,
+        actual: null,
+        gradedAt: null,
+        recordedAt: Date.now(),
+      }];
+      setTrades(await saveTrades(userId, next));
+    });
+    tradeLock.current = run.then(() => {}, () => {});
+    return run;
   }, [unit, userId]);
 
-  const removeTrade = useCallback(async (id) => {
-    const current = await loadTrades(userId);
-    const next = current.filter((trade) => trade.id !== id || trade.result);
-    await saveTrades(userId, next);
-    setTrades(next);
+  const updateTrade = useCallback((id, patch) => {
+    const run = tradeLock.current.then(async () => {
+      const current = await loadTrades(userId);
+      const next = current.map((trade) => {
+        if (trade.id !== id) return trade;
+        const row = { ...trade, editedAt: Date.now() };
+        if (patch.unit != null || patch.profit != null) {
+          const stake = patch.unit != null ? Number(patch.unit) : Number(trade.unit);
+          const profit = patch.profit != null ? Number(patch.profit) : expectedProfit(trade);
+          if (profit == null || !Number.isFinite(profit)) return trade;
+          const unit = Math.round(stake * 100) / 100;
+          const net = Math.round(profit * 100) / 100;
+          if (!(unit > 0) || unit > 1000000 || net < 0 || net > 1000000) return trade;
+          row.unit = unit;
+          row.payout = Math.round((unit + net) * 100) / 100;
+        }
+        if (patch.price != null) {
+          const price = Math.round(Number(patch.price) * 100) / 100;
+          const old = Number(trade.price);
+          if (!(price > 0 && price < 1) || !(old > 0 && old < 1)) return trade;
+          row.price = price;
+          if (typeof trade.edge === 'number') {
+            row.edge = Math.round((trade.edge + (old - price)) * 100) / 100;
+          }
+        }
+        return row;
+      });
+      setTrades(await saveTrades(userId, next));
+    });
+    tradeLock.current = run.then(() => {}, () => {});
+    return run;
+  }, [userId]);
+
+  const removeTrade = useCallback((id) => {
+    const run = tradeLock.current.then(async () => {
+      const current = await loadTrades(userId);
+      const next = current.filter((trade) => trade.id !== id || trade.result);
+      setTrades(await saveTrades(userId, next));
+    });
+    tradeLock.current = run.then(() => {}, () => {});
+    return run;
   }, [userId]);
 
   const setUnit = useCallback(async (value) => {
@@ -112,8 +149,18 @@ export function PropSyncProvider({ children }) {
     return () => { stop.current = true; };
   }, [refresh]);
 
+  useEffect(() => {
+    if (!userId) return undefined;
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      loadTrades(userId).then((rows) => setTrades(rows));
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [userId]);
+
   return (
-    <PropSyncContext.Provider value={{ reads, trades, unit, addTrade, removeTrade, setUnit, status, error, calibration, working, refresh }}>
+    <PropSyncContext.Provider value={{ reads, trades, unit, addTrade, updateTrade, removeTrade, setUnit, status, error, calibration, working, refresh }}>
       {children}
     </PropSyncContext.Provider>
   );
@@ -125,6 +172,7 @@ export function usePropSync() {
     trades: null,
     unit: 25,
     addTrade: () => {},
+    updateTrade: () => {},
     removeTrade: () => {},
     setUnit: () => {},
     status: '',
