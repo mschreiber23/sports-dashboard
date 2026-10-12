@@ -4,6 +4,7 @@
 
 import { chartLabel } from '../api/playerLogs.js';
 import { mergeTeammates, playerRole, rolesForTeam, sameName } from '../api/nflInjuries.js';
+import { matchupContext } from '../api/teamForm.js';
 import { nflModeled, nflPropEdge } from './nflEdge.js';
 import { nhlPropEdge } from './nhlEdge.js';
 import { callGrade } from './modelCall.js';
@@ -143,7 +144,7 @@ function nflContext(game, sample, logs, roles, opportunityLogs) {
   };
 }
 
-export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {} }) {
+export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {}, forms = {}, weatherByGame = {} }) {
   const reads = [];
   for (const game of games || []) {
     if (!game?.rows) continue;
@@ -188,6 +189,8 @@ export function buildReads({ games, logs, now = Date.now(), roles = [], opportun
         spreadLine: slate.spreadLine,
         spreadLabel: slate.spreadLabel,
         matchup: log?.matchup,
+        weather: weatherByGame[game.key] || null,
+        ...matchupContext(forms, game.league, sample.teamAbbr, sample.opponentAbbr, sample.gameStart),
         ...(game.league === 'nfl' ? nflContext(game, sample, logs, roles, opportunityLogs) : {}),
       });
       if (!model) continue;

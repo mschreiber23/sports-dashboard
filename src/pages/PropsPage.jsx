@@ -10,7 +10,8 @@ import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
 import { loadTeamRoles, mergeTeammates, playerRole, rolesForTeam, sameName, sameTeam } from '../api/nflInjuries';
 import { nflWeekSpan } from '../api/nfl';
-import { espnAbbr, homeSide, teamRecentGames } from '../api/teamForm';
+import { espnAbbr, homeSide, matchupContext, teamRecentGames } from '../api/teamForm';
+import { loadNflWeather } from '../api/nflWeather';
 import { gameLineRead } from '../utils/gameLineEdge';
 import PropLedger from '../components/PropLedger';
 import ModelTicker from '../components/ModelTicker';
@@ -327,7 +328,7 @@ function hurtLog(logs, name) {
   return hit ? hit[1] : null;
 }
 
-function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs) {
+function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, weatherByGame) {
   const picks = [];
   for (const game of games) {
     if (!game.rows) continue;
@@ -374,6 +375,8 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs) {
             spreadLine: slate.spreadLine,
             spreadLabel: slate.spreadLabel,
             matchup: log?.matchup,
+            weather: weatherByGame?.[game.key] || null,
+            ...matchupContext(forms, game.league, sample.teamAbbr, sample.opponentAbbr, sample.gameStart),
             ...(game.league === 'nfl' ? (() => {
               const teamRoles = rolesForTeam(roles, sample.teamName);
               const board = teammateLogs(game.rows.filter((row) => (
@@ -455,6 +458,7 @@ function groupPlayers(rows) {
         jersey: row.jersey,
         jerseyNumber: row.jerseyNumber,
         teamName: row.teamName,
+        teamAbbr: row.teamAbbr || '',
         color: row.color,
         opponentName: row.opponentName || '',
         opponentAbbr: row.opponentAbbr || '',
@@ -502,12 +506,14 @@ const FACTOR_KEY = [
   ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
   ['TOI', 'Average ice time over the last five games.'],
   ['Prior TOI', 'Average ice time in the games before those five. The model compares the two.'],
-  ['Shots', 'Average shots over the last five games. A sharp drop or jump in the last three games becomes the shot rate.'],
+  ['Shots', 'Shots per minute over the recent games, times the ice time the player is getting now. A sharp drop or jump in the last three games becomes the rate.'],
   ['Prior shots', 'Average shots in the earlier games. The model compares that with the recent rate.'],
   ['Shooting', 'Shooting percentage, pulled toward a typical NHL rate so a short hot or cold stretch does not take over.'],
   ['Assists', 'Assists per game on a points prop, pulled toward a typical rate. Goals rows leave this off.'],
   ['Volume', 'The chance implied by the shot rate at this line. Points props fold in the assist rate as well. This is most of the model percent, before the price pulls it back.'],
-  ['Power play', 'Power-play points per game over the recent games.'],
+  ['Power play', 'Power-play points per game. The shot total already includes those chances. This adds a little because power-play shots are more likely to become points.'],
+  ['Opp goals', 'Goals the opponent has allowed per game lately. More than about 3.1 a night raises the chance of a point. Fewer lowers it.'],
+  ['Site', 'Home or road. Home ice is a small lift.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent.'],
   ['Game total', 'The game total priced closest to 50/50. The model compares that number with 6 goals.'],
   ['Side', 'Whether this player’s team is the favorite or the underdog, and that team’s price.'],
@@ -532,6 +538,7 @@ const NFL_FACTOR_KEY = [
   ['Script', 'Throwing when this team is the underdog by about a field goal or more, running when they are favored by that much. Passing and receiving props rise on a throwing script. Rushing props rise on a running script.'],
   ['Side', 'Whether this player’s team is the moneyline favorite or the underdog, and that team’s price. The spread is what the model uses for script.'],
   ['Rest', 'Days since the last game. Under six days is a short week. Ten days or more, a bye included, counts as rested.'],
+  ['Weather', 'Outdoor wind and precipitation. From 12 mph, or in rain or snow, passing and receiving volume comes down. Rushing picks up in heavy wind, rain, or snow. A dome does not move the read.'],
 ];
 
 const FACTOR_TAGS = {
@@ -550,6 +557,13 @@ const FACTOR_TAGS = {
   favorite: 'side',
   underdog: 'side',
   'back to back': 'rest',
+  'soft defense': 'defense',
+  'tough defense': 'defense',
+  home: 'site',
+  road: 'site',
+  wind: 'weather',
+  rain: 'weather',
+  snow: 'weather',
   'attempts up': 'usage',
   'attempts down': 'usage',
   'carries up': 'usage',
@@ -571,7 +585,7 @@ function shortOpp(name, abbr) {
   return abbr || word.split(/\s+/).pop() || 'opponent';
 }
 
-function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles, opportunityLogs }) {
+function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles, opportunityLogs, forms, weather }) {
   const groups = useMemo(() => groupPlayers(rows), [rows]);
   const pills = useMemo(() => {
     const present = new Set(groups.map((group) => group.type));
@@ -755,6 +769,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
             spreadLabel: slate?.spreadLabel,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
             matchup: log?.matchup,
+            weather: weather || null,
+            ...matchupContext(forms, league, group.teamAbbr, group.opponentAbbr, group.gameStart),
             ...(league === 'nfl' ? (() => {
               const teamRoles = rolesForTeam(roles, group.teamName);
               const board = teammateLogs(groups.filter((other) => (
@@ -901,7 +917,7 @@ function lineMatchesFocus(row, focus) {
   return false;
 }
 
-function GameDetail({ game, rows, loading, calibration, focus, roles, opportunityLogs }) {
+function GameDetail({ game, rows, loading, calibration, focus, roles, opportunityLogs, forms, weather }) {
   const [section, setSection] = useState(focus?.section || 'players');
   const lineNode = useRef(null);
   const scrolledLine = useRef(false);
@@ -925,7 +941,7 @@ function GameDetail({ game, rows, loading, calibration, focus, roles, opportunit
       {section === 'players' && (
         loading && players.length === 0
           ? <div className="loading-text">Loading player props…</div>
-          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} focus={focus?.section === 'players' ? focus : null} roles={roles} opportunityLogs={opportunityLogs} />
+          : <PlayerPropBoard key={game.key} game={game} rows={players} league={game.league} slate={slateContext(list)} calibration={calibration} focus={focus?.section === 'players' ? focus : null} roles={roles} opportunityLogs={opportunityLogs} forms={forms} weather={weather} />
       )}
       {section !== 'players' && (
         loading && cards.length === 0
@@ -1038,6 +1054,7 @@ export default function PropsPage() {
   const [boardLogs, setBoardLogs] = useState({});
   const [logDone, setLogDone] = useState(0);
   const [teamForms, setTeamForms] = useState({});
+  const [weatherByGame, setWeatherByGame] = useState({});
   const [teamDone, setTeamDone] = useState(0);
   const [roleReport, setRoleReport] = useState([]);
   const [hurtLogs, setHurtLogs] = useState({});
@@ -1117,22 +1134,26 @@ export default function PropsPage() {
   }, [view, games]);
   const logJobKey = logJob.map((player) => player.id).join(';');
   const teamJob = useMemo(() => {
-    if (view !== 'likely') return [];
     const seen = new Set();
     const teams = [];
     for (const game of games) {
       if (game.league !== 'nhl' && game.league !== 'nfl') continue;
       for (const row of game.rows || []) {
-        for (const team of row.teams || []) {
-          const id = `${game.league}|${espnAbbr(team.abbr)}`;
-          if (!team.abbr || seen.has(id)) continue;
+        const abbrs = [
+          row.teamAbbr,
+          row.opponentAbbr,
+          ...(row.teams || []).map((team) => team.abbr),
+        ];
+        for (const abbr of abbrs) {
+          const id = `${game.league}|${espnAbbr(abbr)}`;
+          if (!abbr || seen.has(id)) continue;
           seen.add(id);
-          teams.push({ id, league: game.league, abbr: team.abbr });
+          teams.push({ id, league: game.league, abbr });
         }
       }
     }
     return teams;
-  }, [view, games]);
+  }, [games]);
   const teamJobKey = teamJob.map((team) => team.id).join(';');
   const injuryTeams = useMemo(() => {
     const names = [];
@@ -1145,7 +1166,7 @@ export default function PropsPage() {
     return names;
   }, [games]);
   const injuryKey = injuryTeams.join('|');
-  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs) : []), [view, games, boardLogs, calibration, teamForms, roleReport, hurtLogs]);
+  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame) : []), [view, games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame]);
   const gamesLoaded = games.filter((game) => game.rows).length;
 
   useEffect(() => {
@@ -1217,6 +1238,17 @@ export default function PropsPage() {
     Promise.all(Array.from({ length: Math.min(4, teams.length) }, worker));
     return () => { cancel = true; };
   }, [teamJobKey, teamJob]);
+
+  const weatherKey = games.filter((game) => game.league === 'nfl' && game.rows).map((game) => game.key).join('|');
+  useEffect(() => {
+    const slate = games.filter((game) => game.league === 'nfl' && game.rows);
+    if (!slate.length) return undefined;
+    let cancel = false;
+    loadNflWeather(slate).then((map) => {
+      if (!cancel) setWeatherByGame((prev) => ({ ...prev, ...map }));
+    }).catch(() => {});
+    return () => { cancel = true; };
+  }, [weatherKey]);
 
   useEffect(() => {
     hurtTried.current = new Set();
@@ -1425,6 +1457,8 @@ export default function PropsPage() {
             focus={propFocus}
             roles={roleReport}
             opportunityLogs={hurtLogs}
+            forms={teamForms}
+            weather={weatherByGame[openGame.key] || null}
           />
         </>
       )}

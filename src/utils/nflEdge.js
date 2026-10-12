@@ -8,7 +8,9 @@
 // that position's props. The last-10 hit rate is a small piece of that
 // projection. Then the spread and the total set a pass or run script and a
 // team implied point total, and a short week or extra rest can still move it.
-// The result is pulled toward the yes price. Edge is what is left after that pull.
+// Outdoor wind, rain, and snow scale the passing game down and, in the
+// heavier cases, the running game up. The result is pulled toward the yes
+// price. Edge is what is left after that pull.
 
 import { applyLearned } from './propCalibration.js';
 import {
@@ -409,15 +411,67 @@ function receivingShape(targets, ypt, matchup) {
   return { targets: next, ypt: ypt * yptMul };
 }
 
-function volumeRead(type, line, recentContext, priorContext, teammates, matchup, role) {
+function weatherFactor(key, weather) {
+  if (!weather || weather.indoor) return 1;
+  const pass = key === 'passAtt' || key === 'targets';
+  const rush = key === 'rushAtt';
+  if (!pass && !rush) return 1;
+  const cuts = [1];
+  const boosts = [1];
+  if (weather.snow) {
+    cuts.push(0.84);
+    boosts.push(1.12);
+  } else if (weather.rain) {
+    cuts.push(0.91);
+    boosts.push(1.07);
+  }
+  const wind = typeof weather.wind === 'number' ? weather.wind : null;
+  const gust = typeof weather.gust === 'number' ? weather.gust : null;
+  const strong = (wind != null && wind >= 16) || (wind == null && gust != null && gust >= 25);
+  const heavy = (wind != null && wind >= 20) || (wind == null && gust != null && gust >= 30);
+  const mild = (wind != null && wind >= 12) || (wind == null && gust != null && gust >= 20);
+  if (strong) cuts.push(0.9);
+  else if (mild) cuts.push(0.96);
+  if (heavy) boosts.push(1.08);
+  return pass ? Math.min(...cuts) : Math.max(...boosts);
+}
+
+function scaleForWeather(usage, key, weather) {
+  if (!usage || !weather || weather.indoor) return usage;
+  const factor = weatherFactor(key, weather);
+  if (Math.abs(factor - 1) < 0.02) return usage;
+  const weatherTag = weather.snow ? 'snow' : weather.rain ? 'rain' : 'wind';
+  return { ...usage, mean: Math.max(0, usage.mean * factor), weatherTag };
+}
+
+export function weatherLabel(weather) {
+  if (!weather) return '';
+  if (weather.indoor) return 'Dome';
+  if (weather.snow) return 'Snow';
+  if (weather.rain) return 'Rain';
+  if (typeof weather.wind === 'number' && weather.wind >= 12) return `${Math.round(weather.wind)} mph wind`;
+  if (typeof weather.gust === 'number' && weather.gust >= 20) return `${Math.round(weather.gust)} mph gusts`;
+  return '';
+}
+
+function volumeRead(type, line, recentContext, priorContext, teammates, matchup, role, weather) {
   const recent = recentContext || [];
   const prior = priorContext || [];
   const all = [...prior, ...recent];
   const last5 = recent.slice(-5);
   const blank = { p: null, rows: [], back: null, out: null };
+  let weatherTag = null;
+  function played(key) {
+    const usage = scaleForWeather(expectedUsage(prior, recent, key, teammates, role), key, weather);
+    if (usage?.weatherTag) weatherTag = usage.weatherTag;
+    return usage;
+  }
+  function withWeather(row) {
+    return weatherTag ? { ...row, weatherTag } : row;
+  }
 
   if (type === PASS_YDS || type === PASS_TD || type === COMP || type === PASS_ATT || type === INT) {
-    const attempts = expectedUsage(prior, recent, 'passAtt', teammates, role);
+    const attempts = played('passAtt');
     if (!attempts || attempts.n < 5) return { ...blank, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt') };
     const ypa = shrunk(all, 'passYds', 'passAtt', 7 * 100, 100);
     const compRate = shrunk(all, 'completions', 'passAtt', 0.64 * 80, 80);
@@ -445,11 +499,11 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup,
       rateLabel = 'INT/att';
       rateValue = intRate.toFixed(3);
     }
-    return { p, back: attempts.back || null, out: attempts.out || null, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt', rateLabel, rateValue) };
+    return withWeather({ p, back: attempts.back || null, out: attempts.out || null, rows: usageRows('Attempts', 'Prior att', last5, prior, 'passAtt', rateLabel, rateValue) });
   }
 
   if (type === RUSH_YDS || type === RUSH_ATT) {
-    const carries = expectedUsage(prior, recent, 'rushAtt', teammates, role);
+    const carries = played('rushAtt');
     if (!carries || carries.n < 5) return { ...blank, rows: usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt') };
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
     let p = null;
@@ -458,16 +512,16 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup,
       const mean = carries.mean * ypc;
       p = normalAtLeast(mean, Math.max(28, mean * 0.55), line);
     }
-    return {
+    return withWeather({
       p,
       back: carries.back || null,
       out: carries.out || null,
       rows: usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt', type === RUSH_YDS ? 'YPC' : null, ypc == null ? null : ypc.toFixed(1)),
-    };
+    });
   }
 
   if (type === REC_YDS || type === RECS || type === LONG) {
-    const baseTargets = expectedUsage(prior, recent, 'targets', teammates, role);
+    const baseTargets = played('targets');
     const baseYpt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
     const shaped = receivingShape(baseTargets, baseYpt, matchup);
     const targets = shaped.targets;
@@ -484,17 +538,17 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup,
     const rateValue = type === RECS
       ? (catchRate == null ? null : `${Math.round(catchRate * 100)}%`)
       : shownYpt;
-    return {
+    return withWeather({
       p,
       back: targets?.back || null,
       out: targets?.out || null,
       rows: usageRows('Targets', 'Prior tgt', last5, prior, 'targets', type === LONG ? null : rateLabel, type === LONG ? null : rateValue),
-    };
+    });
   }
 
   if (type === SCRIM || type === TD) {
-    const carries = expectedUsage(prior, recent, 'rushAtt', teammates, role);
-    const baseTargets = expectedUsage(prior, recent, 'targets', teammates, role);
+    const carries = played('rushAtt');
+    const baseTargets = played('targets');
     const ypc = shrunk(all, 'rushYds', 'rushAtt', 4.3 * 40, 40);
     const baseYpt = shrunk(all, 'recYds', 'targets', 7.8 * 40, 40);
     const shaped = receivingShape(baseTargets, baseYpt, matchup);
@@ -520,7 +574,7 @@ function volumeRead(type, line, recentContext, priorContext, teammates, matchup,
       ...usageRows('Carries', 'Prior carries', last5, prior, 'rushAtt'),
       ...usageRows('Targets', 'Prior tgt', last5, prior, 'targets'),
     ];
-    return { p, back: roleBack(carries, targets), out: roleOut(carries, targets), rows };
+    return withWeather({ p, back: roleBack(carries, targets), out: roleOut(carries, targets), rows });
   }
 
   return blank;
@@ -596,7 +650,7 @@ function sameTeam(a, b) {
 export function nflFactorLines({
   type, line, recent, prior, recentContext, priorContext, versus,
   lastPlayed, gameStart, gameTotal, teamName, opponentName, favoriteName, favoriteYes,
-  spreadLine, spreadLabel, opponentLabel, teammates, matchup, role,
+  spreadLine, spreadLabel, opponentLabel, teammates, matchup, role, weather,
 }) {
   if (!nflModeled(type) || line == null) return [];
   const lines = [];
@@ -610,8 +664,10 @@ export function nflFactorLines({
   } else {
     lines.push({ id: 'prior', label: 'Long sample', value: `${Math.round(fallbackRate(type, line) * 100)}% typical` });
   }
-  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role);
+  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role, weather);
   lines.push(...volume.rows);
+  const sky = weatherLabel(weather);
+  if (sky) lines.push({ id: 'weather', label: 'Weather', value: sky });
   if (volume.back) lines.push({ id: 'usage', label: 'Role', value: `${volume.back} back` });
   if (volume.out) lines.push({ id: 'usage', label: 'Injuries', value: volume.out });
   const receivingType = type === REC_YDS || type === RECS || type === LONG || type === SCRIM || type === TD;
@@ -650,7 +706,7 @@ export function nflPropEdge(input) {
   const {
     type, line, recent, prior, recentContext, priorContext, versus, marketYes,
     lastPlayed, gameStart, gameTotal, teamName, opponentName,     spreadLine, spreadLabel,
-    teammates, matchup, role,
+    teammates, matchup, role, weather,
   } = input;
   if (!nflModeled(type)) return null;
   if (!recent || recent.length < 5 || line == null) return null;
@@ -665,8 +721,9 @@ export function nflPropEdge(input) {
   let p = (hits + anchor * strength) / (n + strength);
   const tags = [];
 
-  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role);
+  const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role, weather);
   if (volume.back) tags.push(`${volume.back} back`);
+  if (volume.weatherTag) tags.push(volume.weatherTag);
   if (volume.out) {
     for (const part of volume.out.split(', ')) if (part) tags.push(part);
   }

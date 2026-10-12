@@ -1,6 +1,8 @@
 import { loadPropEvents, loadGameProps } from './polymarket';
 import { recentPlayerLogs, playerResultOnDate } from './playerLogs';
 import { loadTeamRoles, sameName, sameTeam } from './nflInjuries';
+import { espnAbbr, teamRecentGames } from './teamForm';
+import { loadNflWeather } from './nflWeather';
 import { loadReads, saveReads } from './propStore';
 import { loadTrades, saveTrades } from './tradeStore';
 import { finalScore, gradeMarketTrade } from './gameResult';
@@ -159,7 +161,22 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
     if (stop()) return { reads: rows, calibration };
   }
 
-  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs }).map((row) => stampPrediction(priceRead(row, calibration)));
+  const forms = {};
+  const abbrs = new Set();
+  for (const game of withRows) {
+    if (game.league !== 'nhl' && game.league !== 'nfl') continue;
+    for (const row of game.rows || []) {
+      if (row.teamAbbr) abbrs.add(`${game.league}|${row.teamAbbr}`);
+      if (row.opponentAbbr) abbrs.add(`${game.league}|${row.opponentAbbr}`);
+    }
+  }
+  await pool([...abbrs], 4, async (key) => {
+    const [league, abbr] = key.split('|');
+    forms[`${league}|${espnAbbr(abbr)}`] = await teamRecentGames(league, abbr).catch(() => null);
+  });
+  const weatherByGame = await loadNflWeather(withRows).catch(() => ({}));
+  if (stop()) return { reads: rows, calibration };
+  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs, forms, weatherByGame }).map((row) => stampPrediction(priceRead(row, calibration)));
   rows = refreshReads(rows, fresh);
   calibration = learnCalibration(rows);
   publish(rows, calibration, trades);

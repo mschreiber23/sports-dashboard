@@ -1,10 +1,10 @@
-// NHL goals and points. The chance is mostly expected shots times a shrunk
-// shooting rate, plus assists on a points prop. The last-10 hit rate is a
-// small piece of that projection. Shot rate follows the recent games, and a
-// sharp drop or jump in the last three becomes the rate. Then nudge for ice
-// time, power-play points, the opponent, the game total, the favorite, and a
-// back-to-back, and pull the result toward the yes price. Edge is what is
-// left after that pull.
+// NHL goals and points. The chance is mostly shots per minute times the ice
+// time the player is getting, times a shrunk shooting rate, plus assists on a
+// points prop. The last-10 hit rate is a small piece of that projection. A
+// sharp drop or jump in the last three games becomes the rate. Power-play
+// points add a little for shot quality. The opponent's recent goals allowed
+// and home ice move it a little more, then the game total, the favorite, and
+// a back-to-back. The result is pulled toward the yes price.
 
 import { applyLearned } from './propCalibration.js';
 import { NHL_BARE_MARKET_WEIGHT, NHL_HIT_WEIGHT, NHL_MARKET_WEIGHT, fairProbability } from './fairPrice.js';
@@ -100,7 +100,47 @@ function volumeParts(type, line, recentContext, priorContext) {
   return { shooting, assists: assistRate, p };
 }
 
-function expectedShots(priorContext, recentContext) {
+function shotRate(rows) {
+  let shots = 0;
+  let minutes = 0;
+  let rateN = 0;
+  let shotSum = 0;
+  let shotN = 0;
+  for (const row of rows || []) {
+    if (typeof row?.shots !== 'number' || !Number.isFinite(row.shots)) continue;
+    shotSum += row.shots;
+    shotN += 1;
+    if (typeof row?.toi === 'number' && row.toi > 0) {
+      shots += row.shots;
+      minutes += row.toi;
+      rateN += 1;
+    }
+  }
+  return {
+    perGame: shotN ? shotSum / shotN : null,
+    n: shotN,
+    perMin: rateN >= 3 && minutes > 0 ? shots / minutes : null,
+    rateN,
+  };
+}
+
+function projectedMinutes(priorContext, recentContext) {
+  const older = seriesMean(priorContext, 'toi');
+  const last3 = seriesMean(recentContext, 'toi', 3);
+  const last5 = seriesMean(recentContext, 'toi', 5);
+  if (last3.n >= 3 && older.n >= 5 && older.mean > 0) {
+    const ratio = last3.mean / older.mean;
+    if (ratio <= 0.75 || ratio >= 1.3) return last3.mean;
+  }
+  if (last5.n >= 3 && older.n >= 5 && last5.mean != null && older.mean != null) {
+    return last5.mean * 0.65 + older.mean * 0.35;
+  }
+  if (last5.n >= 3 && last5.mean != null) return last5.mean;
+  if (older.n >= 5 && older.mean != null) return older.mean;
+  return null;
+}
+
+function rawShots(priorContext, recentContext) {
   const older = seriesMean(priorContext, 'shots');
   const last3 = seriesMean(recentContext, 'shots', 3);
   const last5 = seriesMean(recentContext, 'shots', 5);
@@ -114,6 +154,28 @@ function expectedShots(priorContext, recentContext) {
   if (older.n >= 5 && older.mean != null) return older.mean;
   if (last5.n >= 5 && last5.mean != null) return last5.mean;
   return null;
+}
+
+// Shots per minute, times the minutes the player is getting now. A jump in
+// ice time raises the shot projection even when the last few shot totals
+// have not caught up. Without ice time, this falls back to shots per game.
+function expectedShots(priorContext, recentContext) {
+  const minutes = projectedMinutes(priorContext, recentContext);
+  const recentRate = shotRate((recentContext || []).slice(-5));
+  const olderRate = shotRate(priorContext);
+  let perMin = null;
+  if (recentRate.perMin != null && olderRate.perMin != null && recentRate.perGame != null && olderRate.perGame > 0) {
+    const ratio = recentRate.perGame / olderRate.perGame;
+    perMin = (recentRate.n >= 3 && olderRate.n >= 5 && (ratio <= 0.55 || ratio >= 1.75))
+      ? recentRate.perMin
+      : recentRate.perMin * 0.65 + olderRate.perMin * 0.35;
+  } else if (recentRate.perMin != null && recentRate.rateN >= 5) {
+    perMin = recentRate.perMin;
+  } else if (olderRate.perMin != null && olderRate.rateN >= 5) {
+    perMin = olderRate.perMin;
+  }
+  if (perMin != null && minutes != null) return perMin * minutes;
+  return rawShots(priorContext, recentContext);
 }
 
 function volumeProbability(type, line, recentContext, priorContext) {
@@ -143,6 +205,8 @@ export function nhlFactorLines({
   favoriteName,
   favoriteYes,
   opponentLabel,
+  opponentGoalsAgainst,
+  home,
 }) {
   if (type !== GOALS && type !== POINTS || line == null) return [];
   const lines = [];
@@ -181,6 +245,12 @@ export function nhlFactorLines({
     const hits = versus.filter((value) => value >= line).length;
     lines.push({ id: 'opp', label: `vs ${opponentLabel || 'opponent'}`, value: `${hits}/${versus.length}` });
   }
+
+  if (typeof opponentGoalsAgainst === 'number' && Number.isFinite(opponentGoalsAgainst)) {
+    lines.push({ id: 'defense', label: 'Opp goals', value: `${opponentGoalsAgainst.toFixed(1)}/g` });
+  }
+  if (home === true) lines.push({ id: 'site', label: 'Site', value: 'Home' });
+  else if (home === false) lines.push({ id: 'site', label: 'Site', value: 'Road' });
 
   if (typeof gameTotal === 'number' && Number.isFinite(gameTotal)) {
     lines.push({ id: 'total', label: 'Game total', value: String(gameTotal) });
@@ -223,6 +293,8 @@ export function nhlPropEdge({
   opponentName,
   favoriteName,
   favoriteYes,
+  opponentGoalsAgainst,
+  home,
   calibration,
 }) {
   if (type !== GOALS && type !== POINTS) return null;
@@ -249,7 +321,10 @@ export function nhlPropEdge({
   const priorToi = seriesMean(priorContext, 'toi');
   if (recentToi.n >= 3 && priorToi.n >= 5 && recentToi.mean != null && priorToi.mean != null) {
     const shift = nudge(recentToi.mean - priorToi.mean, goals ? 0.008 : 0.012);
-    p = applyShift(p, tags, shift, 'ice time up', 'ice time down');
+    // Shot volume already uses shots per minute times projected ice time.
+    if (volumeP == null) p = applyShift(p, tags, shift, 'ice time up', 'ice time down');
+    else if (shift >= 0.014) tags.push('ice time up');
+    else if (shift <= -0.014) tags.push('ice time down');
   }
 
   const recentShots = seriesMean(recentContext, 'shots', 5);
@@ -261,9 +336,24 @@ export function nhlPropEdge({
   }
 
   const recentPp = seriesMean(recentContext, 'pp');
-  if (recentPp.n >= 5 && recentPp.mean != null && recentPp.mean >= 0.25) {
-    p += goals ? 0.02 : 0.03;
+  if (recentPp.n >= 5 && recentPp.mean != null && recentPp.mean >= 0.2) {
+    // Power-play shots convert higher than even-strength shots. The shot
+    // total already includes them, so this is only the quality difference.
+    p += clamp((recentPp.mean - 0.15) * (goals ? 0.05 : 0.07), 0, 0.035);
     tags.push('power play');
+  }
+
+  if (typeof opponentGoalsAgainst === 'number' && Number.isFinite(opponentGoalsAgainst)) {
+    const shift = clamp((opponentGoalsAgainst - 3.05) * (goals ? 0.025 : 0.03), -0.03, 0.03);
+    p = applyShift(p, tags, shift, 'soft defense', 'tough defense');
+  }
+
+  if (home === true) {
+    p += goals ? 0.01 : 0.015;
+    tags.push('home');
+  } else if (home === false) {
+    p -= goals ? 0.008 : 0.01;
+    tags.push('road');
   }
 
   if (versus && versus.length >= 3) {
