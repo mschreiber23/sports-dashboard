@@ -56,21 +56,15 @@ function last10Hit(values, line) {
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
 
-function likelyAgrees(model, yes) {
-  if (!(model.p >= 0.45 && model.edge >= NHL_EDGE_MIN)) return false;
-  if (model.rate / 100 + 0.10 < yes) return false;
-  if (model.rate / 100 + 0.14 < model.p) return false;
-  return true;
+function likelyAgrees(model) {
+  return model.p >= 0.45 && model.edge >= NHL_EDGE_MIN;
 }
 
 function likelyCall(model, yes) {
-  if (likelyAgrees(model, yes)) return 'yes';
+  if (likelyAgrees(model)) return 'yes';
   const noEdge = yes - model.p;
   const noP = 1 - model.p;
   if (!(noEdge >= NHL_EDGE_MIN && noP >= 0.45)) return null;
-  const miss = 1 - model.rate / 100;
-  if (miss + 0.10 < 1 - yes) return null;
-  if (miss + 0.14 < noP) return null;
   return 'no';
 }
 const NFL_LIKELY_SKIP = new Set([
@@ -502,9 +496,9 @@ function StatBars({ values, color, label }) {
 }
 
 const FACTOR_KEY = [
-  ['Model', 'Our read of the chance this line hits, after shrinking the recent record and applying the nudges below.'],
+  ['Model', 'Our read of the chance this line hits. Most of it is expected shots times a stable shooting rate, plus assists on a points prop. The last-10 record is a small piece, and the price pulls the read back unless the gap is large.'],
   ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price.'],
-  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record. It is shown in full, and it is a small piece of the read.'],
   ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
   ['TOI', 'Average ice time over the last five games.'],
   ['Prior TOI', 'Average ice time in the games before those five. The model compares the two.'],
@@ -512,7 +506,7 @@ const FACTOR_KEY = [
   ['Prior shots', 'Average shots in the earlier games. The model compares that with the recent rate.'],
   ['Shooting', 'Shooting percentage, pulled toward a typical NHL rate so a short hot or cold stretch does not take over.'],
   ['Assists', 'Assists per game on a points prop, pulled toward a typical rate. Goals rows leave this off.'],
-  ['Volume', 'The chance implied by the shot rate at this line. Points props fold in the assist rate as well.'],
+  ['Volume', 'The chance implied by the shot rate at this line. Points props fold in the assist rate as well. This is most of the model percent, before the price pulls it back.'],
   ['Power play', 'Power-play points per game over the recent games.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent.'],
   ['Game total', 'The game total priced closest to 50/50. The model compares that number with 6 goals.'],
@@ -521,16 +515,16 @@ const FACTOR_KEY = [
 ];
 
 const NFL_FACTOR_KEY = [
-  ['Model', 'Our read of the chance this line hits. Most of it is expected attempts, carries, or targets times a stable efficiency rate. The last-10 record is the smaller piece.'],
+  ['Model', 'Our read of the chance this line hits. Most of it is expected attempts, carries, or targets times a stable efficiency rate. The last-10 record is a small piece, and the price pulls the read back unless the gap is large.'],
   ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price.'],
-  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record. It is shown in full, and it is the smaller piece of the read.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record. It is shown in full, and it is a small piece of the read.'],
   ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead. Touchdown props give this a little more weight.'],
   ['Attempts, carries, targets', 'Average usage over the last five games. This is the main input. Passing props use attempts, rushing props use carries, and receiving props use targets. Receptions then use catch rate. Receiving yards use yards per target.'],
   ['Prior attempts, carries, targets', 'The same usage number in the earlier games. Expected usage is about two thirds the last five and one third this longer rate.'],
-  ['Role', 'When a high-usage teammate missed games and this player’s targets, carries, or attempts jumped, and that teammate is in the lineup tonight, the read uses the games they played together. The chip names who is back. Those props stay off Likely.'],
+  ['Role', 'When a high-usage teammate missed games and this player’s targets, carries, or attempts jumped, and that teammate is in the lineup tonight, the read uses the games they played together. The chip names who is back.'],
   ['Injuries', 'Out, doubtful, and injured reserve clear a quarterback, back, receiver, or tight end. The next players on the depth chart take his carries, targets, or attempts, with the first in line taking most of them. Questionable moves about 40% of that work. The chip names who is hurt. A player who is himself questionable or out is scaled down.'],
   ['Y/A, YPC, catch rate', 'Efficiency pulled toward a typical NFL rate, so a short hot or cold stretch does not take over. Touchdowns use a per-attempt or per-target rate.'],
-  ['Volume', 'The chance that tonight’s expected usage and that efficiency imply at this exact line. This is most of the model percent.'],
+  ['Volume', 'The chance that tonight’s expected usage and that efficiency imply at this exact line. This is most of the model percent, before the price pulls it back.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent. A small nudge, and only with at least three of those games.'],
   ['vs TE, WR, or RB', 'How often this defense has thrown to that position this season, and the yards per target on those throws. A share well above normal lifts expected targets a little. Yards per target moves the efficiency a little. Snap counts are not in this feed, so the player’s own targets still set the role.'],
   ['Game total', 'The full-game total priced closest to 50/50. A higher total adds a little to passing and receiving props.'],
@@ -1370,7 +1364,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the price at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and the last 10 games are still in the neighborhood. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the prop stays off the list. If a quarterback, back, receiver, or tight end is out or doubtful, the next player at that position takes on that work. Questionable moves about 40% of it. Other sports stay when they hit in 70% or more of the last 10.
+                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the price at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the read uses the games they played together. If a quarterback, back, receiver, or tight end is out or doubtful, the next player at that position takes on that work. Questionable moves about 40% of it. Other sports stay when they hit in 70% or more of the last 10.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}

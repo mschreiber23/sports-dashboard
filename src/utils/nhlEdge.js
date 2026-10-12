@@ -1,10 +1,13 @@
-// NHL goals and points. Shrink the last-10 hit rate toward a longer sample, blend
-// in shot volume (and assists for points). Shot rate follows the recent games,
-// and a sharp drop or jump in the last three becomes the rate. Then nudge for
-// ice time, power-play points, the opponent, the game total, the favorite, and
-// a back-to-back. Edge is that probability minus the yes price.
+// NHL goals and points. The chance is mostly expected shots times a shrunk
+// shooting rate, plus assists on a points prop. The last-10 hit rate is a
+// small piece of that projection. Shot rate follows the recent games, and a
+// sharp drop or jump in the last three becomes the rate. Then nudge for ice
+// time, power-play points, the opponent, the game total, the favorite, and a
+// back-to-back, and pull the result toward the yes price. Edge is what is
+// left after that pull.
 
 import { applyLearned } from './propCalibration.js';
+import { NHL_BARE_MARKET_WEIGHT, NHL_HIT_WEIGHT, NHL_MARKET_WEIGHT, fairProbability } from './fairPrice.js';
 
 const GOALS = 'hockey_player_goals';
 const POINTS = 'hockey_player_points';
@@ -238,7 +241,7 @@ export function nhlPropEdge({
 
   const volumeP = volumeProbability(type, line, recentContext, priorContext);
   if (volumeP != null) {
-    const blended = goals ? (0.6 * p + 0.4 * volumeP) : (0.65 * p + 0.35 * volumeP);
+    const blended = NHL_HIT_WEIGHT * p + (1 - NHL_HIT_WEIGHT) * volumeP;
     p = applyShift(p, tags, blended - p, goals ? 'shot volume' : 'chances', 'low volume');
   }
 
@@ -293,6 +296,7 @@ export function nhlPropEdge({
     }
   }
 
+  p = fairProbability(p, marketYes, volumeP != null ? NHL_MARKET_WEIGHT : NHL_BARE_MARKET_WEIGHT);
   p = applyLearned(clamp(p, 0.02, 0.92), tags, calibration);
   return {
     p,

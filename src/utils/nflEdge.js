@@ -5,12 +5,20 @@
 // When a quarterback, back, receiver, or tight end is out tonight, the next
 // player at that position takes his carries, targets, or attempts. Questionable
 // moves part of that work. A defense that funnels targets to a position nudges
-// that position's props. The last-10 hit rate is the smaller piece. Then the
-// spread and the total set a pass or run script and a team implied point total,
-// and a short week or extra rest can still move it. Edge is that probability
-// minus the yes price.
+// that position's props. The last-10 hit rate is a small piece of that
+// projection. Then the spread and the total set a pass or run script and a
+// team implied point total, and a short week or extra rest can still move it.
+// The result is pulled toward the yes price. Edge is what is left after that pull.
 
 import { applyLearned } from './propCalibration.js';
+import {
+  NFL_BARE_MARKET_WEIGHT,
+  NFL_STABLE_HIT_WEIGHT,
+  NFL_STABLE_MARKET_WEIGHT,
+  NFL_VOLATILE_HIT_WEIGHT,
+  NFL_VOLATILE_MARKET_WEIGHT,
+  fairProbability,
+} from './fairPrice.js';
 
 const PASS_YDS = 'football_player_passing_yards';
 const RUSH_YDS = 'football_player_rushing_yards';
@@ -663,7 +671,7 @@ export function nflPropEdge(input) {
     for (const part of volume.out.split(', ')) if (part) tags.push(part);
   }
   if (volume.p != null) {
-    const hitWeight = VOLATILE.has(type) ? 0.5 : 0.4;
+    const hitWeight = VOLATILE.has(type) ? NFL_VOLATILE_HIT_WEIGHT : NFL_STABLE_HIT_WEIGHT;
     const blended = hitWeight * p + (1 - hitWeight) * volume.p;
     p = applyShift(p, tags, blended - p, 'volume', 'low volume');
   }
@@ -729,6 +737,10 @@ export function nflPropEdge(input) {
     }
   }
 
+  const marketWeight = volume.p != null
+    ? (VOLATILE.has(type) ? NFL_VOLATILE_MARKET_WEIGHT : NFL_STABLE_MARKET_WEIGHT)
+    : NFL_BARE_MARKET_WEIGHT;
+  p = fairProbability(p, marketYes, marketWeight);
   p = applyLearned(clamp(p, 0.02, 0.92), tags, input.calibration);
   return {
     p,
