@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import useBoxScore from '../hooks/useBoxScore';
+import NbaBoxScore from './NbaBoxScore';
 
 /* ─── helpers ─────────────────────────────────────── */
 function buildRosterMap(rosters = []) {
@@ -166,7 +167,7 @@ function SituationBar({ situation, rosters, status }) {
 /* ─── Stats Table ──────────────────────────────────── */
 const MLB_BATTING_COLS  = ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'];
 const MLB_PITCHING_COLS = ['IP','H','R','ER','BB','K','HR','ERA'];
-const NBA_COLS          = ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','+/-'];
+const NBA_COLS          = ['MIN','PTS','FG','3PT','FT','REB','AST','TO','STL','BLK','OREB','DREB','PF','+/-'];
 const NFL_PASS_COLS     = ['C/ATT','YDS','TD','INT','RTG'];
 const NFL_RUSH_COLS     = ['CAR','YDS','AVG','TD'];
 const NFL_REC_COLS      = ['REC','YDS','AVG','TD'];
@@ -252,6 +253,15 @@ function StatsTable({ statGroup, sport }) {
 function TeamStats({ group, sport }) {
   const team = group?.team || {};
   const stats = group?.statistics || [];
+  if (sport === 'nba') {
+    const statGroup = stats[0];
+    if (!statGroup) return null;
+    return (
+      <div className="bsm2-team-stats">
+        <NbaBoxScore statGroup={statGroup} />
+      </div>
+    );
+  }
   const batting  = stats.find((s) => (s.type || s.name) === 'batting')  || stats[0];
   const pitching = stats.find((s) => (s.type || s.name) === 'pitching') || stats[1];
 
