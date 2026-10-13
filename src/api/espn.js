@@ -135,6 +135,14 @@ export async function getPlayerBio(sport, playerId) {
   return data;
 }
 
+export async function getAthleteStats(sport, playerId) {
+  const { league } = SPORTS[sport];
+  const { data } = await axios.get(
+    `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/stats`
+  );
+  return data;
+}
+
 export async function getPlayerSeasonStats(sport, playerId, year) {
   const coreLeague = { nba: 'basketball/leagues/nba', nfl: 'football/leagues/nfl', mlb: 'baseball/leagues/mlb', nhl: 'hockey/leagues/nhl' }[sport];
   const { data } = await axios.get(
