@@ -277,7 +277,11 @@ function applyShift(p, tags, shift, up, down) {
   return p + shift;
 }
 
-export function nhlPropEdge({
+function validMarket(marketYes) {
+  return typeof marketYes === 'number' && Number.isFinite(marketYes) && marketYes >= 0 && marketYes <= 1;
+}
+
+function projectNhl({
   type,
   line,
   recent,
@@ -285,7 +289,6 @@ export function nhlPropEdge({
   recentContext,
   priorContext,
   versus,
-  marketYes,
   lastPlayed,
   gameStart,
   gameTotal,
@@ -295,11 +298,9 @@ export function nhlPropEdge({
   favoriteYes,
   opponentGoalsAgainst,
   home,
-  calibration,
 }) {
   if (type !== GOALS && type !== POINTS) return null;
   if (!recent || recent.length < 5 || line == null) return null;
-  if (typeof marketYes !== 'number' || !Number.isFinite(marketYes) || marketYes < 0 || marketYes > 1) return null;
 
   const hits = recent.filter((value) => value >= line).length;
   const n = recent.length;
@@ -386,14 +387,95 @@ export function nhlPropEdge({
     }
   }
 
-  p = fairProbability(p, marketYes, volumeP != null ? NHL_MARKET_WEIGHT : NHL_BARE_MARKET_WEIGHT);
-  p = applyLearned(clamp(p, 0.02, 0.92), tags, calibration);
   return {
     p,
-    edge: p - marketYes,
+    tags,
     hits,
     total: n,
     rate: Math.round((hits / n) * 100),
-    tags,
+    volumeP,
   };
+}
+
+function finishRead(read, marketYes, calibration) {
+  const priced = validMarket(marketYes);
+  let p = read.p;
+  if (priced) p = fairProbability(p, marketYes, read.volumeP != null ? NHL_MARKET_WEIGHT : NHL_BARE_MARKET_WEIGHT);
+  p = applyLearned(clamp(p, 0.02, 0.92), read.tags, calibration);
+  return {
+    p,
+    edge: priced ? p - marketYes : null,
+    hits: read.hits,
+    total: read.total,
+    rate: read.rate,
+    tags: read.tags,
+    priced,
+  };
+}
+
+export function nhlPropEdge(args) {
+  if (!validMarket(args.marketYes)) return null;
+  const read = projectNhl(args);
+  if (!read) return null;
+  const done = finishRead(read, args.marketYes, args.calibration);
+  return {
+    p: done.p,
+    edge: done.edge,
+    hits: done.hits,
+    total: done.total,
+    rate: done.rate,
+    tags: done.tags,
+  };
+}
+
+/** Chance of a point tonight. Same projection as the prop model. A 1+ price, when one exists, pulls it the same way. */
+export function nhlPointChance(args) {
+  const read = projectNhl({ ...args, type: POINTS, line: 1 });
+  if (!read) return null;
+  return finishRead(read, args.marketYes, args.calibration);
+}
+
+export function explainNhlPoint(lines, { priced = false, marketYes = null } = {}) {
+  const value = (label) => lines.find((line) => line.label === label)?.value || '';
+  const parts = [];
+  const last = value('Last 10');
+  if (last.includes('/')) {
+    const [hits, games] = last.split('/');
+    parts.push(`He has a point in ${hits} of his last ${games} games.`);
+  }
+  const longer = value('Long sample');
+  if (longer.includes('/')) parts.push(`The longer sample is ${longer}.`);
+  else if (longer) parts.push('There is not a long sample yet, so the model starts from a typical point rate.');
+
+  const toi = value('TOI');
+  const shots = value('Shots');
+  const assists = value('Assists');
+  const volume = value('Volume');
+  const usage = [toi && `${toi} a night`, shots && `${shots} shots`, assists && `${assists} assists a game`].filter(Boolean);
+  if (usage.length) {
+    let sentence = `Lately that is ${usage.join(', ')}.`;
+    if (volume) sentence += ` Shots and assists project to ${volume} before the matchup.`;
+    parts.push(sentence);
+  }
+  const powerPlay = value('Power play');
+  if (powerPlay) parts.push(`Power-play points are ${powerPlay}.`);
+  const goalsAgainst = value('Opp goals');
+  if (goalsAgainst) parts.push(`The opponent has allowed ${goalsAgainst}.`);
+  const site = value('Site');
+  if (site === 'Home') parts.push('This game is at home.');
+  else if (site === 'Road') parts.push('This game is on the road.');
+  const versus = lines.find((line) => line.id === 'opp');
+  if (versus) parts.push(`Against this opponent lately, ${versus.value} cleared a point.`);
+  const total = value('Game total');
+  if (total) parts.push(`The game total is ${total}.`);
+  const side = lines.find((line) => line.id === 'side')?.value || '';
+  if (side.startsWith('Fav')) parts.push('His team is favored.');
+  else if (side.startsWith('Under')) parts.push('His team is the underdog.');
+  const rest = value('Rest');
+  if (rest === 'Back to back') parts.push('It is the second game in two nights.');
+  else if (rest) parts.push(`He last played ${rest} ago.`);
+  if (priced && validMarket(marketYes)) {
+    parts.push(`The read is then pulled toward the 1+ points price of ${Math.round(marketYes * 100)}%.`);
+  }
+  return parts.join(' ');
 }
