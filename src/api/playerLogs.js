@@ -318,7 +318,7 @@ export async function recentPlayerLogs(league, players) {
   async function worker() {
     while (next < unique.length) {
       const player = unique[next++];
-      const id = await espnId(league, player.name);
+      const id = player.athleteId ? String(player.athleteId) : await espnId(league, player.name);
       if (!id) {
         out[player.name] = null;
         continue;

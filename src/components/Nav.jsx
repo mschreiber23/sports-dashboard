@@ -124,6 +124,16 @@ function PropsIcon({ active }) {
   );
 }
 
+function PointsIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8"/>
+      <path d="M12 8v8"/>
+      <path d="M9 10.5h4.2a1.8 1.8 0 0 1 0 3.6H9"/>
+    </svg>
+  );
+}
+
 function MiLBIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -136,6 +146,7 @@ function MiLBIcon({ active }) {
 }
 
 const MORE_ITEMS = [
+  { path: '/nhl-points', label: 'NHL Points', Icon: PointsIcon },
   { path: '/props',    label: 'Props',      Icon: PropsIcon },
   { path: '/milb',     label: 'MiLB',       Icon: MiLBIcon },
   { path: '/me',       label: 'My Profile', Icon: MeIcon },
