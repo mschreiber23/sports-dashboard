@@ -2171,6 +2171,12 @@ body {
   font-weight: 700;
 }
 
+/* Last-10 points chart on an NHL skater card. Same bars as props, given the width of the card. */
+.nhl-l10 { margin-top: 4px; }
+.nhl-l10 .pp-bars { justify-content: space-between; }
+.nhl-l10 .pp-bar-col { flex: 1; min-width: 0; }
+.nhl-l10 .pp-bar-track { width: 100%; max-width: 16px; height: 56px; }
+
 /* ── vs Team picker ── */
 .vs-team-picker-wrap {
   padding: 12px 0;

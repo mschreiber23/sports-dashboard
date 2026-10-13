@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
 import { useFavorites } from '../context/FavoritesContext';
-import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, nhlSeasonYear } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* Format a stat value:
@@ -169,6 +169,96 @@ function RecentABTracker({ gamelog }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function statNum(stats, key) {
+  const n = parseInt(stats?.[key] || 0, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/* Last 10 point totals, oldest on the left, same as the props page. */
+function PointsBars({ values, color }) {
+  const label = `Last ${values.length} points`;
+  const max = Math.max(1, ...values, 0);
+  return (
+    <div className="pp-log nhl-l10">
+      <div className="pp-log-label">{label}</div>
+      {values.length === 0 ? (
+        <div className="pp-log-empty">No games</div>
+      ) : (
+        <div className="pp-bars" aria-label={label}>
+          {values.map((value, index) => (
+            <div key={`${label}-${index}`} className="pp-bar-col">
+              <div className="pp-bar-track">
+                <div className="pp-bar" style={{ height: `${(Math.max(0, value) / max) * 100}%`, background: color || '#e10600' }} />
+              </div>
+              <span>{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecentPointsSearch({ gamelog, color, seasonGames }) {
+  const [gamesInput, setGamesInput] = useState('10');
+  const requested = Math.max(1, parseInt(gamesInput, 10) || 10);
+  const window = gamelog.slice(0, requested);
+  const includesPrior = window.length > seasonGames;
+  const goals = window.reduce((sum, game) => sum + statNum(game.stats, 'G'), 0);
+  const assists = window.reduce((sum, game) => sum + statNum(game.stats, 'A'), 0);
+  const points = window.reduce((sum, game) => sum + statNum(game.stats, 'PTS'), 0);
+  const perGame = window.length ? (points / window.length).toFixed(2) : '0.00';
+  const last10 = gamelog.slice(0, 10).map((game) => statNum(game.stats, 'PTS')).reverse();
+
+  return (
+    <div className="pp-flat-section">
+      <div className="ab-tracker-inner">
+        <div className="ab-tracker-search-row">
+          <div className="ab-tracker-mode-tabs">
+            <span className="ab-tracker-mode-tab ab-tracker-mode-active">🔍 Recent Games</span>
+          </div>
+          <div className="ab-tracker-input-wrap">
+            <input
+              type="number"
+              className="ab-tracker-input"
+              value={gamesInput}
+              min="1"
+              max="82"
+              placeholder="# of Games"
+              aria-label="Number of recent games"
+              onChange={(event) => setGamesInput(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="ab-tracker-meta">
+          <span className="ab-tracker-meta-pill">{points} point{points === 1 ? '' : 's'}</span>
+          <span className="ab-tracker-meta-pill">
+            {window.length} game{window.length === 1 ? '' : 's'}
+            {includesPrior ? ', including last season' : ''}
+          </span>
+        </div>
+
+        <div className="ab-tracker-rate-row">
+          {[
+            { label: 'PTS', value: points },
+            { label: 'G', value: goals },
+            { label: 'A', value: assists },
+            { label: 'PTS/G', value: perGame },
+          ].map((stat) => (
+            <div key={stat.label} className="ab-tracker-rate-stat">
+              <div className="ab-tracker-rate-value">{stat.value}</div>
+              <div className="ab-tracker-label">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <PointsBars values={last10} color={color} />
       </div>
     </div>
   );
@@ -354,12 +444,38 @@ function gameLogStats(labels, values) {
   return stats;
 }
 
+function gamesFromLog(data) {
+  const labels = data?.labels || [];
+  const eventsMap = data?.events || {};
+  const games = [];
+  const seenEventIds = new Set();
+  for (const st of data?.seasonTypes || []) {
+    for (const cat of st.categories || []) {
+      for (const ev of cat.events || []) {
+        if (seenEventIds.has(ev.eventId)) continue;
+        seenEventIds.add(ev.eventId);
+        const info = eventsMap[ev.eventId] || {};
+        games.push({
+          date: info.gameDate || '',
+          opponent: info.opponent?.abbreviation || '',
+          atVs: info.atVs || '',
+          result: info.gameResult || '',
+          stats: gameLogStats(labels, ev.stats),
+        });
+      }
+    }
+  }
+  games.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return games;
+}
+
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
   const navigate = useNavigate();
   const [bio, setBio] = useState(null);
   const [seasons, setSeasons] = useState([]);
   const [gamelog, setGamelog] = useState([]);
+  const [pointLog, setPointLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [careerTab, setCareerTab] = useState('totals'); // 'totals' | 'rhp' | 'lhp' | 'opp'
   const [splitsBySeason, setSplitsBySeason] = useState({});
@@ -385,6 +501,8 @@ export default function PlayerPage() {
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
+    setGamelog([]);
+    setPointLog([]);
 
     // Load bio first
     getPlayerBio(sport, playerId)
@@ -406,30 +524,13 @@ export default function PlayerPage() {
       })
       .catch(() => {});
 
-    // Game log
-    getPlayerGameLog(sport, playerId).then(async (data) => {
-      const labels = data.labels || [];
-      const eventsMap = data.events || {};
-      const seasonTypes = data.seasonTypes || [];
-      const games = [];
-      const seenEventIds = new Set();
-      for (const st of seasonTypes) {
-        for (const cat of st.categories || []) {
-          for (const ev of cat.events || []) {
-            if (seenEventIds.has(ev.eventId)) continue;
-            seenEventIds.add(ev.eventId);
-            const info = eventsMap[ev.eventId] || {};
-            games.push({
-              date: info.gameDate || '',
-              opponent: info.opponent?.abbreviation || '',
-              atVs: info.atVs || '',
-              result: info.gameResult || '',
-              stats: gameLogStats(labels, ev.stats),
-            });
-          }
-        }
-      }
-      games.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Game log. The points search also keeps last season so "past 20" still has games in October.
+    const priorYear = sport === 'nhl' ? nhlSeasonYear() - 1 : null;
+    Promise.all([
+      getPlayerGameLog(sport, playerId),
+      priorYear ? getPlayerGameLog(sport, playerId, priorYear).catch(() => null) : Promise.resolve(null),
+    ]).then(async ([data, prior]) => {
+      const games = gamesFromLog(data);
 
       // Prepend today's game if not in log
       const today = new Date().toISOString().slice(0, 10);
@@ -477,7 +578,19 @@ export default function PlayerPage() {
         } catch {}
       }
       // MLB keeps a full season for the at-bat tracker. NHL shows every game of the current season.
-      setGamelog(sport === 'nhl' ? games : games.slice(0, 162));
+      const seasonLog = sport === 'nhl' ? games : games.slice(0, 162);
+      setGamelog(seasonLog);
+      const older = prior ? gamesFromLog(prior) : [];
+      const seen = new Set(seasonLog.map((game) => `${game.date}|${game.opponent}`));
+      const merged = [...seasonLog];
+      for (const game of older) {
+        const key = `${game.date}|${game.opponent}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(game);
+      }
+      merged.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setPointLog(merged);
     }).catch(() => {});
 
     // Season stats — fetch from debut year to current
@@ -852,6 +965,11 @@ export default function PlayerPage() {
           {/* Recent AB Tracker — MLB batters only */}
           {sport === 'mlb' && sportKey === 'mlb_batting' && gamelog.length > 0 && (
             <RecentABTracker gamelog={gamelog} />
+          )}
+
+          {/* Recent points search — NHL skaters only */}
+          {sport === 'nhl' && sportKey === 'nhl_skater' && (pointLog.length > 0 || gamelog.length > 0) && (
+            <RecentPointsSearch gamelog={pointLog.length ? pointLog : gamelog} seasonGames={gamelog.length} color={teamColor} />
           )}
 
           {/* Game Log */}

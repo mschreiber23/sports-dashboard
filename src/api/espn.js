@@ -118,11 +118,11 @@ export function nhlSeasonYear(now = new Date()) {
   return month >= 9 ? year + 1 : year;
 }
 
-export async function getPlayerGameLog(sport, playerId) {
+export async function getPlayerGameLog(sport, playerId, year) {
   const { league } = SPORTS[sport];
-  const year = sport === 'nhl' ? nhlSeasonYear() : new Date().getFullYear();
+  const season = year || (sport === 'nhl' ? nhlSeasonYear() : new Date().getFullYear());
   const { data } = await axios.get(
-    `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/gamelog?season=${year}`
+    `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/gamelog?season=${season}`
   );
   return data;
 }
