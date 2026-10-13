@@ -6858,6 +6858,55 @@ thead .dfs-sticky-player {
 /* Wrap the table — no border, blends into page */
 .bsp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0; border: none; border-radius: 0; }
 
+/* ESPN basketball box score: starters / bench / team, name stays put while stats scroll */
+.bsp-nba .bsp-th,
+.bsp-nba .bsp-td { padding: 7px 6px; }
+.bsp-nba .bsp-th-player,
+.bsp-nba .bsp-td-player {
+  position: sticky;
+  left: 0;
+  background: #0f0f13;
+  z-index: 1;
+  min-width: 132px;
+}
+.bsp-nba thead .bsp-th-player { z-index: 2; text-transform: none; }
+.bsp-nba .bsp-nba-divider .bsp-td-player,
+.bsp-nba .bsp-totals-label { text-transform: none; }
+.bsp-nba .bsp-nba-divider .bsp-td {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  padding-top: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.bsp-nba-pos,
+.bsp-nba-num {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-left: 5px;
+}
+.bsp-nba-dnp { padding: 12px 8px 4px; }
+.bsp-nba-dnp-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.bsp-nba-dnp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.bsp-nba-dnp-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.bsp-nba-dnp-reason { font-size: 11px; color: var(--text2); }
+
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
 

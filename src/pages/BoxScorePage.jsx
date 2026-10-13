@@ -6,6 +6,7 @@ import useMlbLiveFeed, { mlbHeadshot } from '../hooks/useMlbLiveFeed';
 import NhlGamecast, { NhlPbpTab } from './NhlGamecast';
 import { buildMiLBComp, levelShort } from '../api/milb';
 import { finalStatusLabel } from '../components/TeamRow';
+import NbaBoxScore from '../components/NbaBoxScore';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
 const PITCH_NAMES = {
@@ -2520,7 +2521,7 @@ function PlayByPlay({ data, competitors, sport }) {
 const COLS = {
   mlb_batting:  ['AB','R','H','RBI','HR','BB','K','AVG','OBP','SLG'],
   mlb_pitching: ['IP','H','R','ER','BB','K','ERA','PC'],
-  nba:          ['MIN','PTS','REB','AST','STL','BLK','FG','3PT','+/-'],
+  nba:          ['MIN','PTS','FG','3PT','FT','REB','AST','TO','STL','BLK','OREB','DREB','PF','+/-'],
   nfl_passing:  ['C/ATT','YDS','AVG','TD','INT','RTG'],
   nfl_rushing:  ['CAR','YDS','AVG','TD','LONG'],
   nfl_receiving:['REC','YDS','AVG','TD','LONG','TGTS'],
@@ -2771,6 +2772,8 @@ function StatsTable({ statGroup, sport, allAtBats, onShowAbs, venueId, teamColor
                 ? `${type.charAt(0).toUpperCase()}${type.slice(1)}${teamAbbr ? ` - ${teamAbbr}` : ''}`
                 : sport === 'nhl'
                 ? (type === 'goalies' ? 'Goalies' : type === 'defenses' ? 'Defensemen' : 'Forwards') + (teamAbbr ? ` - ${teamAbbr}` : '')
+                : sport === 'nba'
+                ? 'starters'
                 : (type === 'pitching' ? 'PITCHERS' : 'HITTERS')}
             </th>
             {cols.map((c) => <th key={c.label} className="bsp-th">{c.label}</th>)}
@@ -2865,6 +2868,16 @@ function MLBGameNotes({ details }) {
 function TeamStats({ group, sport, teamDetails, allAtBats, onShowAbs, venueId, teamColor, teamAltColor }) {
   const team  = group?.team || {};
   const stats = group?.statistics || [];
+
+  if (sport === 'nba') {
+    const statGroup = stats[0];
+    if (!statGroup) return null;
+    return (
+      <div className="bs-team-stats">
+        <NbaBoxScore statGroup={statGroup} />
+      </div>
+    );
+  }
 
   if (sport === 'nfl') {
     // NFL: show passing, rushing, receiving groups separately
