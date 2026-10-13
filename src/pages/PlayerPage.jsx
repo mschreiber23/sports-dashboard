@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
 import { useFavorites } from '../context/FavoritesContext';
-import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, nhlSeasonYear } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, nhlSeasonYear } from '../api/espn';
+import { parseAthleteCareer } from '../utils/nhlCareer';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* Format a stat value:
@@ -469,11 +470,48 @@ function gamesFromLog(data) {
   return games;
 }
 
+const NHL_HL = new Set(['G', 'A', 'PTS', 'SV%', 'GAA']);
+
+function EspnSeasonTable({ table }) {
+  return (
+    <div className="pp-table-wrap pp-season-nhl">
+      <table className="pp-table">
+        <thead>
+          <tr>
+            <th className="pp-th pp-th-season">SEASON</th>
+            <th className="pp-th">TEAM</th>
+            {table.labels.map((label) => <th key={label} className="pp-th">{label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row) => (
+            <tr key={row.key} className={`pp-tr${row.current ? ' pp-tr-current' : ''}${row.seasonTotal ? ' pp-tr-subtotal' : ''}`}>
+              <td className="pp-td pp-td-season">{row.label}</td>
+              <td className="pp-td">{row.team}</td>
+              {row.values.map((value, index) => (
+                <td key={table.labels[index]} className={`pp-td${NHL_HL.has(table.labels[index]) ? ' pp-td-hl' : ''}`}>{value}</td>
+              ))}
+            </tr>
+          ))}
+          <tr className="pp-tr-career">
+            <td className="pp-td pp-td-season pp-career-label">Career</td>
+            <td className="pp-td" />
+            {table.totals.map((value, index) => (
+              <td key={table.labels[index]} className={`pp-td${NHL_HL.has(table.labels[index]) ? ' pp-td-hl' : ''}`}>{value}</td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
   const navigate = useNavigate();
   const [bio, setBio] = useState(null);
   const [seasons, setSeasons] = useState([]);
+  const [nhlTable, setNhlTable] = useState(null);
   const [gamelog, setGamelog] = useState([]);
   const [pointLog, setPointLog] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -503,6 +541,7 @@ export default function PlayerPage() {
     const currentYear = new Date().getFullYear();
     setGamelog([]);
     setPointLog([]);
+    setNhlTable(null);
 
     // Load bio first
     getPlayerBio(sport, playerId)
@@ -592,6 +631,15 @@ export default function PlayerPage() {
       merged.sort((a, b) => new Date(b.date) - new Date(a.date));
       setPointLog(merged);
     }).catch(() => {});
+
+    // NHL season lines come from ESPN's own table, including this season and the career total.
+    if (sport === 'nhl') {
+      getAthleteStats(sport, playerId)
+        .then((data) => setNhlTable(parseAthleteCareer(data, nhlSeasonYear())))
+        .catch(() => setNhlTable(null))
+        .finally(() => setLoading(false));
+      return;
+    }
 
     // Season stats — fetch from debut year to current
     getPlayerBio(sport, playerId).then((bioData) => {
@@ -911,7 +959,8 @@ export default function PlayerPage() {
               </div>
             )}
 
-            <div className="pp-table-wrap">
+            {sport === 'nhl' && nhlTable && <EspnSeasonTable table={nhlTable} />}
+            {sport !== 'nhl' && <div className="pp-table-wrap">
               <table className="pp-table">
                 <thead>
                   <tr>
@@ -959,7 +1008,7 @@ export default function PlayerPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+            </div>}
           </div>
 
           {/* Recent AB Tracker — MLB batters only */}
