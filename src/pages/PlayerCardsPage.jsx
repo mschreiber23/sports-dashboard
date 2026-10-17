@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl } from '../api/milb';
 import { idbStorage } from '../lib/idbStorage';
+import { nhlCardSeasonLabel, nhlCardSeasonYear, nhlGameStatMap, nhlSeasonStatMap } from '../utils/nhlCardStats';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -108,7 +109,7 @@ const STAT_CFGS = {
     {s:'FG',l:'FG'},{s:'3PT',l:'3PT'},{s:'FT',l:'FT'},
   ],
   nhl_skater: [
-    {s:'G',l:'G'},{s:'A',l:'A'},{s:'+/-',l:'+/-'},{s:'SOG',l:'SOG'},
+    {s:'G',l:'G'},{s:'A',l:'A'},{s:'+/-',l:'+/-'},{s:'S',l:'SOG'},
     {s:'HT',l:'HIT'},{s:'BS',l:'BLK'},{s:'PIM',l:'PIM'},
     {s:'TK',l:'TKW'},{s:'GV',l:'GVW'},{s:'TOI',l:'TOI'},
   ],
@@ -148,7 +149,7 @@ async function fetchGameSummary(sport, gameId) {
 
 async function fetchSeasonStats(sport, athleteId, posAbb) {
   try {
-    const year = new Date().getFullYear();
+    const year = sport === 'nhl' ? nhlCardSeasonYear() : new Date().getFullYear();
     const { sport: s, league: l } = SPORT_CFG[sport] || {};
     const r = await fetch(`https://sports.core.api.espn.com/v2/sports/${s}/leagues/${l}/seasons/${year}/types/2/athletes/${athleteId}/statistics/0?lang=en&region=us`);
     const d = await r.json();
@@ -193,6 +194,8 @@ async function fetchSeasonStats(sport, athleteId, posAbb) {
           for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
         }
       }
+    } else if (sport === 'nhl') {
+      Object.assign(sm, nhlSeasonStatMap(cats, isNhlGoalie(posAbb)));
     } else {
       for (const cat of cats) {
         for (const stat of cat.stats || []) sm[stat.abbreviation] = stat.displayValue;
@@ -202,7 +205,20 @@ async function fetchSeasonStats(sport, athleteId, posAbb) {
   } catch { return {}; }
 }
 
+function seasonTitle(sport) {
+  if (sport === 'nhl') return `${nhlCardSeasonLabel()} Season`;
+  return `${new Date().getFullYear()} Season Stats`;
+}
+
 function extractPlayerStats(summary, athleteId, sport, posAbb) {
+  if (sport === 'nhl') {
+    for (const team of summary.boxscore?.players || []) {
+      const map = nhlGameStatMap(team.statistics, athleteId, isNhlGoalie(posAbb));
+      if (map) return map;
+    }
+    return null;
+  }
+
   const isQb = nflGroup(posAbb) === 'qb';
   const isRb = nflGroup(posAbb) === 'rb';
   const isWr = nflGroup(posAbb) === 'wr';
@@ -451,7 +467,7 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
       {/* No game today: season stats */}
       {!gameData?.game && !loading && gameData?.seasonStats && statCfg.length > 0 && (
         <>
-          <div className="pc-season-label">{new Date().getFullYear()} Season Stats</div>
+          <div className="pc-season-label">{seasonTitle(player.sport)}</div>
           <div className="pc-stats-grid">
             {statCfg.map((cfg) => {
               const { s, l, combo, dkfp } = cfg;
@@ -501,7 +517,7 @@ export function PlayerGameCard({ player, onRemove, dateStr, onUpdatePlayer, edit
           </div>
           {gameData?.seasonStats && statCfg.length > 0 && (
             <>
-              <div className="pc-season-label">{new Date().getFullYear()} Season Stats</div>
+              <div className="pc-season-label">{seasonTitle(player.sport)}</div>
               <div className="pc-stats-grid">
                 {statCfg.map((cfg) => {
                   const { s, l, combo, dkfp } = cfg;
