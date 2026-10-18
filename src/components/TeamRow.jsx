@@ -7,6 +7,7 @@ import { mlbHeadshot, extractTopPerformers } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
+import { nflScoreSituation } from '../utils/nflScoreSituation';
 import { levelShort, normalizeMiLBGame } from '../api/milb';
 
 /** Search ESPN by player name and navigate to their player page. */
@@ -1067,8 +1068,18 @@ const accentStyle = (color) => color ? {
   boxShadow: `0 0 12px color-mix(in srgb,${color} 25%,transparent)`,
 } : undefined;
 
+function FootballMark() {
+  return (
+    <svg className="nfl-ball" viewBox="0 0 16 10" aria-hidden="true">
+      <title>Has the ball</title>
+      <ellipse cx="8" cy="5" rx="7" ry="4.2" fill="#c4a574" />
+      <path d="M8 1.4v7.2M5.4 3.3c1.6.9 3.6.9 5.2 0M5.4 6.7c1.6-.9 3.6-.9 5.2 0" stroke="#3b2a16" strokeWidth="0.7" fill="none" />
+    </svg>
+  );
+}
+
 /** Team rows reused by all three sport card states */
-function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, awayScoreOverride, homeScoreOverride }) {
+function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, awayScoreOverride, homeScoreOverride, possessionId }) {
   const nav = useNavigate();
   const rec = (c) => c?.records?.[0]?.summary || '';
   const score = (c) => {
@@ -1092,6 +1103,7 @@ function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, 
         <div key={c.team?.id} className="mlbc-team-row">
           <LogoImg team={c.team} className="mlbc-logo" />
           <div className="mlbc-team-info">
+            {possessionId && String(c.team?.id) === String(possessionId) && <FootballMark />}
             <span className="mlbc-name">{c.team?.shortDisplayName || c.team?.displayName}</span>
             <span className="mlbc-rec">{rec(c)}</span>
           </div>
@@ -1486,9 +1498,8 @@ function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
   const awayOverride = isNhl && nhlScore?.awayScore != null ? String(nhlScore.awayScore) : null;
   const homeOverride = isNhl && nhlScore?.homeScore != null ? String(nhlScore.homeScore) : null;
 
-  const sitLine = sport === 'nfl'
-    ? sit.downDistanceText || ''
-    : sport === 'nba'
+  const nflSit = sport === 'nfl' ? nflScoreSituation(sit, competitors) : null;
+  const sitLine = sport === 'nba'
     ? (sit.possessionText ? `${sit.possessionText} possession` : '')
     : sport === 'nhl'
     ? (nhlScore?.ppTeam ? `${nhlScore.ppTeam} Power Play` : '')
@@ -1504,8 +1515,24 @@ function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
     <div className="mlbc-card" style={accentStyle(accentColor)}>
       <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: sport === 'mlb' ? 'Live' : 'Gamecast' } })}>
         <GenericTeamRows away={away} home={home} sport={sport} showScore liveLabel={liveLabel}
-          awayScoreOverride={awayOverride} homeScoreOverride={homeOverride} />
+          awayScoreOverride={awayOverride} homeScoreOverride={homeOverride}
+          possessionId={nflSit?.possessionId} />
       </div>
+      {nflSit && (nflSit.possessionName || nflSit.downText || nflSit.lastPlay) && (
+        <>
+          <div className="mlbc-divider" />
+          <div className="sport-sit-line nfl-sit">
+            {(nflSit.possessionName || nflSit.downText) && (
+              <div className="nfl-sit-down">
+                {nflSit.isRedZone && <span aria-hidden="true">🔴</span>}
+                {nflSit.possessionName && <span className="nfl-sit-team">{nflSit.possessionName} have the ball</span>}
+                {nflSit.downText && <span className="nfl-sit-spot">{nflSit.downText}</span>}
+              </div>
+            )}
+            {nflSit.lastPlay && <div className="nfl-sit-play">{nflSit.lastPlay}</div>}
+          </div>
+        </>
+      )}
       {sitLine && (
         <>
           <div className="mlbc-divider" />
