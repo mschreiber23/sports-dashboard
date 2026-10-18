@@ -7911,6 +7911,43 @@ thead .dfs-sticky-player {
   color: var(--text2);
   font-weight: 600;
 }
+.nfl-ball {
+  width: 13px;
+  height: 8px;
+  flex-shrink: 0;
+  align-self: center;
+}
+.nfl-ball-dot {
+  width: 8px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #c4a574;
+}
+.nfl-sit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  padding-bottom: 10px;
+}
+.nfl-sit-down {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.nfl-sit-team { color: var(--text); }
+.nfl-sit-spot { color: var(--text2); font-weight: 600; }
+.nfl-sit-play {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text2);
+}
 
 .sport-leaders-row {
   display: grid;

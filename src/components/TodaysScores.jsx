@@ -8,6 +8,7 @@ import { getNflWeekGames, getNflWeekInfo, getNflWeekLabel } from '../api/nfl';
 import useSportsDaySelection from '../hooks/useSportsDay';
 import { formatSportsDateLabel, sportsDayStr, toDateStr } from '../utils/sportsDay';
 import { finalStatusLabel } from './TeamRow';
+import { nflScoreSituation } from '../utils/nflScoreSituation';
 
 function getScore(c) {
   const s = c?.score;
@@ -61,6 +62,7 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
   const isMine = myTeamIds.some((id) => competitors.some((c) => c.team?.id === id));
   const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
   const sit = comp?.situation || {};
+  const nflSit = sport === 'nfl' ? nflScoreSituation(sit, competitors) : null;
   const outs = sit.outs ?? null;
   const onFirst = !!sit.onFirst;
   const onSecond = !!sit.onSecond;
@@ -107,10 +109,12 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
       <div className="ticker-teams">
         {[away, home].filter(Boolean).map((c) => {
           const score = c.homeAway === 'away' ? awayScore : homeScore;
+          const hasBall = nflSit?.possessionId === String(c.team?.id);
           return (
             <div key={c.team?.id} className={`ticker-team ${myTeamIds.includes(c.team?.id) ? 'ticker-my-team' : ''}`}>
               <div className="ticker-team-left">
                 <LogoImg team={c.team} className="ticker-logo" />
+                {hasBall && <span className="nfl-ball-dot" title="Has the ball" />}
                 <span className="ticker-abbr">{c.team?.abbreviation}</span>
               </div>
               <span className={`ticker-score ${c.winner ? 'ticker-score-win' : ''}`}>{score ?? '0'}</span>
@@ -121,8 +125,8 @@ function TickerCard({ game, sport, myTeamIds, mlbScore, nhlScore }) {
       <div className="ticker-bottom ticker-bottom-live">
         <div className="ticker-situation">
           {sport === 'nfl' ? (
-            sit.downDistanceText
-              ? <span className="ticker-down-dist">{sit.isRedZone ? '🔴 ' : '🏈 '}{sit.downDistanceText}</span>
+            nflSit?.downText
+              ? <span className="ticker-down-dist">{nflSit.isRedZone ? '🔴 ' : ''}{nflSit.downText}</span>
               : null
           ) : sport === 'nba' ? (
             sit.possessionText
