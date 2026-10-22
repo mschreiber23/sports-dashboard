@@ -71,6 +71,7 @@ export function gameOpponent(event, teamId) {
     prefix: mine?.homeAway === 'home' ? 'vs' : '@',
     abbr: other?.team?.abbreviation || '',
     name: other?.team?.shortDisplayName || other?.team?.displayName || other?.team?.abbreviation || '',
+    team: other?.team || null,
   };
 }
 

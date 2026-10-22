@@ -7002,6 +7002,9 @@ thead .dfs-sticky-player {
 }
 .teams-grid > * { min-width: 0; max-width: 100%; }
 @media (min-width: 768px) {
+  .teams-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1100px) {
   .teams-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
@@ -8026,6 +8029,9 @@ thead .dfs-sticky-player {
   overflow: hidden;
 }
 .next-five-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   flex: 0 0 auto;
   padding: 0;
   background: none;
@@ -8038,6 +8044,13 @@ thead .dfs-sticky-player {
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
+}
+.next-five-at { color: var(--text2); }
+.next-five-logo {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .next-five-row + .next-five-row { border-left: 1px solid var(--border); }
 .next-five-row:hover { color: var(--text); }

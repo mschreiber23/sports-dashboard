@@ -58,6 +58,10 @@ test('only the game on the selected day counts as playing that day', () => {
 });
 
 test('opponent side follows home and away', () => {
-  assert.deepEqual(gameOpponent(SLATE[2], '23'), { prefix: 'vs', abbr: 'BUF', name: 'Sabres' });
+  const home = gameOpponent(SLATE[2], '23');
+  assert.equal(home.prefix, 'vs');
+  assert.equal(home.abbr, 'BUF');
+  assert.equal(home.name, 'Sabres');
+  assert.equal(home.team.abbreviation, 'BUF');
   assert.equal(gameOpponent(SLATE[2], '2').prefix, '@');
 });

@@ -1636,9 +1636,13 @@ function OffDayCard({ team, sport, games, navigate, accentColor }) {
               key={event.id}
               type="button"
               className="next-five-row"
+              title={opp.name || opp.abbr}
               onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/${sport}/${event.id}`); }}
             >
-              {formatScheduleLine(event.date)} {opp.prefix === '@' ? '@' : ''}{opp.abbr}
+              <span>{formatScheduleLine(event.date)}</span>
+              {opp.prefix === '@' && <span className="next-five-at">@</span>}
+              <LogoImg team={opp.team} className="next-five-logo" />
+              {!getTeamLogo(opp.team) && !getTeamLogoFallback(opp.team) && <span>{opp.abbr}</span>}
             </button>
           );
         })}
