@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
 import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, activeSeasonYear, nhlSeasonYear } from '../api/espn';
-import { parseAthleteCareer } from '../utils/nhlCareer';
+import { omitCareerColumns, parseAthleteCareer } from '../utils/nhlCareer';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
 /* Format a stat value:
@@ -643,7 +643,11 @@ export default function PlayerPage() {
     if (sport === 'nhl' || sport === 'nba') {
       const category = sport === 'nba' ? 'averages' : undefined;
       getAthleteStats(sport, playerId)
-        .then((data) => setCareerTable(parseAthleteCareer(data, activeSeasonYear(sport), category)))
+        .then((data) => {
+          const table = parseAthleteCareer(data, activeSeasonYear(sport), category);
+          // Year-by-year keeps the percentages. Game logs still show FG, 3PT, and FT.
+          setCareerTable(sport === 'nba' ? omitCareerColumns(table, ['FG', '3PT', 'FT']) : table);
+        })
         .catch(() => setCareerTable(null))
         .finally(() => setLoading(false));
       return;

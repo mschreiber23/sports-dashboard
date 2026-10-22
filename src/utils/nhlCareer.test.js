@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseAthleteCareer, seasonLabel } from './nhlCareer.js';
+import { omitCareerColumns, parseAthleteCareer, seasonLabel } from './nhlCareer.js';
 
 test('an ending year reads as the two-season span', () => {
   assert.equal(seasonLabel(2016), '2015-16');
@@ -68,4 +68,15 @@ test('NBA averages keep the season span, each team, and the current year', () =>
   ]);
   assert.deepEqual(table.rows[4].values, ['1', '5.0']);
   assert.deepEqual(table.totals, ['810', '16.5']);
+});
+
+test('NBA season lines drop made-attempted shooting and keep the percentages', () => {
+  const table = omitCareerColumns({
+    labels: ['GP', 'FG', 'FG%', '3PT', '3P%', 'FT', 'FT%', 'PTS'],
+    rows: [{ label: '2025-26', team: 'MIL', values: ['69', '4.9-10.0', '49.2', '1.2-4.0', '30.0', '2.0-2.5', '80.0', '13.0'] }],
+    totals: ['611', '6.3-13.9', '45.3', '2.0-5.5', '36.0', '1.8-2.4', '75.0', '16.1'],
+  }, ['FG', '3PT', 'FT']);
+  assert.deepEqual(table.labels, ['GP', 'FG%', '3P%', 'FT%', 'PTS']);
+  assert.deepEqual(table.rows[0].values, ['69', '49.2', '30.0', '80.0', '13.0']);
+  assert.deepEqual(table.totals, ['611', '45.3', '36.0', '75.0', '16.1']);
 });
