@@ -8019,35 +8019,28 @@ thead .dfs-sticky-player {
 }
 .next-five {
   display: flex;
-  flex-direction: column;
-  padding: 2px 0 6px;
-}
-.next-five-row {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
   width: 100%;
-  padding: 7px 14px;
+  padding: 5px 6px 7px;
+  overflow: hidden;
+}
+.next-five-row {
+  flex: 0 0 auto;
+  padding: 0;
   background: none;
   border: 0;
-  color: inherit;
-  text-align: left;
+  color: var(--text2);
   cursor: pointer;
   font: inherit;
-}
-.next-five-row:hover { background: rgba(255,255,255,0.04); }
-.next-five-when {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--text);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
 }
-.next-five-opp {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text2);
-  flex-shrink: 0;
-}
+.next-five-row + .next-five-row { border-left: 1px solid var(--border); }
+.next-five-row:hover { color: var(--text); }
 
 /* ── More dropdown (bottom nav mobile) ───────────────── */
 .more-overlay {

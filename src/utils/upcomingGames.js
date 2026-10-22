@@ -30,12 +30,31 @@ export function easternYmd(value) {
   return `${get('year')}${get('month')}${get('day')}`;
 }
 
+const LINE_FMT = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
 export function formatKickoff(iso) {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return { date: '', time: '', label: '' };
   const day = DATE_FMT.format(date);
   const time = TIME_FMT.format(date);
   return { date: day, time, label: `${day} · ${time}` };
+}
+
+export function formatScheduleLine(iso) {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return '';
+  const parts = LINE_FMT.formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value || '';
+  const minute = get('minute');
+  const clock = minute === '00' ? get('hour') : `${get('hour')}:${minute}`;
+  const period = (get('dayPeriod') || '').toLowerCase().startsWith('p') ? 'p' : 'a';
+  return `${get('month')}/${get('day')} ${clock}${period}`;
 }
 
 export function gameOnDay(event, dayYmd) {

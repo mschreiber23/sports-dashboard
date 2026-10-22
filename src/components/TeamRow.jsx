@@ -8,7 +8,7 @@ import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { nflScoreSituation } from '../utils/nflScoreSituation';
-import { formatKickoff, gameOpponent } from '../utils/upcomingGames';
+import { formatKickoff, formatScheduleLine, gameOpponent } from '../utils/upcomingGames';
 import { levelShort, normalizeMiLBGame } from '../api/milb';
 
 /** Search ESPN by player name and navigate to their player page. */
@@ -1630,7 +1630,6 @@ function OffDayCard({ team, sport, games, navigate, accentColor }) {
       <div className="mlbc-divider" />
       <div className="next-five">
         {games.slice(0, 5).map((event) => {
-          const kick = formatKickoff(event.date);
           const opp = gameOpponent(event, team.id);
           return (
             <button
@@ -1639,8 +1638,7 @@ function OffDayCard({ team, sport, games, navigate, accentColor }) {
               className="next-five-row"
               onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/${sport}/${event.id}`); }}
             >
-              <span className="next-five-when">{kick.label}</span>
-              <span className="next-five-opp">{opp.prefix} {opp.abbr}</span>
+              {formatScheduleLine(event.date)} {opp.prefix === '@' ? '@' : ''}{opp.abbr}
             </button>
           );
         })}
