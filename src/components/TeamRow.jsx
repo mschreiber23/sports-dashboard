@@ -1671,7 +1671,7 @@ function SportNoGameCard({ team, sport, accentColor }) {
 }
 
 /* ── Main TeamRow ────────────────────────────────────── */
-export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
+export default function TeamRow({ sport, team, dateStr, onHiddenChange, onPlayingChange }) {
   const { removeTeam, updateTeamColor } = useFavorites();
   const { game, loading, hasUpcomingGame, upcoming } = useTeamGame(sport, team.id, 30000, dateStr);
   const navigate = useNavigate();
@@ -1699,6 +1699,11 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
       onHiddenChange?.(team.id, sport, !hasUpcomingGame);
     }
   }, [hasUpcomingGame]);
+
+  useEffect(() => {
+    if (loading) return;
+    onPlayingChange?.(team.id, sport, Boolean(game));
+  }, [loading, game, team.id, sport, onPlayingChange]);
 
   // If stored team is missing color but game data has it, patch favorites so future loads are correct
   useEffect(() => {
