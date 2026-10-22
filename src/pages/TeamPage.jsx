@@ -6,6 +6,9 @@ import {
   getTeamRoster, getTeamDepthChart, getPlayerSeasonStats, getPlayerSplits,
   SPORTS,
 } from '../api/espn';
+import {
+  buildTeamStatRows, depthCharts, scheduleOpponentLogo, statsByName, statsSeasonChoices,
+} from '../utils/teamStats';
 
 /* ─── Shared helpers ─────────────────────────────────── */
 function darkUrl(url) {
@@ -46,11 +49,12 @@ function ScheduleRow({ event, teamId, sport, onClick }) {
   const won = myTeam?.winner;
   const myScore = getScore(myTeam);
   const oppScore = getScore(opponent);
+  const oppLogo = scheduleOpponentLogo(opponent?.team);
 
   return (
     <div
       className={`tp-schedule-row${isLive ? ' tp-row-live' : ''}${comp?.id ? ' tp-row-clickable' : ''}`}
-      onClick={() => comp?.id && navigate(`/boxscore/${SPORTS[event.sport || 'mlb']?.league?.split('/')[1] || 'mlb'}/${comp.id}`)}
+      onClick={() => comp?.id && navigate(`/boxscore/${sport}/${comp.id}`)}
     >
       <div className="tp-row-date">
         {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -60,12 +64,12 @@ function ScheduleRow({ event, teamId, sport, onClick }) {
         {opponent?.team?.id ? (
           <Link to={`/team/${sport}/${opponent.team.id}`} className="tp-opp-link tr-team-link"
             onClick={e => e.stopPropagation()}>
-            {opponent.team.logo && <DLogo url={opponent.team.logo} className="tp-row-logo" />}
+            {oppLogo && <DLogo url={oppLogo} className="tp-row-logo" />}
             <span className="tp-row-opp-name">{opponent.team.shortDisplayName || opponent.team.displayName}</span>
           </Link>
         ) : (
           <>
-            {opponent?.team?.logo && <DLogo url={opponent.team.logo} className="tp-row-logo" />}
+            {oppLogo && <DLogo url={oppLogo} className="tp-row-logo" />}
             <span className="tp-row-opp-name">{opponent?.team?.shortDisplayName || opponent?.team?.displayName}</span>
           </>
         )}
@@ -185,10 +189,6 @@ const STAT_COLS = {
   nhl_goalie:   ['GP','W','L','GAA','SV%','SO'],
 };
 const MLB_PITCH_POS = new Set(['P','SP','RP','CL','CP','LHP','RHP']);
-const NFL_PASS_POS  = new Set(['QB']);
-const NFL_RUSH_POS  = new Set(['RB','FB','HB']);
-const NFL_REC_POS   = new Set(['WR','TE','E','SE','FL']);
-const NHL_GOAL_POS  = new Set(['G']);
 
 const MLB_SPLITS = [
   { label: 'Regular Season', key: null },
@@ -254,11 +254,10 @@ function StatsTable({ rows, cols, onPlayerClick }) {
 
 function StatsTab({ sport, teamId }) {
   const navigate = useNavigate();
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
+  const seasons = statsSeasonChoices(sport);
 
   const [statsType, setStatsType] = useState((STAT_TYPES[sport] || STAT_TYPES.mlb)[0]);
-  const [statsYear, setStatsYear] = useState(currentYear);
+  const [statsYear, setStatsYear] = useState(seasons[0].year);
   const [statsSplit, setStatsSplit] = useState(null);
   const [playerData, setPlayerData] = useState([]); // [{id, name, pos, group, headshot, cats:{batting:{},pitching:{},fielding:{}}}]
   const [loading, setLoading] = useState(false);
@@ -266,6 +265,13 @@ function StatsTab({ sport, teamId }) {
   const [splitCache, setSplitCache] = useState({}); // key `${id}-${year}` → splits data
 
   const statsCache = useRef({}); // key `${id}-${year}` → cats map
+
+  useEffect(() => {
+    const next = statsSeasonChoices(sport);
+    setStatsYear(next[0].year);
+    setStatsType((STAT_TYPES[sport] || STAT_TYPES.mlb)[0]);
+    setStatsSplit(null);
+  }, [sport]);
 
   // Fetch roster + season stats
   useEffect(() => {
@@ -288,12 +294,13 @@ function StatsTab({ sport, teamId }) {
         const results = await Promise.allSettled(
           allPlayers.map(async (p) => {
             const cacheKey = `${p.id}-${statsYear}`;
-            if (statsCache.current[cacheKey]) return { ...p, cats: statsCache.current[cacheKey] };
+            if (statsCache.current[cacheKey]) return { ...p, ...statsCache.current[cacheKey] };
             try {
               const { data } = await getPlayerSeasonStats(sport, p.id, statsYear);
               const cats = parseStatsCats(data);
-              statsCache.current[cacheKey] = cats;
-              return { ...p, cats };
+              const byName = statsByName(data);
+              statsCache.current[cacheKey] = { cats, byName };
+              return { ...p, cats, byName };
             } catch { return { ...p, cats: {} }; }
           })
         );
@@ -384,46 +391,8 @@ function StatsTab({ sport, teamId }) {
       }
     }
 
-    if (sport === 'nba') {
-      const rows = playerData
-        .map((p) => {
-          const allStats = { ...p.cats?.offensive, ...p.cats?.defensive, ...p.cats?.general };
-          return { ...p, stats: Object.fromEntries(STAT_COLS.nba.map((c) => [c, allStats[c] ?? '—'])) };
-        })
-        .filter((p) => p.stats.G && p.stats.G !== '—' && p.stats.G !== '0')
-        .sort((a, b) => (parseFloat(b.stats.PTS) || 0) - (parseFloat(a.stats.PTS) || 0));
-      return { cols: STAT_COLS.nba, rows };
-    }
-
-    if (sport === 'nfl') {
-      const colKey = `nfl_${statsType.toLowerCase()}`;
-      const cols = STAT_COLS[colKey] || STAT_COLS.nfl_passing;
-      const posFilter = statsType === 'Passing' ? NFL_PASS_POS
-        : statsType === 'Rushing' ? NFL_RUSH_POS : NFL_REC_POS;
-      const catName = statsType.toLowerCase();
-      const rows = playerData
-        .filter((p) => posFilter.has(p.pos) || p.cats?.[catName])
-        .map((p) => {
-          const allStats = p.cats?.[catName] || {};
-          return { ...p, stats: Object.fromEntries(cols.map((c) => [c, allStats[c] ?? '—'])) };
-        })
-        .filter((p) => p.stats.G && p.stats.G !== '—')
-        .sort((a, b) => (parseFloat(b.stats.YDS) || 0) - (parseFloat(a.stats.YDS) || 0));
-      return { cols, rows };
-    }
-
-    if (sport === 'nhl') {
-      const isGoalie = statsType === 'Goalies';
-      const cols = isGoalie ? STAT_COLS.nhl_goalie : STAT_COLS.nhl_skating;
-      const rows = playerData
-        .filter((p) => isGoalie ? NHL_GOAL_POS.has(p.pos) : !NHL_GOAL_POS.has(p.pos))
-        .map((p) => {
-          const allStats = { ...p.cats?.skating, ...p.cats?.goaltending, ...p.cats?.general };
-          return { ...p, stats: Object.fromEntries(cols.map((c) => [c, allStats[c] ?? '—'])) };
-        })
-        .filter((p) => Object.values(p.stats).some((v) => v && v !== '—'))
-        .sort((a, b) => (parseFloat(b.stats.PTS || b.stats.W) || 0) - (parseFloat(a.stats.PTS || a.stats.W) || 0));
-      return { cols, rows };
+    if (sport === 'nba' || sport === 'nfl' || sport === 'nhl') {
+      return buildTeamStatRows(sport, statsType, playerData);
     }
 
     return { cols: [], rows: [] };
@@ -447,7 +416,7 @@ function StatsTab({ sport, teamId }) {
         </div>
         <div className="tp-stats-dropdowns">
           <select className="tp-stats-select" value={statsYear} onChange={(e) => setStatsYear(Number(e.target.value))}>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            {seasons.map((season) => <option key={season.year} value={season.year}>{season.label}</option>)}
           </select>
           {showSplits && (
             <select className="tp-stats-select" value={statsSplit || ''} onChange={(e) => setStatsSplit(e.target.value || null)}>
@@ -535,70 +504,66 @@ function RosterTab({ sport, teamId }) {
 }
 
 /* ─── DEPTH CHART TAB ────────────────────────────────── */
-const DEPTH_ORDER = {
-  mlb: ['sp','cl','rp','c','1b','2b','3b','ss','lf','cf','rf','dh','p'],
-  nba: ['pg','sg','sf','pf','c'],
-  nfl: ['qb','rb','wr','te','lt','lg','c','rg','rt','de','dt','lb','cb','s','k','p'],
-  nhl: ['c','lw','rw','ld','rd','g'],
-};
-const POS_LABELS = {
-  sp:'SP', cl:'CL', rp:'RP', c:'C', '1b':'1B', '2b':'2B', '3b':'3B',
-  ss:'SS', lf:'LF', cf:'CF', rf:'RF', dh:'DH', p:'P',
-  pg:'PG', sg:'SG', sf:'SF', pf:'PF',
-  qb:'QB', rb:'RB', wr:'WR', te:'TE', lt:'LT', lg:'LG', rg:'RG', rt:'RT',
-  de:'DE', dt:'DT', lb:'LB', cb:'CB', s:'S', k:'K',
-  lw:'LW', rw:'RW', ld:'LD', rd:'RD', g:'G',
-};
+function reportedInjury(injuries) {
+  const inj = injuries?.[0];
+  if (!inj) return null;
+  const status = String(inj.status || '').toLowerCase();
+  if (status === 'active' || status === 'healthy') return null;
+  return inj;
+}
+
+function injuryClass(inj) {
+  const abbr = String(inj?.type?.abbreviation || '').toLowerCase();
+  if (abbr.includes('60')) return 'il60';
+  if (abbr.includes('10')) return 'il10';
+  return 'day';
+}
 
 function DepthChartTab({ sport, teamId }) {
   const navigate = useNavigate();
-  const [depthData, setDepthData] = useState(null);
+  const [charts, setCharts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getTeamDepthChart(sport, teamId)
-      .then(setDepthData).catch(() => setDepthData(null))
+      .then((data) => setCharts(depthCharts(data)))
+      .catch(() => setCharts([]))
       .finally(() => setLoading(false));
   }, [sport, teamId]);
 
   if (loading) return <div className="tp-loading">Loading depth chart…</div>;
-  if (!depthData) return <div className="tp-loading">Depth chart unavailable.</div>;
-
-  const positions = depthData.depthchart?.[0]?.positions || {};
-  const order = DEPTH_ORDER[sport] || Object.keys(positions);
-  const posKeys = [...order.filter((k) => positions[k]), ...Object.keys(positions).filter((k) => !order.includes(k))];
+  if (!charts.length) return <div className="tp-loading">Depth chart unavailable.</div>;
 
   return (
     <div className="tp-depth-wrap">
-      {posKeys.map((posKey) => {
-        const posData = positions[posKey];
-        if (!posData) return null;
-        const athletes = posData.athletes || [];
-        const posLabel = POS_LABELS[posKey] || posKey.toUpperCase();
-        return (
-          <div key={posKey} className="tp-depth-position">
-            <div className="tp-depth-pos-label">{posLabel}</div>
-            <div className="tp-depth-players">
-              {athletes.map((ath, idx) => {
-                const inj = ath.injuries?.[0];
-                return (
-                  <div key={ath.id || idx}
-                    className={`tp-depth-player${ath.id ? ' tp-depth-player-link' : ''}`}
-                    onClick={() => ath.id && navigate(`/player/${sport}/${ath.id}`)}>
-                    <span className="tp-depth-rank">{idx + 1}</span>
-                    <span className="tp-depth-name">{ath.shortName || ath.displayName}</span>
-                    {inj && (
-                      <span className={`tp-inj-tag tp-inj-tag-${inj.type?.abbreviation?.toLowerCase().includes('60') ? 'il60' : inj.type?.abbreviation?.toLowerCase().includes('10') ? 'il10' : 'day'}`}>
-                        {inj.type?.abbreviation || inj.status || 'INJ'}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+      {charts.map((chart) => (
+        <div key={chart.name || 'depth'} className="tp-depth-chart">
+          {charts.length > 1 && chart.name && <div className="tp-depth-chart-name">{chart.name}</div>}
+          {chart.rows.map((row) => (
+            <div key={`${chart.name}-${row.key}`} className="tp-depth-position">
+              <div className="tp-depth-pos-label">{row.label}</div>
+              <div className="tp-depth-players">
+                {row.athletes.map((ath, idx) => {
+                  const inj = reportedInjury(ath.injuries);
+                  return (
+                    <div key={ath.id || idx}
+                      className={`tp-depth-player${ath.id ? ' tp-depth-player-link' : ''}`}
+                      onClick={() => ath.id && navigate(`/player/${sport}/${ath.id}`)}>
+                      <span className="tp-depth-rank">{idx + 1}</span>
+                      <span className="tp-depth-name">{ath.shortName || ath.displayName}</span>
+                      {inj && (
+                        <span className={`tp-inj-tag tp-inj-tag-${injuryClass(inj)}`}>
+                          {inj.type?.abbreviation || inj.status || 'INJ'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -640,8 +605,7 @@ function InjuriesTab({ sport, teamId }) {
   return (
     <div className="tp-injuries-wrap">
       {injured.map(({ player, inj }, i) => {
-        const statusCls = inj.type?.abbreviation?.toLowerCase().includes('60') ? 'il60'
-          : inj.type?.abbreviation?.toLowerCase().includes('10') ? 'il10' : 'day';
+        const statusCls = injuryClass(inj);
         return (
           <div key={i}
             className={`tp-inj-row${player.id ? ' tp-inj-row-link' : ''}`}
