@@ -5372,6 +5372,15 @@ thead .dfs-sticky-player {
 
 /* ── Depth Chart Tab ── */
 .tp-depth-wrap { display: flex; flex-direction: column; gap: 0; }
+.tp-depth-chart-name {
+  margin: 16px 0 2px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.tp-depth-chart:first-child .tp-depth-chart-name { margin-top: 0; }
 .tp-depth-position {
   display: flex;
   align-items: flex-start;
@@ -5380,7 +5389,7 @@ thead .dfs-sticky-player {
   gap: 16px;
 }
 .tp-depth-pos-label {
-  width: 36px;
+  width: 44px;
   flex-shrink: 0;
   font-size: 11px;
   font-weight: 800;

@@ -1,6 +1,9 @@
 import axios from 'axios';
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
+// Team routes on site.api.espn.com omit Access-Control-Allow-Origin, so the
+// browser cannot read them. The same site v2 paths on the web host do.
+const WEB = 'https://site.web.api.espn.com/apis/site/v2/sports';
 
 /**
  * Returns the ESPN dark-mode (white) logo URL for a team object.
@@ -55,10 +58,35 @@ export async function getScoreboard(sport, dateStr) {
   return data.events || [];
 }
 
+function groupLabel(position) {
+  if (typeof position === 'string' && position) return position;
+  if (position && typeof position === 'object') {
+    return position.displayName || position.name || position.abbreviation || 'Roster';
+  }
+  return 'Roster';
+}
+
+/** NFL and NHL rosters are position groups. NBA is a flat player list. */
+export function rosterGroups(athletes) {
+  const list = Array.isArray(athletes) ? athletes : [];
+  if (list.some((group) => Array.isArray(group?.items))) {
+    return list
+      .filter((group) => Array.isArray(group?.items) && group.items.length)
+      .map((group) => ({ ...group, position: groupLabel(group.position) }));
+  }
+  const groups = new Map();
+  for (const player of list) {
+    const label = groupLabel(player?.position);
+    if (!groups.has(label)) groups.set(label, { position: label, items: [] });
+    groups.get(label).items.push(player);
+  }
+  return [...groups.values()];
+}
+
 export async function getTeamRoster(sport, teamId) {
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(`${BASE}/${league}/teams/${teamId}/roster`);
-  return data.athletes || [];
+  const { data } = await axios.get(`${WEB}/${league}/teams/${teamId}/roster`);
+  return rosterGroups(data.athletes || []);
 }
 
 export function leadersSeasonYear(sport, now = new Date()) {
@@ -242,9 +270,7 @@ export async function searchTeams(sport, query) {
 
 export async function getTeamSchedule(sport, teamId) {
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(
-    `${BASE}/${league}/teams/${teamId}/schedule`
-  );
+  const { data } = await axios.get(`${WEB}/${league}/teams/${teamId}/schedule`);
   return data.events || [];
 }
 
@@ -257,23 +283,39 @@ export async function getGameBoxscore(sport, gameId) {
 }
 
 export async function getTeamInfo(sport, teamId) {
+  const coreLeague = { nba: 'basketball/leagues/nba', nfl: 'football/leagues/nfl', mlb: 'baseball/leagues/mlb', nhl: 'hockey/leagues/nhl' }[sport];
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(`${BASE}/${league}/teams/${teamId}`);
-  return data.team || {};
+  const year = activeSeasonYear(sport);
+  const [coreRes, scheduleRes, recordRes] = await Promise.allSettled([
+    axios.get(`https://sports.core.api.espn.com/v2/sports/${coreLeague}/teams/${teamId}?lang=en&region=us`),
+    axios.get(`${WEB}/${league}/teams/${teamId}/schedule`),
+    axios.get(`https://sports.core.api.espn.com/v2/sports/${coreLeague}/seasons/${year}/types/2/teams/${teamId}/record?lang=en&region=us`),
+  ]);
+  const team = coreRes.status === 'fulfilled' ? { ...(coreRes.value.data || {}) } : {};
+  const scheduleTeam = scheduleRes.status === 'fulfilled' ? scheduleRes.value.data?.team : null;
+  if (!team.displayName && scheduleTeam) Object.assign(team, scheduleTeam);
+  if (scheduleTeam?.standingSummary) team.standingSummary = scheduleTeam.standingSummary;
+  if (!team.logos?.length && (team.logo || scheduleTeam?.logo)) {
+    team.logos = [{ href: team.logo || scheduleTeam.logo }];
+  }
+  const summary = recordRes.status === 'fulfilled'
+    ? recordRes.value.data?.items?.find((item) => item.type === 'total')?.summary
+    : null;
+  if (summary) team.record = { items: [{ summary }] };
+  if (!team.displayName && !team.name) throw new Error('no team');
+  return team;
 }
 
 export async function getTeamNews(sport, teamId, limit = 10) {
   const { league } = SPORTS[sport];
-  const { data } = await axios.get(
-    `${BASE}/${league}/news?team=${teamId}&limit=${limit}`
-  );
+  const { data } = await axios.get(`${WEB}/${league}/news?team=${teamId}&limit=${limit}`);
   return data.articles || [];
 }
 
 export async function getTeamDepthChart(sport, teamId) {
   const { league } = SPORTS[sport];
   const { data } = await axios.get(
-    `https://site.web.api.espn.com/apis/site/v2/sports/${league}/teams/${teamId}/depthcharts`
+    `${WEB}/${league}/teams/${teamId}/depthcharts?lang=en`
   );
   return data;
 }
