@@ -8,6 +8,7 @@ import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { nflScoreSituation } from '../utils/nflScoreSituation';
+import { formatKickoff, gameOpponent } from '../utils/upcomingGames';
 import { levelShort, normalizeMiLBGame } from '../api/milb';
 
 /** Search ESPN by player name and navigate to their player page. */
@@ -1607,6 +1608,47 @@ function SportFinalCard({ game, sport, navigate, accentColor }) {
   );
 }
 
+function OffDayCard({ team, sport, games, navigate, accentColor }) {
+  const next = games[0];
+  const comp = next?.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const away = competitors.find((row) => row.homeAway === 'away') || competitors[0];
+  const home = competitors.find((row) => row.homeAway === 'home') || competitors[1];
+  const broadcast = comp?.broadcasts?.[0]?.names?.[0] || '';
+  const when = formatKickoff(next?.date);
+  return (
+    <div className="mlbc-card" style={accentStyle(accentColor)}>
+      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${next.id}`)}>
+        <div className="mlbc-header">
+          <span className="next-game-kicker">Next game</span>
+          <span className="mlbc-time">{when.label}</span>
+          {broadcast && <span className="mlbc-broadcast"> · {broadcast}</span>}
+        </div>
+        <div className="mlbc-divider" />
+        <GenericTeamRows away={away} home={home} sport={sport} />
+      </div>
+      <div className="mlbc-divider" />
+      <div className="next-five">
+        {games.slice(0, 5).map((event) => {
+          const kick = formatKickoff(event.date);
+          const opp = gameOpponent(event, team.id);
+          return (
+            <button
+              key={event.id}
+              type="button"
+              className="next-five-row"
+              onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/${sport}/${event.id}`); }}
+            >
+              <span className="next-five-when">{kick.label}</span>
+              <span className="next-five-opp">{opp.prefix} {opp.abbr}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SportNoGameCard({ team, sport, accentColor }) {
   const nav = useNavigate();
   const sportLabel = SPORTS[sport]?.label || sport.toUpperCase();
@@ -1629,7 +1671,7 @@ function SportNoGameCard({ team, sport, accentColor }) {
 /* ── Main TeamRow ────────────────────────────────────── */
 export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   const { removeTeam, updateTeamColor } = useFavorites();
-  const { game, loading, hasUpcomingGame } = useTeamGame(sport, team.id, 30000, dateStr);
+  const { game, loading, hasUpcomingGame, upcoming } = useTeamGame(sport, team.id, 30000, dateStr);
   const navigate = useNavigate();
 
   const isLive = game?.competitions?.[0]?.status?.type?.state === 'in';
@@ -1667,9 +1709,17 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
 
   if (loading) return <div className="mlbc-card mlbc-loading">Loading…</div>;
 
+  if (!game) {
+    if (upcoming === undefined) return <div className="mlbc-card mlbc-loading">Loading…</div>;
+    if (upcoming.length) {
+      return <OffDayCard team={team} sport={sport} games={upcoming} navigate={navigate} accentColor={accentColor} />;
+    }
+    if (sport === 'mlb') return null;
+    return <SportNoGameCard team={team} sport={sport} accentColor={accentColor} />;
+  }
+
   // MLB — self-contained cards
   if (sport === 'mlb') {
-    if (!game) return null;
     if (isLive) return <MlbLiveCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
     const st = game.competitions?.[0]?.status?.type?.state;
     if (st === 'post') return <MlbFinalCard game={game} sport={sport} navigate={navigate} accentColor={accentColor} />;
@@ -1677,7 +1727,6 @@ export default function TeamRow({ sport, team, dateStr, onHiddenChange }) {
   }
 
   // NFL / NBA / NHL — generic sport cards
-  if (!game) return <SportNoGameCard team={team} sport={sport} accentColor={accentColor} />;
   const st2 = game.competitions?.[0]?.status?.type?.state;
 
   // NHL gets dedicated cards with goalie stats + goal scorers

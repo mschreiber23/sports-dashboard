@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getScoreboard, getTeamSchedule } from '../api/espn';
 import { getNflWeekGames, getNflWeekInfo } from '../api/nfl';
 import { sportsDayStr } from '../utils/sportsDay';
+import { gameOnDay, selectUpcomingGames } from '../utils/upcomingGames';
 
 const CACHE_TTL = 60 * 1000; // 60 seconds — show cached data instantly, refresh in background
 
@@ -35,17 +36,14 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
   const todayStr = sportsDayStr();
   const effectiveDateStr = dateStr || todayStr;
 
-  // For NFL: use the week as the cache key so all dates in the same week share cache
+  // For NFL the week slate is fetched, then narrowed to the selected day.
   const isNfl = sport === 'nfl';
   const nflWeekInfo = isNfl ? getNflWeekInfo(ymdToLocalDate(effectiveDateStr)) : null;
-  const ckSuffix = isNfl && nflWeekInfo
-    ? `nfl_week_${nflWeekInfo.week}_${nflWeekInfo.seasontype}`
-    : effectiveDateStr;
-  const ck = cacheKey(sport, teamId, ckSuffix);
+  const ck = cacheKey(sport, teamId, effectiveDateStr);
 
   // Seed from cache immediately — eliminates the loading blink
   const [game, setGame] = useState(() => readCache(ck));
-  const [nextGame, setNextGame] = useState(undefined);
+  const [upcoming, setUpcoming] = useState(undefined);
   const [loading, setLoading] = useState(!readCache(ck)); // only show spinner if no cache
   const [error, setError] = useState(null);
 
@@ -61,8 +59,9 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
       const found = events.find((e) =>
         e.competitions?.[0]?.competitors?.some((c) => c.team?.id === String(teamId))
       ) || null;
-      setGame(found);
-      writeCache(ck, found);
+      const onDay = gameOnDay(found, effectiveDateStr);
+      setGame(onDay);
+      writeCache(ck, onDay);
       setError(null);
     } catch {
       setError(true);
@@ -72,19 +71,16 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
   }, [sport, teamId, effectiveDateStr, ck, isNfl, nflWeekInfo?.week, nflWeekInfo?.seasontype]);
 
   useEffect(() => {
-    if (!teamId || dateStr) return;
-    const now = new Date();
-    const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    if (!teamId) return undefined;
+    let cancelled = false;
+    setUpcoming(undefined);
     getTeamSchedule(sport, teamId)
       .then((events) => {
-        const upcoming = events.filter((e) => {
-          const d = new Date(e.date);
-          return d >= now && d <= weekOut;
-        });
-        setNextGame(upcoming[0] || null);
+        if (!cancelled) setUpcoming(selectUpcomingGames(events, effectiveDateStr, new Date()));
       })
-      .catch(() => setNextGame(null));
-  }, [sport, teamId, dateStr]);
+      .catch(() => { if (!cancelled) setUpcoming([]); });
+    return () => { cancelled = true; };
+  }, [sport, teamId, effectiveDateStr]);
 
   useEffect(() => {
     // Don't reset to loading if we already have cached data
@@ -96,9 +92,11 @@ export default function useTeamGame(sport, teamId, refreshInterval = 30000, date
     return () => clearInterval(id);
   }, [fetchScoreboard, refreshInterval, dateStr]);
 
-  // NFL: always show during the active season — bye weeks shouldn't auto-hide a team
-  const hasUpcomingGame = (isNfl && nflWeekInfo !== null)
-    ? true
-    : (nextGame === undefined ? undefined : nextGame !== null);
-  return { game, loading, error, hasUpcomingGame, nextGame };
+  const nextGame = upcoming === undefined ? undefined : (upcoming[0] || null);
+  // NFL stays visible through a bye week. Other sports hide once the schedule
+  // has no games left.
+  const hasUpcomingGame = upcoming === undefined
+    ? undefined
+    : (upcoming.length > 0 || (isNfl && nflWeekInfo !== null));
+  return { game, loading, error, hasUpcomingGame, nextGame, upcoming };
 }
