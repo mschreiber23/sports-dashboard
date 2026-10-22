@@ -8,8 +8,11 @@ export function seasonLabel(year) {
   return `${end - 1}-${String(end).slice(-2)}`;
 }
 
-export function parseAthleteCareer(data, currentYear) {
-  const category = (data?.categories || [])[0];
+export function parseAthleteCareer(data, currentYear, categoryName) {
+  const categories = data?.categories || [];
+  const category = categoryName
+    ? categories.find((cat) => cat.name === categoryName) || categories[0]
+    : categories[0];
   const labels = category?.labels || [];
   if (!labels.length) return null;
   const teams = data?.teams || {};
@@ -34,5 +37,23 @@ export function parseAthleteCareer(data, currentYear) {
     labels,
     rows,
     totals: labels.map((_, i) => category.totals?.[i] ?? '—'),
+  };
+}
+
+/** Drop exact column labels. FG stays distinct from FG%. */
+export function omitCareerColumns(table, hiddenLabels) {
+  if (!table) return null;
+  const hidden = new Set(hiddenLabels || []);
+  const keep = [];
+  table.labels.forEach((label, index) => {
+    if (!hidden.has(label)) keep.push(index);
+  });
+  return {
+    labels: keep.map((index) => table.labels[index]),
+    rows: table.rows.map((row) => ({
+      ...row,
+      values: keep.map((index) => row.values[index]),
+    })),
+    totals: keep.map((index) => table.totals[index]),
   };
 }
