@@ -4,6 +4,7 @@ import { parseAthleteCareer, seasonLabel } from './nhlCareer.js';
 
 test('an ending year reads as the two-season span', () => {
   assert.equal(seasonLabel(2016), '2015-16');
+  assert.equal(seasonLabel(2026), '2025-26');
   assert.equal(seasonLabel(2027), '2026-27');
 });
 
@@ -33,4 +34,38 @@ test('the table keeps ESPN values, the current season, and the career line', () 
   ]);
   assert.deepEqual(table.rows[3].values, ['5', '3', '10', '13', '0']);
   assert.deepEqual(table.totals, ['799', '412', '821', '1233', '15']);
+});
+
+test('NBA averages keep the season span, each team, and the current year', () => {
+  const table = parseAthleteCareer({
+    teams: {
+      'washington-wizards': { abbreviation: 'WSH' },
+      'milwaukee-bucks': { abbreviation: 'MIL' },
+    },
+    categories: [
+      { name: 'totals', labels: ['PTS'], statistics: [], totals: [] },
+      {
+        name: 'averages',
+        labels: ['GP', 'PTS'],
+        statistics: [
+          { teamSlug: 'washington-wizards', season: { year: 2025 }, stats: ['54', '15.2'] },
+          { teamSlug: 'milwaukee-bucks', season: { year: 2025 }, stats: ['11', '12.4'] },
+          { teamSlug: '2024-25 Totals', season: { year: 2025 }, stats: ['65', '14.8'] },
+          { teamSlug: 'milwaukee-bucks', season: { year: 2026 }, stats: ['69', '13.0'] },
+          { teamSlug: 'milwaukee-bucks', season: { year: 2027 }, stats: ['1', '5.0'] },
+        ],
+        totals: ['810', '16.5'],
+      },
+    ],
+  }, 2027, 'averages');
+
+  assert.deepEqual(table.rows.map((row) => [row.label, row.team, row.current, row.seasonTotal]), [
+    ['2024-25', 'WSH', false, false],
+    ['2024-25', 'MIL', false, false],
+    ['2024-25', 'TOT', false, true],
+    ['2025-26', 'MIL', false, false],
+    ['2026-27', 'MIL', true, false],
+  ]);
+  assert.deepEqual(table.rows[4].values, ['1', '5.0']);
+  assert.deepEqual(table.totals, ['810', '16.5']);
 });

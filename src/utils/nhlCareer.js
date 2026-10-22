@@ -8,8 +8,11 @@ export function seasonLabel(year) {
   return `${end - 1}-${String(end).slice(-2)}`;
 }
 
-export function parseAthleteCareer(data, currentYear) {
-  const category = (data?.categories || [])[0];
+export function parseAthleteCareer(data, currentYear, categoryName) {
+  const categories = data?.categories || [];
+  const category = categoryName
+    ? categories.find((cat) => cat.name === categoryName) || categories[0]
+    : categories[0];
   const labels = category?.labels || [];
   if (!labels.length) return null;
   const teams = data?.teams || {};

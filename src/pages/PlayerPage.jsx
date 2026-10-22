@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { recordPlayerView } from './PlayersPage';
 import { useFavorites } from '../context/FavoritesContext';
-import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, nhlSeasonYear } from '../api/espn';
+import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, activeSeasonYear, nhlSeasonYear } from '../api/espn';
 import { parseAthleteCareer } from '../utils/nhlCareer';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
@@ -445,12 +445,18 @@ function gameLogStats(labels, values) {
   return stats;
 }
 
-function gamesFromLog(data) {
+function isPreseason(seasonType) {
+  const name = `${seasonType?.displayName || ''} ${seasonType?.name || ''}`;
+  return /pre[\s-]?season/i.test(name);
+}
+
+function gamesFromLog(data, { regularOnly = false } = {}) {
   const labels = data?.labels || [];
   const eventsMap = data?.events || {};
   const games = [];
   const seenEventIds = new Set();
   for (const st of data?.seasonTypes || []) {
+    if (regularOnly && isPreseason(st)) continue;
     for (const cat of st.categories || []) {
       for (const ev of cat.events || []) {
         if (seenEventIds.has(ev.eventId)) continue;
@@ -471,8 +477,9 @@ function gamesFromLog(data) {
 }
 
 const NHL_HL = new Set(['G', 'A', 'PTS', 'SV%', 'GAA']);
+const NBA_HL = new Set(['PTS', 'REB', 'AST', 'FG%']);
 
-function EspnSeasonTable({ table }) {
+function EspnSeasonTable({ table, highlights = NHL_HL }) {
   return (
     <div className="pp-table-wrap pp-season-nhl">
       <table className="pp-table">
@@ -489,7 +496,7 @@ function EspnSeasonTable({ table }) {
               <td className="pp-td pp-td-season">{row.label}</td>
               <td className="pp-td">{row.team}</td>
               {row.values.map((value, index) => (
-                <td key={table.labels[index]} className={`pp-td${NHL_HL.has(table.labels[index]) ? ' pp-td-hl' : ''}`}>{value}</td>
+                <td key={table.labels[index]} className={`pp-td${highlights.has(table.labels[index]) ? ' pp-td-hl' : ''}`}>{value}</td>
               ))}
             </tr>
           ))}
@@ -497,7 +504,7 @@ function EspnSeasonTable({ table }) {
             <td className="pp-td pp-td-season pp-career-label">Career</td>
             <td className="pp-td" />
             {table.totals.map((value, index) => (
-              <td key={table.labels[index]} className={`pp-td${NHL_HL.has(table.labels[index]) ? ' pp-td-hl' : ''}`}>{value}</td>
+              <td key={table.labels[index]} className={`pp-td${highlights.has(table.labels[index]) ? ' pp-td-hl' : ''}`}>{value}</td>
             ))}
           </tr>
         </tbody>
@@ -511,7 +518,7 @@ export default function PlayerPage() {
   const navigate = useNavigate();
   const [bio, setBio] = useState(null);
   const [seasons, setSeasons] = useState([]);
-  const [nhlTable, setNhlTable] = useState(null);
+  const [careerTable, setCareerTable] = useState(null);
   const [gamelog, setGamelog] = useState([]);
   const [pointLog, setPointLog] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -541,7 +548,7 @@ export default function PlayerPage() {
     const currentYear = new Date().getFullYear();
     setGamelog([]);
     setPointLog([]);
-    setNhlTable(null);
+    setCareerTable(null);
 
     // Load bio first
     getPlayerBio(sport, playerId)
@@ -569,7 +576,7 @@ export default function PlayerPage() {
       getPlayerGameLog(sport, playerId),
       priorYear ? getPlayerGameLog(sport, playerId, priorYear).catch(() => null) : Promise.resolve(null),
     ]).then(async ([data, prior]) => {
-      const games = gamesFromLog(data);
+      const games = gamesFromLog(data, { regularOnly: sport === 'nba' });
 
       // Prepend today's game if not in log
       const today = new Date().toISOString().slice(0, 10);
@@ -616,8 +623,8 @@ export default function PlayerPage() {
           }
         } catch {}
       }
-      // MLB keeps a full season for the at-bat tracker. NHL shows every game of the current season.
-      const seasonLog = sport === 'nhl' ? games : games.slice(0, 162);
+      // MLB keeps a full season for the at-bat tracker. NHL and NBA show every game of the current season.
+      const seasonLog = sport === 'nhl' || sport === 'nba' ? games : games.slice(0, 162);
       setGamelog(seasonLog);
       const older = prior ? gamesFromLog(prior) : [];
       const seen = new Set(seasonLog.map((game) => `${game.date}|${game.opponent}`));
@@ -632,11 +639,12 @@ export default function PlayerPage() {
       setPointLog(merged);
     }).catch(() => {});
 
-    // NHL season lines come from ESPN's own table, including this season and the career total.
-    if (sport === 'nhl') {
+    // NHL and NBA season lines come from ESPN's own table, including this season and the career total.
+    if (sport === 'nhl' || sport === 'nba') {
+      const category = sport === 'nba' ? 'averages' : undefined;
       getAthleteStats(sport, playerId)
-        .then((data) => setNhlTable(parseAthleteCareer(data, nhlSeasonYear())))
-        .catch(() => setNhlTable(null))
+        .then((data) => setCareerTable(parseAthleteCareer(data, activeSeasonYear(sport), category)))
+        .catch(() => setCareerTable(null))
         .finally(() => setLoading(false));
       return;
     }
@@ -959,8 +967,10 @@ export default function PlayerPage() {
               </div>
             )}
 
-            {sport === 'nhl' && nhlTable && <EspnSeasonTable table={nhlTable} />}
-            {sport !== 'nhl' && <div className="pp-table-wrap">
+            {(sport === 'nhl' || sport === 'nba') && careerTable && (
+              <EspnSeasonTable table={careerTable} highlights={sport === 'nba' ? NBA_HL : NHL_HL} />
+            )}
+            {sport !== 'nhl' && sport !== 'nba' && <div className="pp-table-wrap">
               <table className="pp-table">
                 <thead>
                   <tr>
@@ -1035,7 +1045,7 @@ export default function PlayerPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(sport === 'nhl' ? gamelog : gamelog.slice(0, 25)).map((g, i) => {
+                    {(sport === 'nhl' || sport === 'nba' ? gamelog : gamelog.slice(0, 25)).map((g, i) => {
                       const date = g.date ? new Date(g.date) : null;
                       const dateStr = date
                         ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })

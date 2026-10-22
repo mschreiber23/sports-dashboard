@@ -154,7 +154,7 @@ export function nbaSeasonAverages(categories) {
 
 export async function getPlayerGameLog(sport, playerId, year) {
   const { league } = SPORTS[sport];
-  const season = year || (sport === 'nhl' ? nhlSeasonYear() : new Date().getFullYear());
+  const season = year || activeSeasonYear(sport);
   const { data } = await axios.get(
     `https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}/gamelog?season=${season}`
   );
