@@ -106,16 +106,50 @@ export async function getPlayerSplits(sport, playerId, year) {
   return data;
 }
 
-/** NHL seasons are named for the year they end. In October 2026 that is 2027. */
-export function nhlSeasonYear(now = new Date()) {
+function easternYearMonth(now) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
     year: 'numeric',
     month: 'numeric',
   }).formatToParts(now);
-  const year = Number(parts.find((part) => part.type === 'year').value);
-  const month = Number(parts.find((part) => part.type === 'month').value);
+  const value = (type) => Number(parts.find((part) => part.type === type).value);
+  return { year: value('year'), month: value('month') };
+}
+
+/** NHL seasons are named for the year they end. In October 2026 that is 2027. */
+export function nhlSeasonYear(now = new Date()) {
+  const { year, month } = easternYearMonth(now);
   return month >= 9 ? year + 1 : year;
+}
+
+/**
+ * ESPN season id for the season the homepage player cards should show.
+ * NHL and NBA ids are the year the season ends. The NFL id stays on the
+ * season that started in September until March.
+ */
+export function activeSeasonYear(sport, now = new Date()) {
+  if (sport === 'nhl') return nhlSeasonYear(now);
+  const { year, month } = easternYearMonth(now);
+  if (sport === 'nba') return month >= 10 ? year + 1 : year;
+  if (sport === 'nfl') return month >= 9 ? year : year - 1;
+  return year;
+}
+
+/** Per-game NBA averages. The feed repeats PTS/REB/AST/STL/BLK for totals and per-48. */
+export function nbaSeasonAverages(categories) {
+  const byName = {};
+  for (const cat of categories || []) {
+    for (const stat of cat.stats || []) {
+      if (stat?.name && byName[stat.name] == null) byName[stat.name] = stat.displayValue;
+    }
+  }
+  return {
+    PTS: byName.avgPoints ?? null,
+    REB: byName.avgRebounds ?? null,
+    AST: byName.avgAssists ?? null,
+    STL: byName.avgSteals ?? null,
+    BLK: byName.avgBlocks ?? null,
+  };
 }
 
 export async function getPlayerGameLog(sport, playerId, year) {
@@ -152,14 +186,13 @@ export async function getPlayerSeasonStats(sport, playerId, year) {
 }
 
 export async function getPlayerStats(sport, playerId) {
-  const { league } = SPORTS[sport];
   const coreLeague = {
     nba: 'basketball/leagues/nba',
     nfl: 'football/leagues/nfl',
     mlb: 'baseball/leagues/mlb',
     nhl: 'hockey/leagues/nhl',
   }[sport];
-  const year = new Date().getFullYear();
+  const year = activeSeasonYear(sport);
 
   const tryYear = async (y) => {
     const { data } = await axios.get(
@@ -171,29 +204,14 @@ export async function getPlayerStats(sport, playerId) {
     return data;
   };
 
-  // For NBA: use statsSummary from bio (official per-game averages) + defensive stats
-  if (sport === 'nba') {
-    const [bioResp, coreResp] = await Promise.allSettled([
-      axios.get(`https://site.web.api.espn.com/apis/common/v3/sports/${league}/athletes/${playerId}`),
-      tryYear(year).catch(() => tryYear(year - 1)),
-    ]);
-    const bio = bioResp.status === 'fulfilled' ? bioResp.value.data : null;
-    const core = coreResp.status === 'fulfilled' ? coreResp.value : null;
-    const summaryStats = bio?.athlete?.statsSummary?.statistics || [];
+  const load = async (y) => {
+    const data = await tryYear(y);
+    if (sport !== 'nba') return data;
+    return { _merged: nbaSeasonAverages(data?.splits?.categories), splits: { categories: [] } };
+  };
 
-    // Build a unified stats object: statsSummary wins for PTS/REB/AST/FG%
-    const result = { _isBioStats: true, _summaryStats: summaryStats };
-    // Also attach defensive stats from core for STL/BLK
-    if (core) {
-      const defCat = core.splits?.categories?.find((c) => c.name === 'defensive');
-      (defCat?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-    }
-    summaryStats.forEach((s) => { result[s.abbreviation] = s.displayValue; });
-    return { _merged: result, splits: { categories: [] } };
-  }
-
-  try { return await tryYear(year); }
-  catch { return await tryYear(year - 1); }
+  try { return await load(year); }
+  catch { return await load(year - 1); }
 }
 
 export async function searchTeams(sport, query) {

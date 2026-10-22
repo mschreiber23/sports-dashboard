@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlayerStats } from '../api/espn';
+import { activeSeasonYear, getPlayerStats } from '../api/espn';
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes for player stats
 
@@ -14,7 +14,8 @@ function readStatsCache(key) {
 }
 
 export default function usePlayerStats(sport, playerId) {
-  const ck = `ps_${sport}_${playerId}`;
+  const year = activeSeasonYear(sport);
+  const ck = `ps_${sport}_${playerId}_${year}`;
   const [stats, setStats] = useState(() => readStatsCache(ck));
   const [loading, setLoading] = useState(!readStatsCache(ck));
   const [error, setError] = useState(null);
@@ -31,7 +32,7 @@ export default function usePlayerStats(sport, playerId) {
       })
       .catch(() => setError('Could not load player stats.'))
       .finally(() => setLoading(false));
-  }, [sport, playerId]);
+  }, [sport, playerId, ck]);
 
   return { stats, loading, error };
 }
