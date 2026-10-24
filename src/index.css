@@ -7140,8 +7140,14 @@ thead .dfs-sticky-player {
   border: 1px solid var(--border);
   background: var(--bg2);
 }
-.hts-upcoming { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hts-upcoming {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
 .hts-subhead {
+  grid-column: 1 / -1;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -7215,6 +7221,19 @@ thead .dfs-sticky-player {
   .hts-up-mark { width: 48px; height: 48px; }
   .hts-up-date, .hts-up-time { font-size: 11px; }
   .hts-up-logo { width: 24px; height: 24px; }
+}
+/* Landscape: two team rows side by side, then three when the screen is wider. */
+@media (min-width: 844px) {
+  .hts-upcoming { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+}
+@media (min-width: 940px) {
+  .hts-upcoming { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hts-up-row { grid-template-columns: 40px minmax(0, 1fr); padding: 5px 6px 5px 4px; gap: 2px; }
+  .hts-up-team { width: 40px; height: 40px; }
+  .hts-up-mark { width: 34px; height: 34px; }
+  .hts-up-date, .hts-up-time { font-size: 10px; }
+  .hts-up-logo { width: 18px; height: 18px; }
+  .hts-up-opp { min-height: 18px; }
 }
 @media (min-width: 768px) {
   .teams-grid { grid-template-columns: repeat(2, 1fr); }
