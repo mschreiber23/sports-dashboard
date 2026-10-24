@@ -4085,6 +4085,8 @@ html.home-screen .more-dropdown {
   position: sticky;
   top: 0;
   padding-top: env(safe-area-inset-top, 0px); /* clear Dynamic Island / notch */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   z-index: 100;
   background: #0f0f13; /* matches Dynamic Island area color */
   max-width: 100%;
@@ -5186,10 +5188,32 @@ thead .dfs-sticky-player {
 @media (max-width: 640px) { .rank-th-pitcher, .rank-td-pitcher { display: none; } }
 
 /* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+/* A custom width turns iOS's edge indicator into a bar that sits on the cards. */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+}
+/* Landscape iPhone insets the system indicator by the safe area, so it
+   paints through the right-hand cards. Hide that indicator and use the
+   fixed thumb, which is pinned to the glass. */
+@media (hover: none) and (pointer: coarse) {
+  .app-body { scrollbar-width: none; }
+  .app-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
+}
+.edge-scrollbar {
+  position: fixed;
+  right: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+  z-index: 400;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.edge-scrollbar.is-on { opacity: 1; transition: opacity 0.05s linear; }
 
 /* ── Responsive ── */
 @media (max-width: 640px) {

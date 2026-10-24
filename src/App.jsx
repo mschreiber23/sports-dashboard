@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, useLocation, matchPath, Link } from 'react-r
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import { BottomNav, TopNav } from './components/Nav';
+import EdgeScrollbar from './components/EdgeScrollbar';
 import InstallBanner from './components/InstallBanner';
 import MyTeams from './components/MyTeams';
 import PlayerRoster from './components/PlayerRoster';
@@ -104,6 +105,7 @@ function AppShell({ userId }) {
           </Routes>
         </div>
         <BottomNav />
+        <EdgeScrollbar />
         </div>
       </PropSyncProvider>
     </FavoritesProvider>
