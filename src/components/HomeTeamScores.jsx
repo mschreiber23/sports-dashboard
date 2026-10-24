@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
-import { formatKickoff } from '../utils/upcomingGames';
+import { formatKickoff, formatScheduleStack, gameOpponent } from '../utils/upcomingGames';
 import {
   buildHomeBoard,
   finalStatusText,
@@ -47,12 +47,12 @@ function scoreClass(row, other, state) {
   return 'hts-score';
 }
 
-function SideRow({ row, other, state }) {
+function SideRow({ row, other, state, showScore }) {
   return (
     <div className="hts-row">
       <TeamMark team={row?.team} />
       <span className="hts-name">{teamLabel(row?.team)}</span>
-      <span className={scoreClass(row, other, state)}>{teamScoreValue(row)}</span>
+      {showScore && <span className={scoreClass(row, other, state)}>{teamScoreValue(row)}</span>}
     </div>
   );
 }
@@ -62,9 +62,13 @@ function ScoreTile({ sport, game, accent }) {
   const comp = game.competitions?.[0];
   const state = comp?.status?.type?.state;
   const { away, home } = matchupSides(game);
+  const showScore = state === 'in' || state === 'post';
+  const kick = formatKickoff(game.date);
   const status = state === 'in'
     ? liveStatusText(comp?.status, comp?.situation)
-    : finalStatusText(comp?.status);
+    : state === 'post'
+      ? finalStatusText(comp?.status)
+      : (kick.time || comp?.status?.type?.shortDetail || 'Scheduled');
   return (
     <button
       type="button"
@@ -72,41 +76,57 @@ function ScoreTile({ sport, game, accent }) {
       style={accent ? { borderColor: accent } : undefined}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
     >
-      <div className={`hts-status${state === 'in' ? ' hts-status-live' : ''}`}>
+      <div className={`hts-status${state === 'in' ? ' hts-status-live' : ''}${showScore ? '' : ' hts-status-pre'}`}>
         {state === 'in' && <span className="live-dot" />}
         <span>{status}</span>
       </div>
-      <SideRow row={away} other={home} state={state} />
-      <SideRow row={home} other={away} state={state} />
+      <SideRow row={away} other={home} state={state} showScore={showScore} />
+      <SideRow row={home} other={away} state={state} showScore={showScore} />
     </button>
   );
 }
 
-function UpcomingRow({ sport, game }) {
+function UpcomingTeamRow({ sport, team, games }) {
   const navigate = useNavigate();
-  const { away, home } = matchupSides(game);
-  const when = formatKickoff(game.date);
+  const accent = accentFor(team);
   return (
-    <button
-      type="button"
-      className="hts-up-row"
-      onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
-    >
-      <span className="hts-up-match">
-        <TeamMark team={away?.team} />
-        <span className="hts-up-name">{teamLabel(away?.team)}</span>
-        <span className="hts-up-at">@</span>
-        <TeamMark team={home?.team} />
-        <span className="hts-up-name">{teamLabel(home?.team)}</span>
-      </span>
-      {when.label && <span className="hts-up-when">{when.label}</span>}
-    </button>
+    <div className="hts-up-row" style={accent ? { borderColor: accent } : undefined}>
+      <button
+        type="button"
+        className="hts-up-team"
+        onClick={() => navigate(`/team/${sport}/${team.id}`)}
+      >
+        <TeamMark team={team} />
+        <span className="hts-up-name">{teamLabel(team)}</span>
+      </button>
+      <div className="hts-up-games">
+        {games.map((game) => {
+          const opp = gameOpponent(game, team.id);
+          const when = formatScheduleStack(game.date);
+          return (
+            <button
+              key={game.id}
+              type="button"
+              className="hts-up-chip"
+              title={opp.name || opp.abbr || undefined}
+              onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
+            >
+              <span className="hts-up-date">{when.date}</span>
+              <span className="hts-up-time">{when.time}</span>
+              <span className="hts-up-opp">
+                {opp.prefix === '@' && <span className="hts-up-at">@</span>}
+                <TeamMark team={opp.team} className="hts-logo hts-up-logo" />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 function TeamWatcher({ sport, team, dateStr, onUpdate, onHiddenChange }) {
   const { game, loading, upcoming, hasUpcomingGame } = useTeamGame(sport, team.id, 30000, dateStr);
-  const next = upcoming === undefined ? undefined : (upcoming[0] || null);
   const comp = game?.competitions?.[0];
   const awayScore = teamScoreValue(matchupSides(game).away);
   const homeScore = teamScoreValue(matchupSides(game).home);
@@ -121,7 +141,7 @@ function TeamWatcher({ sport, team, dateStr, onUpdate, onHiddenChange }) {
       team,
       loading: loading || upcoming === undefined,
       game: game || null,
-      next: next || null,
+      games: Array.isArray(upcoming) ? upcoming : [],
     });
   }, [
     sport,
@@ -130,7 +150,6 @@ function TeamWatcher({ sport, team, dateStr, onUpdate, onHiddenChange }) {
     loading,
     upcoming,
     game,
-    next,
     onUpdate,
     comp?.status?.type?.state,
     comp?.status?.type?.shortDetail,
@@ -210,7 +229,12 @@ export default function HomeTeamScores({ teams, dateStr, onHiddenChange }) {
         <div className="hts-upcoming">
           <div className="hts-subhead">Upcoming</div>
           {upcoming.map((row) => (
-            <UpcomingRow key={`${row.sport}-${row.game.id}`} sport={row.sport} game={row.game} />
+            <UpcomingTeamRow
+              key={`${row.sport}-${row.team?.id}`}
+              sport={row.sport}
+              team={row.team}
+              games={row.games}
+            />
           ))}
         </div>
       )}

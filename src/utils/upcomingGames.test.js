@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatKickoff, formatScheduleLine, gameOnDay, gameOpponent, selectUpcomingGames } from './upcomingGames.js';
+import { formatKickoff, formatScheduleLine, formatScheduleStack, gameOnDay, gameOpponent, selectUpcomingGames } from './upcomingGames.js';
 
 const NOW = new Date('2026-10-22T16:00:00Z');
 
@@ -50,6 +50,8 @@ test('kickoff reads as an Eastern date and time', () => {
   assert.equal(formatKickoff('2026-10-24T23:00:00Z').label, 'Sat, Oct 24 · 7:00 PM EDT');
   assert.equal(formatScheduleLine('2026-10-24T23:00:00Z'), '10/24 7p');
   assert.equal(formatScheduleLine('2026-10-28T23:30:00Z'), '10/28 7:30p');
+  assert.deepEqual(formatScheduleStack('2026-10-24T23:00:00Z'), { date: '10/24', time: '7p' });
+  assert.deepEqual(formatScheduleStack('2026-10-28T23:30:00Z'), { date: '10/28', time: '7:30p' });
 });
 
 test('only the game on the selected day counts as playing that day', () => {

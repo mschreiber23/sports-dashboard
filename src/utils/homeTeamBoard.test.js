@@ -23,35 +23,56 @@ const sabres = { sport: 'nhl', team: { id: '8', displayName: 'Buffalo Sabres' } 
 test('final and live games are score tiles, and a shared game is one tile', () => {
   const finalGame = game('100', 'post');
   const board = buildHomeBoard([
-    { ...lightning, loading: false, game: finalGame, next: game('300', 'pre') },
-    { ...avalanche, loading: false, game: finalGame, next: game('301', 'pre') },
-    { ...sabres, loading: false, game: null, next: game('200', 'pre') },
+    { ...lightning, loading: false, game: finalGame, games: [game('300', 'pre')] },
+    { ...avalanche, loading: false, game: finalGame, games: [game('301', 'pre')] },
+    { ...sabres, loading: false, game: null, games: [game('200', 'pre')] },
   ]);
   assert.deepEqual(board.scores.map((row) => row.game.id), ['100']);
   assert.equal(board.scores[0].favoriteId, '20');
-  assert.deepEqual(board.upcoming.map((row) => row.game.id), ['300', '301', '200']);
+  assert.deepEqual(board.upcoming.map((row) => row.team.id), ['20', '17', '8']);
+  assert.deepEqual(board.upcoming.map((row) => row.games.map((item) => item.id)), [['300'], ['301'], ['200']]);
 });
 
-test('a game that has not started is upcoming, including one later the same day', () => {
+test('a game on the selected day is a square, and later games stay on that team', () => {
   const pre = game('10', 'pre', { detail: '7:00 PM EDT' });
   const board = buildHomeBoard([
-    { sport: 'nba', team: { id: '15' }, loading: false, game: pre, next: game('11', 'pre') },
+    { sport: 'nba', team: { id: '15' }, loading: false, game: pre, games: [game('11', 'pre'), game('12', 'pre')] },
   ]);
-  assert.equal(board.scores.length, 0);
-  assert.deepEqual(board.upcoming.map((row) => row.game.id), ['10']);
+  assert.deepEqual(board.scores.map((row) => row.game.id), ['10']);
+  assert.deepEqual(board.upcoming[0].games.map((row) => row.id), ['11', '12']);
 });
 
-test('a live game stays on the score row and the following game is upcoming', () => {
+test('a live game stays on the score row and the following games are that team’s list', () => {
   const board = buildHomeBoard([
-    { sport: 'nfl', team: { id: '12' }, loading: false, game: game('9', 'in'), next: game('12', 'pre') },
+    { sport: 'nfl', team: { id: '12' }, loading: false, game: game('9', 'in'), games: [game('12', 'pre')] },
   ]);
   assert.deepEqual(board.scores.map((row) => row.game.id), ['9']);
-  assert.deepEqual(board.upcoming.map((row) => row.game.id), ['12']);
+  assert.deepEqual(board.upcoming[0].games.map((row) => row.id), ['12']);
+});
+
+test('a team with only later games has no square, and the row stops at five', () => {
+  const games = ['1', '2', '3', '4', '5', '6'].map((id) => game(id, 'pre'));
+  const board = buildHomeBoard([
+    { sport: 'nhl', team: { id: '8' }, loading: false, game: null, games },
+  ]);
+  assert.equal(board.scores.length, 0);
+  assert.deepEqual(board.upcoming[0].games.map((row) => row.id), ['1', '2', '3', '4', '5']);
+});
+
+test('two favorites keep separate upcoming rows when they share a later game', () => {
+  const shared = game('300', 'pre');
+  const board = buildHomeBoard([
+    { ...lightning, loading: false, game: null, games: [shared] },
+    { ...avalanche, loading: false, game: null, games: [shared] },
+  ]);
+  assert.deepEqual(board.upcoming.map((row) => row.team.id), ['20', '17']);
+  assert.equal(board.upcoming[0].games[0], shared);
+  assert.equal(board.upcoming[1].games[0], shared);
 });
 
 test('still-loading favorites are skipped', () => {
   const board = buildHomeBoard([
-    { sport: 'mlb', team: { id: '1' }, loading: true, game: game('1', 'post'), next: null },
+    { sport: 'mlb', team: { id: '1' }, loading: true, game: game('1', 'post'), games: [] },
   ]);
   assert.deepEqual(board, { scores: [], upcoming: [] });
 });

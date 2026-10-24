@@ -37,24 +37,19 @@ function gameKey(sport, game) {
   return `${sport}-${game?.id || ''}`;
 }
 
-function gameState(game) {
-  return game?.competitions?.[0]?.status?.type?.state || '';
-}
-
-// entries are favorites order. A game two favorites share is one tile.
-// Started and finished games are the score row. Anything still ahead is upcoming.
+// entries are favorites order. A game two favorites share is one square.
+// Any game on the selected day is a square, including one that has not started.
+// Each favorite then gets its own row of the next games after that day.
 export function buildHomeBoard(entries) {
   const scores = [];
   const upcoming = [];
   const seenScore = new Set();
-  const seenUpcoming = new Set();
 
   for (const entry of entries || []) {
     if (!entry || entry.loading) continue;
-    const { sport, team, game, next } = entry;
-    const state = gameState(game);
+    const { sport, team, game, games } = entry;
 
-    if (game && (state === 'in' || state === 'post')) {
+    if (game?.id) {
       const key = gameKey(sport, game);
       if (!seenScore.has(key)) {
         seenScore.add(key);
@@ -62,14 +57,8 @@ export function buildHomeBoard(entries) {
       }
     }
 
-    const ahead = state === 'pre' ? game : (next || null);
-    if (ahead?.id) {
-      const key = gameKey(sport, ahead);
-      if (!seenUpcoming.has(key)) {
-        seenUpcoming.add(key);
-        upcoming.push({ sport, game: ahead, favoriteId: team?.id });
-      }
-    }
+    const list = (games || []).filter((item) => item?.id).slice(0, 5);
+    if (list.length) upcoming.push({ sport, team, games: list });
   }
 
   return { scores, upcoming };
