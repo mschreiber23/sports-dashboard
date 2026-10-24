@@ -5,8 +5,10 @@
 import { chartLabel } from '../api/playerLogs.js';
 import { mergeTeammates, playerRole, rolesForTeam, sameName } from '../api/nflInjuries.js';
 import { matchupContext } from '../api/teamForm.js';
+import { teamAbsences } from '../api/nbaInjuries.js';
 import { nflModeled, nflPropEdge } from './nflEdge.js';
 import { nhlPropEdge } from './nhlEdge.js';
+import { nbaModeled, nbaPropEdge } from './nbaEdge.js';
 import { callGrade } from './modelCall.js';
 import { countsInScore, GOAL_PROP, POINTS_PROP } from './scoredProps.js';
 
@@ -35,6 +37,7 @@ const EDGE_BANDS = [
 function edgeFn(league, type) {
   if (league === 'nfl' && nflModeled(type)) return nflPropEdge;
   if (league === 'nhl' && (type === 'hockey_player_goals' || type === 'hockey_player_points')) return nhlPropEdge;
+  if (league === 'nba' && nbaModeled(type)) return nbaPropEdge;
   return null;
 }
 
@@ -87,7 +90,7 @@ function lineText(line) {
 
 export function upcomingSlate(events, now = Date.now()) {
   return (events || []).filter((event) => (
-    (event.league === 'nfl' || event.league === 'nhl')
+    (event.league === 'nfl' || event.league === 'nhl' || event.league === 'nba')
     && event.gameStart > now
     && event.gameStart - now <= LOOKAHEAD_MS
   ));
@@ -144,11 +147,11 @@ function nflContext(game, sample, logs, roles, opportunityLogs) {
   };
 }
 
-export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {}, forms = {}, weatherByGame = {} }) {
+export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {}, forms = {}, weatherByGame = {}, injuries = [] }) {
   const reads = [];
   for (const game of games || []) {
     if (!game?.rows) continue;
-    if (game.league !== 'nfl' && game.league !== 'nhl') continue;
+    if (game.league !== 'nfl' && game.league !== 'nhl' && game.league !== 'nba') continue;
     if (!(game.gameStart > now) || game.gameStart - now > LOOKAHEAD_MS) continue;
     const slate = slateContext(game.rows);
     const groups = new Map();
@@ -192,6 +195,10 @@ export function buildReads({ games, logs, now = Date.now(), roles = [], opportun
         weather: weatherByGame[game.key] || null,
         ...matchupContext(forms, game.league, sample.teamAbbr, sample.opponentAbbr, sample.gameStart),
         ...(game.league === 'nfl' ? nflContext(game, sample, logs, roles, opportunityLogs) : {}),
+        ...(game.league === 'nba' ? {
+          playerName: sample.player,
+          absences: teamAbsences(injuries, sample.teamName),
+        } : {}),
       });
       if (!model) continue;
       reads.push({

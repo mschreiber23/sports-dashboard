@@ -220,6 +220,82 @@ test('new reads skip goal props and keep point props', () => {
   assert.equal(reads[0].line, 1);
 });
 
+test('an nba yes is graded and an nba no stays out of the score', () => {
+  const yes = {
+    ...points,
+    id: 'nba-yes',
+    league: 'nba',
+    propType: 'basketball_player_points',
+    player: 'Scorer',
+    price: 0.48,
+    modelP: 0.56,
+    baseP: 0.56,
+    edge: 0.08,
+    result: 'hit',
+  };
+  const no = {
+    ...yes,
+    id: 'nba-no',
+    player: 'Under',
+    price: 0.55,
+    modelP: 0.45,
+    baseP: 0.45,
+    edge: -0.1,
+    result: 'miss',
+  };
+  assert.equal(countsInScore(yes), true);
+  assert.equal(countsInScore(no), false);
+  const ledger = ledgerReport([yes, no, points]);
+  assert.equal(ledger.graded, 2);
+  assert.equal(ledger.callHits, 2);
+  const fit = learnCalibration([yes, no]);
+  assert.equal(fit.nba.graded, 1);
+  assert.equal(fit.nhl.graded, 0);
+  const sport = accuracyReport([yes, no]).sports.find((item) => item.league === 'nba');
+  assert.equal(sport.graded, 1);
+  assert.equal(sport.hits, 1);
+});
+
+test('an upcoming nba prop is saved the same way as a hockey points prop', () => {
+  const now = Date.now();
+  const gameStart = now + 60_000;
+  const context = Array.from({ length: 10 }, () => ({
+    date: '2026-01-02', min: 34, fga: 18, pts: 28, tpa: 6, tpm: 2, reb: 6, ast: 5, pf: 2, stl: 1, blk: 0.5,
+  }));
+  const logs = {
+    [`nba|Jayson Tatum|${gameStart}`]: {
+      series: { basketball_player_points: [28, 28, 28, 28, 28, 28, 28, 28, 28, 28] },
+      prior: { basketball_player_points: [28, 28, 28, 28, 28, 28, 28, 28] },
+      context,
+      priorContext: context,
+    },
+  };
+  const reads = buildReads({
+    now,
+    logs,
+    games: [{
+      league: 'nba',
+      key: 'nba-game',
+      title: 'BOS at WSH',
+      gameStart,
+      rows: [{
+        section: 'player',
+        player: 'Jayson Tatum',
+        type: 'basketball_player_points',
+        line: 20.5,
+        yes: 0.45,
+        gameStart,
+        teamName: 'Celtics',
+        opponentName: 'Wizards',
+      }],
+    }],
+  });
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0].league, 'nba');
+  assert.equal(reads[0].line, 20.5);
+  assert.equal(countsInScore(reads[0]), true);
+});
+
 test('an nba prop can be yes and cannot be no', () => {
   assert.equal(yesOnlyLeague('nba'), true);
   assert.equal(yesOnlyLeague('nhl'), false);

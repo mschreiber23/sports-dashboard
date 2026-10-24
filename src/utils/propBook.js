@@ -250,13 +250,13 @@ function seriesFor(rows) {
 
 export function accuracyReport(reads) {
   const graded = (reads || []).filter((row) => countsInScore(row) && (row.result === 'hit' || row.result === 'miss'));
-  const byLeague = new Map([['nhl', []], ['nfl', []]]);
+  const byLeague = new Map([['nhl', []], ['nfl', []], ['nba', []]]);
   for (const row of graded) {
     const league = row.league || 'other';
     if (!byLeague.has(league)) byLeague.set(league, []);
     byLeague.get(league).push(row);
   }
-  const rank = { nhl: 0, nfl: 1 };
+  const rank = { nhl: 0, nfl: 1, nba: 2 };
   const sports = [...byLeague.entries()].map(([league, rows]) => {
     const hits = rows.filter((row) => callGrade(row) === 'hit').length;
     return {

@@ -42,6 +42,8 @@ export function betSide(row) {
   const noPrice = 1 - price;
   const noP = 1 - modelP;
   if (yesEdge >= BET_EDGE_MIN && affordablePrice(price) && modelP >= BET_P_MIN) return 'yes';
+  // Polymarket does not take No on an NBA player prop, so that side is not a result.
+  if (row.league === 'nba') return null;
   if (noEdge >= BET_EDGE_MIN && affordablePrice(noPrice) && noP >= BET_P_MIN) return 'no';
   return null;
 }
