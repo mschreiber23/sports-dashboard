@@ -344,12 +344,19 @@ body {
 /* ── Player Cards (Trading Card Style) ── */
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 @media (min-width: 640px) {
-  .players-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+  .players-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+}
+/* Landscape phones are wide enough for a full row of small cards. */
+@media (min-width: 844px) {
+  .players-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+}
+@media (min-width: 940px) {
+  .players-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
 }
 
 .sports-card {
@@ -364,6 +371,8 @@ body {
   display: flex;
   flex-direction: column;
   cursor: default;
+  container-type: inline-size;
+  min-width: 0;
 }
 .sports-card:hover {
   transform: translateY(-4px) scale(1.02);
@@ -526,6 +535,19 @@ body {
   .sports-card-stat-label { font-size: 8px; margin-top: 1px; }
   .sports-card-season { font-size: 7px; margin-top: 3px; }
   .sports-card-remove { width: 18px; height: 18px; font-size: 12px; top: 5px; right: 5px; }
+}
+
+/* A landscape row of 7–8 cards is about 110px wide. Keep the name and stats inside it. */
+@container (max-width: 140px) {
+  .sports-card { border-radius: 12px; }
+  .sports-card-shine { border-radius: 12px; }
+  .sports-card-name { font-size: 11px; }
+  .sports-card-meta { font-size: 8px; letter-spacing: 0; }
+  .sports-card-info { padding: 4px 6px 3px; }
+  .sports-card-stats { padding: 4px 4px 5px; }
+  .sports-card-stat { padding: 1px 0; }
+  .sports-card-stat-value { font-size: 12px; letter-spacing: -0.4px; }
+  .sports-card-stat-label { font-size: 7px; letter-spacing: 0; margin-top: 1px; }
 }
 
 .player-card {
