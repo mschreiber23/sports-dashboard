@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildHomeBoard, finalStatusText, liveStatusText, teamLabel, teamScoreValue } from './homeTeamBoard.js';
+import { buildHomeBoard, finalStatusText, liveStatusText, teamForMark, teamLabel, teamScoreValue } from './homeTeamBoard.js';
 
 function game(id, state, extra = {}) {
   return {
@@ -86,6 +86,32 @@ test('status lines keep overtime and the clock', () => {
     '3rd 8:22 · 2nd & 7',
   );
   assert.equal(liveStatusText({ type: { shortDetail: '3rd 8:22' } }, { down: -1, shortDownDistanceText: '2nd & 7' }), '3rd 8:22');
+});
+
+test('a favorite saved without a logo uses the mark from its next game', () => {
+  const games = [{
+    id: '1',
+    competitions: [{
+      competitors: [
+        { homeAway: 'away', team: { id: '4', abbreviation: 'CHI', logo: 'https://example.com/chi.png' } },
+        {
+          homeAway: 'home',
+          team: {
+            id: '26',
+            abbreviation: 'FLA',
+            displayName: 'Florida Panthers',
+            logos: [{ href: 'https://example.com/fla.png', rel: ['full', 'default'] }],
+          },
+        },
+      ],
+    }],
+  }];
+  const mark = teamForMark({ id: '26', displayName: 'Florida Panthers', logo: '', abbreviation: '', color: '' }, games);
+  assert.equal(mark.logo, 'https://example.com/fla.png');
+  assert.equal(mark.abbreviation, 'FLA');
+  assert.equal(mark.displayName, 'Florida Panthers');
+  const kept = teamForMark({ id: '26', logo: 'https://example.com/saved.png', logos: [{ href: 'https://example.com/saved.png' }] }, games);
+  assert.equal(kept.logo, 'https://example.com/saved.png');
 });
 
 test('names and scores prefer the short label and a display value', () => {

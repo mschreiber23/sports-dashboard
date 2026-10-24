@@ -96,25 +96,18 @@ export default function MyTeams({ editMode = false, setEditMode }) {
     debounceRef.current = setTimeout(() => doTeamSearch(q), 300);
   };
 
-  const handleAddTeam = async (t) => {
+  const handleAddTeam = (t) => {
     const sport = t.sport;
-    const { league } = SPORTS[sport] || {};
-    if (!league) return;
-    try {
-      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams/${t.id}`);
-      const d = await r.json();
-      const tm = d.team;
-      addTeam(sport, {
-        id: tm.id,
-        displayName: tm.displayName,
-        abbreviation: tm.abbreviation,
-        color: tm.color,
-        alternateColor: tm.alternateColor,
-        logo: tm.logos?.[0]?.href || '',
-      });
-    } catch {
-      addTeam(sport, { id: t.id, displayName: t.displayName, abbreviation: '', color: '', alternateColor: '', logo: '' });
-    }
+    if (!SPORTS[sport]) return;
+    const abbr = String(t.logo || '').match(/\/([a-z0-9]+)\.png/i)?.[1]?.toUpperCase() || '';
+    addTeam(sport, {
+      id: t.id,
+      displayName: t.displayName,
+      abbreviation: abbr,
+      color: '',
+      alternateColor: '',
+      logo: t.logo || '',
+    });
   };
 
   return (

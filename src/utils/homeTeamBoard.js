@@ -37,6 +37,34 @@ function gameKey(sport, game) {
   return `${sport}-${game?.id || ''}`;
 }
 
+// Favorites added from search can be saved with an empty logo. The schedule
+// payload for that team still carries the mark, so the upcoming row can use it.
+export function teamForMark(team, games) {
+  const saved = team || {};
+  let fromGame = null;
+  for (const game of games || []) {
+    const rows = game?.competitions?.[0]?.competitors || [];
+    const mine = rows.find((row) => String(row?.team?.id) === String(saved.id))?.team;
+    if (mine) {
+      fromGame = mine;
+      break;
+    }
+  }
+  if (!fromGame) return saved;
+  const logos = saved.logos?.length ? saved.logos : (fromGame.logos || []);
+  return {
+    ...fromGame,
+    ...saved,
+    abbreviation: saved.abbreviation || fromGame.abbreviation || '',
+    displayName: saved.displayName || fromGame.displayName || fromGame.name || '',
+    shortDisplayName: saved.shortDisplayName || fromGame.shortDisplayName || '',
+    color: saved.color || fromGame.color || '',
+    alternateColor: saved.alternateColor || fromGame.alternateColor || '',
+    logo: saved.logo || fromGame.logo || logos[0]?.href || '',
+    logos,
+  };
+}
+
 // entries are favorites order. A game two favorites share is one square.
 // Any game on the selected day is a square, including one that has not started.
 // Each favorite then gets its own row of the next games after that day.

@@ -9,6 +9,7 @@ import {
   finalStatusText,
   liveStatusText,
   matchupSides,
+  teamForMark,
   teamLabel,
   teamScoreValue,
 } from '../utils/homeTeamBoard';
@@ -16,21 +17,42 @@ import {
 // The previous full game cards still live in TeamRow. The Scores page renders
 // those. This is the compact home board, so the old boxes can be put back.
 
-function TeamMark({ team, className = 'hts-logo' }) {
-  const dark = getTeamLogo(team);
-  const orig = getTeamLogoFallback(team);
-  if (!dark && !orig) return <span className={`${className} hts-logo-empty`} />;
+const LOGO_FOLDER = { nba: 'nba', nfl: 'nfl', mlb: 'mlb', nhl: 'nhl' };
+
+function logoCandidates(team, sport) {
+  const urls = [];
+  const add = (url) => {
+    if (url && !urls.includes(url)) urls.push(url);
+  };
+  add(getTeamLogo(team));
+  add(getTeamLogoFallback(team));
+  const abbr = String(team?.abbreviation || '').toLowerCase();
+  const folder = LOGO_FOLDER[sport];
+  if (abbr && folder) {
+    add(`https://a.espncdn.com/i/teamlogos/${folder}/500-dark/${abbr}.png`);
+    add(`https://a.espncdn.com/i/teamlogos/${folder}/500/${abbr}.png`);
+  }
+  return urls;
+}
+
+function TeamMark({ team, sport, className = 'hts-logo' }) {
+  const urls = logoCandidates(team, sport);
+  const key = urls.join('|');
+  const [index, setIndex] = useState(0);
+  useEffect(() => { setIndex(0); }, [key]);
+  const src = urls[index];
+  if (!src) {
+    const abbr = team?.abbreviation || '';
+    return abbr
+      ? <span className={`${className} hts-logo-fallback`}>{abbr}</span>
+      : <span className={`${className} hts-logo-empty`} />;
+  }
   return (
     <img
-      src={dark || orig}
+      src={src}
       alt=""
       className={className}
-      onError={(event) => {
-        if (orig && event.target.src !== orig) {
-          event.target.onerror = null;
-          event.target.src = orig;
-        }
-      }}
+      onError={() => setIndex((current) => current + 1)}
     />
   );
 }
@@ -47,10 +69,10 @@ function scoreClass(row, other, state) {
   return 'hts-score';
 }
 
-function SideRow({ row, other, state, showScore }) {
+function SideRow({ row, other, state, showScore, sport }) {
   return (
     <div className="hts-row">
-      <TeamMark team={row?.team} />
+      <TeamMark team={row?.team} sport={sport} />
       <span className="hts-name">{teamLabel(row?.team)}</span>
       {showScore && <span className={scoreClass(row, other, state)}>{teamScoreValue(row)}</span>}
     </div>
@@ -80,24 +102,27 @@ function ScoreTile({ sport, game, accent }) {
         {state === 'in' && <span className="live-dot" />}
         <span>{status}</span>
       </div>
-      <SideRow row={away} other={home} state={state} showScore={showScore} />
-      <SideRow row={home} other={away} state={state} showScore={showScore} />
+      <SideRow row={away} other={home} state={state} showScore={showScore} sport={sport} />
+      <SideRow row={home} other={away} state={state} showScore={showScore} sport={sport} />
     </button>
   );
 }
 
 function UpcomingTeamRow({ sport, team, games }) {
   const navigate = useNavigate();
-  const accent = accentFor(team);
+  const shown = teamForMark(team, games);
+  const accent = accentFor(shown);
+  const name = team?.displayName || team?.name || teamLabel(shown);
   return (
     <div className="hts-up-row" style={accent ? { borderColor: accent } : undefined}>
       <button
         type="button"
         className="hts-up-team"
+        aria-label={name}
+        title={name}
         onClick={() => navigate(`/team/${sport}/${team.id}`)}
       >
-        <TeamMark team={team} />
-        <span className="hts-up-name">{teamLabel(team)}</span>
+        <TeamMark team={shown} sport={sport} className="hts-logo hts-up-mark" />
       </button>
       <div className="hts-up-games">
         {games.map((game) => {
@@ -115,7 +140,7 @@ function UpcomingTeamRow({ sport, team, games }) {
               <span className="hts-up-time">{when.time}</span>
               <span className="hts-up-opp">
                 {opp.prefix === '@' && <span className="hts-up-at">@</span>}
-                <TeamMark team={opp.team} className="hts-logo hts-up-logo" />
+                <TeamMark team={opp.team} sport={sport} className="hts-logo hts-up-logo" />
               </span>
             </button>
           );
