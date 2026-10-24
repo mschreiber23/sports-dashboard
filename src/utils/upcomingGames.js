@@ -46,15 +46,21 @@ export function formatKickoff(iso) {
   return { date: day, time, label: `${day} · ${time}` };
 }
 
-export function formatScheduleLine(iso) {
+export function formatScheduleStack(iso) {
   const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return '';
+  if (!Number.isFinite(date.getTime())) return { date: '', time: '' };
   const parts = LINE_FMT.formatToParts(date);
   const get = (type) => parts.find((part) => part.type === type)?.value || '';
   const minute = get('minute');
   const clock = minute === '00' ? get('hour') : `${get('hour')}:${minute}`;
   const period = (get('dayPeriod') || '').toLowerCase().startsWith('p') ? 'p' : 'a';
-  return `${get('month')}/${get('day')} ${clock}${period}`;
+  return { date: `${get('month')}/${get('day')}`, time: `${clock}${period}` };
+}
+
+export function formatScheduleLine(iso) {
+  const stack = formatScheduleStack(iso);
+  if (!stack.date || !stack.time) return '';
+  return `${stack.date} ${stack.time}`;
 }
 
 export function gameOnDay(event, dayYmd) {

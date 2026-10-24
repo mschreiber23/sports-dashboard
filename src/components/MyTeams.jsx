@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
-import TeamRow from './TeamRow';
+import HomeTeamScores from './HomeTeamScores';
 import { SPORTS } from '../api/espn';
 import useSportsDaySelection from '../hooks/useSportsDay';
-import { teamsWithGamesFirst } from '../utils/homeTeamOrder';
 import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const SLUG_TO_SPORT = { mlb:'mlb', nba:'nba', nfl:'nfl', nhl:'nhl', baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl' };
@@ -62,17 +61,6 @@ export default function MyTeams({ editMode = false, setEditMode }) {
     setHiddenTeams((prev) => ({ ...prev, [`${teamId}-${sport}`]: isHidden }));
   }, []);
 
-  // Teams with a game on the selected day float above the rest.
-  const [playingOnDay, setPlayingOnDay] = useState({});
-  const handlePlayingChange = useCallback((teamId, sport, isPlaying) => {
-    const key = `${sport}-${teamId}`;
-    setPlayingOnDay((prev) => {
-      if (prev[key] === isPlaying) return prev;
-      return { ...prev, [key]: isPlaying };
-    });
-  }, []);
-  useEffect(() => { setPlayingOnDay({}); }, [dateStr]);
-
   const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
 
   // Auto-focus when picker opens
@@ -108,25 +96,18 @@ export default function MyTeams({ editMode = false, setEditMode }) {
     debounceRef.current = setTimeout(() => doTeamSearch(q), 300);
   };
 
-  const handleAddTeam = async (t) => {
+  const handleAddTeam = (t) => {
     const sport = t.sport;
-    const { league } = SPORTS[sport] || {};
-    if (!league) return;
-    try {
-      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/teams/${t.id}`);
-      const d = await r.json();
-      const tm = d.team;
-      addTeam(sport, {
-        id: tm.id,
-        displayName: tm.displayName,
-        abbreviation: tm.abbreviation,
-        color: tm.color,
-        alternateColor: tm.alternateColor,
-        logo: tm.logos?.[0]?.href || '',
-      });
-    } catch {
-      addTeam(sport, { id: t.id, displayName: t.displayName, abbreviation: '', color: '', alternateColor: '', logo: '' });
-    }
+    if (!SPORTS[sport]) return;
+    const abbr = String(t.logo || '').match(/\/([a-z0-9]+)\.png/i)?.[1]?.toUpperCase() || '';
+    addTeam(sport, {
+      id: t.id,
+      displayName: t.displayName,
+      abbreviation: abbr,
+      color: '',
+      alternateColor: '',
+      logo: t.logo || '',
+    });
   };
 
   return (
@@ -281,29 +262,16 @@ export default function MyTeams({ editMode = false, setEditMode }) {
       )}
 
       {!editMode && (
-        <>
-          <div className="teams-grid">
-            {teamsWithGamesFirst(
-              favorites.teams.filter(ft => ft.sport !== 'milb'),
-              playingOnDay,
-            ).map(({ sport, team }) => {
-              const autoHidden   = hiddenTeams[`${team.id}-${sport}`] === true;
-              const manualHidden = isManuallyHidden(team.id, sport);
-              if ((autoHidden || manualHidden) && !showHidden) return null;
-              return (
-                <TeamRow
-                  key={`${sport}-${team.id}`}
-                  sport={sport}
-                  team={team}
-                  dateStr={dateStr}
-                  onHiddenChange={handleHiddenChange}
-                  onPlayingChange={handlePlayingChange}
-                />
-              );
-            })}
-          </div>
-
-        </>
+        <HomeTeamScores
+          teams={favorites.teams.filter((ft) => {
+            if (ft.sport === 'milb') return false;
+            const autoHidden = hiddenTeams[`${ft.team.id}-${ft.sport}`] === true;
+            const manualHidden = isManuallyHidden(ft.team.id, ft.sport);
+            return showHidden || (!autoHidden && !manualHidden);
+          })}
+          dateStr={dateStr}
+          onHiddenChange={handleHiddenChange}
+        />
       )}
     </section>
   );
