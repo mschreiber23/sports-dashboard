@@ -34,12 +34,13 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        // Exclude HTML from precache — serve it NetworkFirst so new deploys take effect immediately
-        globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
-        navigateFallback: null,
+        // Keep the shell and the hashed assets in the same precache. Serving a
+        // newer HTML document from the network while this worker still has the
+        // previous bundle is what left the Home Screen app blank.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/assets\//],
         runtimeCaching: [
-          // Navigation (HTML): always network-first so new CSS/JS hashes load right away
-          { urlPattern: ({ request }) => request.mode === 'navigate', handler: 'NetworkFirst', options: { cacheName: 'pages', networkTimeoutSeconds: 3 } },
           // ESPN API: network-first, 5 min cache
           { urlPattern: /^https:\/\/site\.api\.espn\.com\/.*/i, handler: 'NetworkFirst', options: { cacheName: 'espn-api', expiration: { maxEntries: 50, maxAgeSeconds: 300 }, networkTimeoutSeconds: 5 } },
           // ESPN images: cache-first, 7 days
