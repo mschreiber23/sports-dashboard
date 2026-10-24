@@ -7,6 +7,7 @@ const PREVIOUS_SEASON_WEIGHT = 1 / 3;
 const PATH = {
   nhl: 'hockey/nhl',
   nfl: 'football/nfl',
+  nba: 'basketball/nba',
 };
 
 const ALT = {
@@ -17,10 +18,23 @@ const ALT = {
   WAS: 'WSH',
 };
 
+// ESPN's NBA schedule uses a shorter abbreviation than the one on the prop.
+const LEAGUE_ALT = {
+  nba: {
+    GSW: 'GS',
+    NYK: 'NY',
+    SAS: 'SA',
+    NOP: 'NO',
+    PHO: 'PHX',
+    UTA: 'UTAH',
+  },
+};
+
 const cache = new Map();
 
-export function espnAbbr(abbr) {
+export function espnAbbr(abbr, league) {
   const key = String(abbr || '').toUpperCase();
+  if (league && LEAGUE_ALT[league]?.[key]) return LEAGUE_ALT[league][key];
   return ALT[key] || key;
 }
 
@@ -60,7 +74,7 @@ function rowsFrom(events, abbr) {
 
 async function loadTeam(league, abbr) {
   const path = PATH[league];
-  const espn = espnAbbr(abbr);
+  const espn = espnAbbr(abbr, league);
   if (!path || !espn) return null;
   let schedule = await fetchSchedule(path, espn);
   if (!schedule && espn !== abbr) schedule = await fetchSchedule(path, abbr);
@@ -93,42 +107,69 @@ async function loadTeam(league, abbr) {
 }
 
 export function teamRecentGames(league, abbr) {
-  const key = `${league}|${espnAbbr(abbr)}`;
+  const key = `${league}|${espnAbbr(abbr, league)}`;
   if (!cache.has(key)) cache.set(key, loadTeam(league, abbr).catch(() => null));
   return cache.get(key);
 }
 
-export function goalsAllowed(form) {
+function weightedMean(form, key) {
   const rows = form?.recent || [];
   if (rows.length < 5) return null;
   let weight = 0;
-  let goals = 0;
+  let total = 0;
   for (const row of rows) {
-    if (typeof row.ga !== 'number') continue;
+    if (typeof row[key] !== 'number') continue;
     const share = row.weight || 1;
-    goals += row.ga * share;
+    total += row[key] * share;
     weight += share;
   }
   if (!(weight > 0)) return null;
-  return goals / weight;
+  return total / weight;
+}
+
+export function goalsAllowed(form) {
+  return weightedMean(form, 'ga');
+}
+
+export function pointsScored(form) {
+  return weightedMean(form, 'gf');
 }
 
 export function matchupContext(forms, league, teamAbbr, opponentAbbr, gameStart) {
-  const opp = forms?.[`${league}|${espnAbbr(opponentAbbr)}`] || null;
-  const team = forms?.[`${league}|${espnAbbr(teamAbbr)}`] || null;
-  const home = team ? homeSide(team.rows, opponentAbbr, gameStart) : null;
+  const opp = forms?.[`${league}|${espnAbbr(opponentAbbr, league)}`] || null;
+  const team = forms?.[`${league}|${espnAbbr(teamAbbr, league)}`] || null;
+  const home = team ? homeSide(team.rows, opponentAbbr, gameStart, league) : null;
   return {
     opponentGoalsAgainst: goalsAllowed(opp),
+    opponentFor: pointsScored(opp),
+    teamFor: pointsScored(team),
+    teamAgainst: goalsAllowed(team),
     home,
   };
 }
 
-export function homeSide(rows, oppAbbr, gameStart) {
-  const opp = espnAbbr(oppAbbr);
+export function orientGame({ league, teams, forms, gameStart }) {
+  if (!teams || teams.length < 2) return null;
+  const formA = forms?.[`${league}|${espnAbbr(teams[0].abbr, league)}`];
+  const formB = forms?.[`${league}|${espnAbbr(teams[1].abbr, league)}`];
+  if (!formA?.recent?.length || !formB?.recent?.length) return null;
+  const firstIsHome = homeSide(formA.rows, teams[1].abbr, gameStart, league);
+  if (firstIsHome == null) return null;
+  return {
+    home: firstIsHome ? teams[0] : teams[1],
+    away: firstIsHome ? teams[1] : teams[0],
+    homeForm: firstIsHome ? formA : formB,
+    awayForm: firstIsHome ? formB : formA,
+  };
+}
+
+export function homeSide(rows, oppAbbr, gameStart, league) {
+  const opp = espnAbbr(oppAbbr, league);
+  const raw = String(oppAbbr || '').toUpperCase();
   let best = null;
   let gap = Infinity;
   for (const row of rows || []) {
-    if (row.opp !== opp && row.opp !== String(oppAbbr || '').toUpperCase()) continue;
+    if (row.opp !== opp && row.opp !== raw) continue;
     const next = Math.abs(row.date - gameStart);
     if (next < gap) {
       gap = next;

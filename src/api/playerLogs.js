@@ -37,6 +37,9 @@ const CHART_LABEL = {
   basketball_player_rebounds: 'rebounds',
   basketball_player_assists: 'assists',
   basketball_player_threes: 'threes',
+  basketball_player_points_rebounds_assists: 'PRA',
+  basketball_player_steals: 'steals',
+  basketball_player_blocks: 'blocks',
   football_player_passing_yards: 'pass yds',
   football_player_rushing_yards: 'rush yds',
   football_player_receiving_yards: 'rec yds',
@@ -112,11 +115,16 @@ function sumFields(stats, names) {
 }
 
 function made(stats, name) {
-  if (!stats || !Object.prototype.hasOwnProperty.call(stats, name)) return null;
+  return splitLine(stats, name).made;
+}
+
+function splitLine(stats, name) {
+  if (!stats || !Object.prototype.hasOwnProperty.call(stats, name)) return { made: null, att: null };
   const raw = stats[name];
-  if (typeof raw === 'number') return raw;
-  const match = String(raw).match(/^(\d+)/);
-  return match ? Number(match[1]) : null;
+  if (typeof raw === 'number') return { made: raw, att: null };
+  const match = String(raw).match(/^(\d+)\s*-\s*(\d+)/);
+  if (!match) return { made: null, att: null };
+  return { made: Number(match[1]), att: Number(match[2]) };
 }
 
 function outsRecorded(stats) {
@@ -139,6 +147,15 @@ const EXTRACT = {
   basketball_player_rebounds: (stats) => field(stats, 'totalRebounds'),
   basketball_player_assists: (stats) => field(stats, 'assists'),
   basketball_player_threes: (stats) => made(stats, 'threePointFieldGoalsMade-threePointFieldGoalsAttempted'),
+  basketball_player_steals: (stats) => field(stats, 'steals'),
+  basketball_player_blocks: (stats) => field(stats, 'blocks'),
+  basketball_player_points_rebounds_assists: (stats) => {
+    const points = field(stats, 'points');
+    const rebounds = field(stats, 'totalRebounds');
+    const assists = field(stats, 'assists');
+    if (points == null || rebounds == null || assists == null) return null;
+    return points + rebounds + assists;
+  },
   football_player_passing_yards: (stats) => field(stats, 'passingYards'),
   football_player_rushing_yards: (stats) => field(stats, 'rushingYards'),
   football_player_receiving_yards: (stats) => field(stats, 'receivingYards'),
@@ -189,6 +206,9 @@ function contextOf(games) {
   const rows = [];
   let any = false;
   for (const game of games) {
+    const fg = splitLine(game.stats, 'fieldGoalsMade-fieldGoalsAttempted');
+    const threes = splitLine(game.stats, 'threePointFieldGoalsMade-threePointFieldGoalsAttempted');
+    const ft = splitLine(game.stats, 'freeThrowsMade-freeThrowsAttempted');
     const row = {
       date: game.date || '',
       shots: field(game.stats, 'shotsTotal'),
@@ -196,6 +216,20 @@ function contextOf(games) {
       pp: sumFields(game.stats, ['powerPlayGoals', 'powerPlayAssists']),
       goals: field(game.stats, 'goals'),
       assists: field(game.stats, 'assists'),
+      min: field(game.stats, 'minutes'),
+      pts: field(game.stats, 'points'),
+      fgm: fg.made,
+      fga: fg.att,
+      tpm: threes.made,
+      tpa: threes.att,
+      ftm: ft.made,
+      fta: ft.att,
+      reb: field(game.stats, 'totalRebounds'),
+      ast: field(game.stats, 'assists'),
+      stl: field(game.stats, 'steals'),
+      blk: field(game.stats, 'blocks'),
+      tov: field(game.stats, 'turnovers'),
+      pf: field(game.stats, 'fouls'),
       passAtt: field(game.stats, 'passingAttempts'),
       passYds: field(game.stats, 'passingYards'),
       passTd: field(game.stats, 'passingTouchdowns'),

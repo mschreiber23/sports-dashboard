@@ -15,6 +15,12 @@ export const NFL_STABLE_MARKET_WEIGHT = 0.38;
 export const NFL_VOLATILE_MARKET_WEIGHT = 0.5;
 export const NFL_BARE_MARKET_WEIGHT = 0.65;
 
+export const NBA_HIT_WEIGHT = 0.22;
+export const NBA_VOLATILE_HIT_WEIGHT = 0.34;
+export const NBA_MARKET_WEIGHT = 0.4;
+export const NBA_VOLATILE_MARKET_WEIGHT = 0.5;
+export const NBA_BARE_MARKET_WEIGHT = 0.65;
+
 export function fairProbability(projection, market, marketWeight) {
   const weight = Math.min(1, Math.max(0, marketWeight));
   return weight * market + (1 - weight) * projection;

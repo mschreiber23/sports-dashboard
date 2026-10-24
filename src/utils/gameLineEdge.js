@@ -4,7 +4,8 @@
 
 const LEAGUE = {
   nhl: { avg: 3.05, prior: 8, homeBump: 0.18, kind: 'goals' },
-  nfl: { avg: 22.5, prior: 6, homeBump: 2.4, totalSigma: 13, marginSigma: 13.5, kind: 'points' },
+  nfl: { avg: 22.5, prior: 6, homeBump: 2.4, totalSigma: 13, marginSigma: 13.5, teamSigma: 10, kind: 'points' },
+  nba: { avg: 114.5, prior: 8, homeBump: 2.7, totalSigma: 18, marginSigma: 12.5, teamSigma: 12, kind: 'points', floor: 96, cap: 138 },
 };
 
 function clamp(value, lo, hi) {
@@ -71,8 +72,8 @@ function rates(homeGames, awayGames, cfg) {
   const homeDef = shrunkMean(homeGames, 'ga', cfg.avg, cfg.prior);
   const awayOff = shrunkMean(awayGames, 'gf', cfg.avg, cfg.prior);
   const awayDef = shrunkMean(awayGames, 'ga', cfg.avg, cfg.prior);
-  const floor = cfg.kind === 'goals' ? 1.6 : 10;
-  const cap = cfg.kind === 'goals' ? 5.2 : 38;
+  const floor = cfg.floor ?? (cfg.kind === 'goals' ? 1.6 : 10);
+  const cap = cfg.cap ?? (cfg.kind === 'goals' ? 5.2 : 38);
   return {
     homeEG: clamp((homeOff + awayDef) / 2 + cfg.homeBump, floor, cap),
     awayEG: clamp((awayOff + homeDef) / 2, floor, cap),
@@ -128,4 +129,144 @@ export function gameLineRead({
     };
   }
   return { winner, total };
+}
+
+function sameTeam(a, b) {
+  const left = String(a || '').toLowerCase().trim();
+  const right = String(b || '').toLowerCase().trim();
+  if (!left || !right) return false;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function restText(rows, gameStart) {
+  if (!rows || typeof gameStart !== 'number') return null;
+  let last = null;
+  for (const row of rows) {
+    if (!row.done || !(row.date < gameStart)) continue;
+    if (last == null || row.date > last) last = row.date;
+  }
+  if (last == null) return null;
+  const hours = (gameStart - last) / 36e5;
+  if (!(hours > 0) || hours > 200) return null;
+  if (hours < 36) return 'Back to back';
+  const days = Math.max(1, Math.round(hours / 24));
+  return days === 1 ? '1 day' : `${days} days`;
+}
+
+function edgeText(edge) {
+  const pts = Math.round(edge * 100);
+  return pts > 0 ? `+${pts}` : String(pts);
+}
+
+function overProbability(env, line) {
+  const mean = env.homeEG + env.awayEG;
+  if (env.cfg.kind === 'goals') return clamp(1 - poissonAtMost(Math.floor(line), mean), 0.08, 0.92);
+  return clamp(1 - normalCdf((line - mean) / env.cfg.totalSigma), 0.08, 0.92);
+}
+
+function homeWin(env) {
+  if (env.cfg.kind === 'goals') return nhlHomeWin(env.homeEG, env.awayEG);
+  return clamp(normalCdf((env.homeEG - env.awayEG) / env.cfg.marginSigma), 0.08, 0.92);
+}
+
+export function gameEnvironment({
+  league,
+  homeGames,
+  awayGames,
+  homeName,
+  awayName,
+  homeAbbr,
+  awayAbbr,
+  homeRows,
+  awayRows,
+  gameStart,
+}) {
+  const cfg = LEAGUE[league];
+  if (!cfg || !homeGames?.length || !awayGames?.length) return null;
+  const { homeEG, awayEG, games } = rates(homeGames, awayGames, cfg);
+  const unit = cfg.kind === 'goals' ? 'goals' : 'pts';
+  const factors = [
+    { id: 'base', label: homeAbbr || homeName || 'Home', value: `${homeEG.toFixed(1)} ${unit}` },
+    { id: 'base', label: awayAbbr || awayName || 'Road', value: `${awayEG.toFixed(1)} ${unit}` },
+    { id: 'pace', label: 'Pace', value: (homeEG + awayEG).toFixed(1) },
+  ];
+  const homeRest = restText(homeRows, gameStart);
+  const awayRest = restText(awayRows, gameStart);
+  if (homeRest) factors.push({ id: 'rest', label: `${homeAbbr || 'Home'} rest`, value: homeRest });
+  if (awayRest) factors.push({ id: 'rest', label: `${awayAbbr || 'Road'} rest`, value: awayRest });
+  factors.push({ id: 'base', label: 'Sample', value: `${games} games` });
+  return {
+    cfg,
+    homeEG,
+    awayEG,
+    games,
+    homeName,
+    awayName,
+    homeAbbr,
+    awayAbbr,
+    homeP: homeWin({ cfg, homeEG, awayEG }),
+    factors,
+  };
+}
+
+function modelChips(modelP, price, modelLabel, proj) {
+  const edge = modelP - price;
+  const chips = [];
+  if (proj != null && Number.isFinite(proj)) chips.push({ id: 'proj', label: 'Proj', value: proj.toFixed(1) });
+  chips.push({ id: 'model', label: 'Model', value: modelLabel, on: true });
+  chips.push({ id: 'edge', label: 'Edge', value: edgeText(edge), on: Math.abs(edge) >= 0.04 });
+  return chips;
+}
+
+function parseSpread(label) {
+  const match = String(label || '').match(/^(.*)\s+([+-]\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  const signed = Number(match[2]);
+  if (!Number.isFinite(signed)) return null;
+  return { team: match[1].trim(), signed };
+}
+
+function teamTotalName(row) {
+  if (row.teamName) return row.teamName;
+  const match = String(row.player || '').match(/^(.+?)\s+over\b/i);
+  return match ? match[1].trim() : '';
+}
+
+export function lineCardModel(row, env) {
+  if (!env || !row) return null;
+  const price = typeof row.marketP === 'number' ? row.marketP : null;
+  if (row.sideText === 'moneyline' && price != null) {
+    const home = sameTeam(row.player, env.homeName);
+    const away = sameTeam(row.player, env.awayName);
+    if (!home && !away) return null;
+    const modelP = home ? env.homeP : 1 - env.homeP;
+    return modelChips(modelP, price, `Win ${Math.round(modelP * 100)}%`, null);
+  }
+  if (row.sideText === 'total' && price != null && typeof row.line === 'number' && !String(row.type || '').includes('points_')) {
+    const overP = overProbability(env, row.line);
+    const under = /^under\b/i.test(row.player || '');
+    const modelP = under ? 1 - overP : overP;
+    const label = under ? `Under ${Math.round(modelP * 100)}%` : `Over ${Math.round(modelP * 100)}%`;
+    return modelChips(modelP, price, label, env.homeEG + env.awayEG);
+  }
+  if (row.sideText === 'spread' && price != null && env.cfg.kind === 'points') {
+    const parsed = parseSpread(row.player);
+    if (!parsed) return null;
+    const home = sameTeam(parsed.team, env.homeName);
+    const away = sameTeam(parsed.team, env.awayName);
+    if (!home && !away) return null;
+    const mean = home ? env.homeEG - env.awayEG : env.awayEG - env.homeEG;
+    const modelP = clamp(normalCdf((mean + parsed.signed) / env.cfg.marginSigma), 0.05, 0.95);
+    return modelChips(modelP, price, `Cover ${Math.round(modelP * 100)}%`, mean);
+  }
+  if (row.type === 'basketball_team_total_points' && env.cfg.teamSigma && typeof row.line === 'number' && typeof row.yes === 'number') {
+    const name = teamTotalName(row);
+    const home = sameTeam(name, env.homeName);
+    const away = sameTeam(name, env.awayName);
+    if (!home && !away) return null;
+    const mean = home ? env.homeEG : env.awayEG;
+    const overP = clamp(1 - normalCdf((row.line - mean) / env.cfg.teamSigma), 0.05, 0.95);
+    return modelChips(overP, row.yes, `Over ${Math.round(overP * 100)}%`, mean);
+  }
+  return null;
 }
