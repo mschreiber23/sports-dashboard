@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
-import TeamRow from './TeamRow';
+import HomeTeamScores from './HomeTeamScores';
 import { SPORTS } from '../api/espn';
 import useSportsDaySelection from '../hooks/useSportsDay';
-import { teamsWithGamesFirst } from '../utils/homeTeamOrder';
 import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const SLUG_TO_SPORT = { mlb:'mlb', nba:'nba', nfl:'nfl', nhl:'nhl', baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl' };
@@ -61,17 +60,6 @@ export default function MyTeams({ editMode = false, setEditMode }) {
   const handleHiddenChange = useCallback((teamId, sport, isHidden) => {
     setHiddenTeams((prev) => ({ ...prev, [`${teamId}-${sport}`]: isHidden }));
   }, []);
-
-  // Teams with a game on the selected day float above the rest.
-  const [playingOnDay, setPlayingOnDay] = useState({});
-  const handlePlayingChange = useCallback((teamId, sport, isPlaying) => {
-    const key = `${sport}-${teamId}`;
-    setPlayingOnDay((prev) => {
-      if (prev[key] === isPlaying) return prev;
-      return { ...prev, [key]: isPlaying };
-    });
-  }, []);
-  useEffect(() => { setPlayingOnDay({}); }, [dateStr]);
 
   const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
 
@@ -281,29 +269,16 @@ export default function MyTeams({ editMode = false, setEditMode }) {
       )}
 
       {!editMode && (
-        <>
-          <div className="teams-grid">
-            {teamsWithGamesFirst(
-              favorites.teams.filter(ft => ft.sport !== 'milb'),
-              playingOnDay,
-            ).map(({ sport, team }) => {
-              const autoHidden   = hiddenTeams[`${team.id}-${sport}`] === true;
-              const manualHidden = isManuallyHidden(team.id, sport);
-              if ((autoHidden || manualHidden) && !showHidden) return null;
-              return (
-                <TeamRow
-                  key={`${sport}-${team.id}`}
-                  sport={sport}
-                  team={team}
-                  dateStr={dateStr}
-                  onHiddenChange={handleHiddenChange}
-                  onPlayingChange={handlePlayingChange}
-                />
-              );
-            })}
-          </div>
-
-        </>
+        <HomeTeamScores
+          teams={favorites.teams.filter((ft) => {
+            if (ft.sport === 'milb') return false;
+            const autoHidden = hiddenTeams[`${ft.team.id}-${ft.sport}`] === true;
+            const manualHidden = isManuallyHidden(ft.team.id, ft.sport);
+            return showHidden || (!autoHidden && !manualHidden);
+          })}
+          dateStr={dateStr}
+          onHiddenChange={handleHiddenChange}
+        />
       )}
     </section>
   );

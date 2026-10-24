@@ -7034,6 +7034,127 @@ thead .dfs-sticky-player {
   max-width: 100%;
 }
 .teams-grid > * { min-width: 0; max-width: 100%; }
+
+/* Compact home score tiles. The full cards stay on the Scores page. */
+.hts { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.hts-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 640px) {
+  .hts-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 900px) {
+  .hts-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+.hts-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+  padding: 8px 10px 9px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0f0f13;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hts-tile:hover { border-color: rgba(255,255,255,0.2); }
+.hts-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 14px;
+  margin-bottom: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.hts-status span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hts-status-live { color: var(--live); text-transform: none; letter-spacing: 0; font-size: 11px; }
+.hts-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hts-logo { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
+.hts-logo-empty { display: inline-block; }
+.hts-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hts-score {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.hts-score-dim { color: var(--text2); font-weight: 700; }
+.hts-skel {
+  height: 68px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+}
+.hts-upcoming { display: flex; flex-direction: column; gap: 6px; }
+.hts-subhead {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.hts-up-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0f0f13;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hts-up-row:hover { border-color: rgba(255,255,255,0.2); }
+.hts-up-match { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+.hts-up-name {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hts-up-at { color: var(--text2); font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.hts-up-when {
+  margin-left: auto;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 639px) {
+  .hts-up-row { flex-wrap: wrap; row-gap: 2px; }
+  .hts-up-match { flex-basis: 100%; }
+  .hts-up-when { margin-left: 24px; }
+}
 @media (min-width: 768px) {
   .teams-grid { grid-template-columns: repeat(2, 1fr); }
 }
