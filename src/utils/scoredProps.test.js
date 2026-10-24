@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildReads, ledgerReport, refreshReads } from './propReads.js';
-import { accuracyReport, stakeForUnit } from './propBook.js';
+import { accuracyReport, keptLikelySide, stakeForUnit, takerQuote, yesOnlyLeague } from './propBook.js';
 import { learnCalibration } from './propCalibration.js';
-import { BET_PRICE_MAX, countsInScore } from './scoredProps.js';
+import { BET_PRICE_MAX, affordablePrice, countsInScore } from './scoredProps.js';
 
 const goal = {
   league: 'nhl',
@@ -218,4 +218,104 @@ test('new reads skip goal props and keep point props', () => {
   assert.equal(reads.length, 1);
   assert.equal(reads[0].propType, 'hockey_player_points');
   assert.equal(reads[0].line, 1);
+});
+
+test('an nba yes is graded and an nba no stays out of the score', () => {
+  const yes = {
+    ...points,
+    id: 'nba-yes',
+    league: 'nba',
+    propType: 'basketball_player_points',
+    player: 'Scorer',
+    price: 0.48,
+    modelP: 0.56,
+    baseP: 0.56,
+    edge: 0.08,
+    result: 'hit',
+  };
+  const no = {
+    ...yes,
+    id: 'nba-no',
+    player: 'Under',
+    price: 0.55,
+    modelP: 0.45,
+    baseP: 0.45,
+    edge: -0.1,
+    result: 'miss',
+  };
+  assert.equal(countsInScore(yes), true);
+  assert.equal(countsInScore(no), false);
+  const ledger = ledgerReport([yes, no, points]);
+  assert.equal(ledger.graded, 2);
+  assert.equal(ledger.callHits, 2);
+  const fit = learnCalibration([yes, no]);
+  assert.equal(fit.nba.graded, 1);
+  assert.equal(fit.nhl.graded, 0);
+  const sport = accuracyReport([yes, no]).sports.find((item) => item.league === 'nba');
+  assert.equal(sport.graded, 1);
+  assert.equal(sport.hits, 1);
+});
+
+test('an upcoming nba prop is saved the same way as a hockey points prop', () => {
+  const now = Date.now();
+  const gameStart = now + 60_000;
+  const context = Array.from({ length: 10 }, () => ({
+    date: '2026-01-02', min: 34, fga: 18, pts: 28, tpa: 6, tpm: 2, reb: 6, ast: 5, pf: 2, stl: 1, blk: 0.5,
+  }));
+  const logs = {
+    [`nba|Jayson Tatum|${gameStart}`]: {
+      series: { basketball_player_points: [28, 28, 28, 28, 28, 28, 28, 28, 28, 28] },
+      prior: { basketball_player_points: [28, 28, 28, 28, 28, 28, 28, 28] },
+      context,
+      priorContext: context,
+    },
+  };
+  const reads = buildReads({
+    now,
+    logs,
+    games: [{
+      league: 'nba',
+      key: 'nba-game',
+      title: 'BOS at WSH',
+      gameStart,
+      rows: [{
+        section: 'player',
+        player: 'Jayson Tatum',
+        type: 'basketball_player_points',
+        line: 20.5,
+        yes: 0.45,
+        gameStart,
+        teamName: 'Celtics',
+        opponentName: 'Wizards',
+      }],
+    }],
+  });
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0].league, 'nba');
+  assert.equal(reads[0].line, 20.5);
+  assert.equal(countsInScore(reads[0]), true);
+});
+
+test('an nba prop can be yes and cannot be no', () => {
+  assert.equal(yesOnlyLeague('nba'), true);
+  assert.equal(yesOnlyLeague('nhl'), false);
+  assert.equal(yesOnlyLeague('nfl'), false);
+  assert.equal(keptLikelySide('nba', 'no'), null);
+  assert.equal(keptLikelySide('nba', 'yes'), 'yes');
+  assert.equal(keptLikelySide('nhl', 'no'), 'no');
+  assert.equal(keptLikelySide('nfl', null), null);
+});
+
+test('a 72% mid with a 95% ask is not a realistic price to win $25', () => {
+  const wide = { yes: 0.72, bid: 0.47, ask: 0.95 };
+  assert.equal(takerQuote(wide, 'yes'), 0.95);
+  assert.equal(affordablePrice(takerQuote(wide, 'yes')), false);
+  assert.ok(stakeForUnit(takerQuote(wide, 'yes'), 25) > 36);
+  const no = takerQuote(wide, 'no');
+  assert.ok(no > 0.5 && no <= BET_PRICE_MAX);
+  const tight = takerQuote({ yes: 0.52, bid: 0.5, ask: 0.54 }, 'yes');
+  assert.equal(tight, 0.54);
+  assert.equal(affordablePrice(tight), true);
+  assert.ok(stakeForUnit(tight, 25) <= 36);
+  assert.equal(takerQuote({ yes: 0.52 }, 'yes'), 0.52);
 });

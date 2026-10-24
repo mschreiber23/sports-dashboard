@@ -68,6 +68,7 @@ export function learnCalibration(rows) {
   return {
     nfl: fitLeague(scored, 'nfl'),
     nhl: fitLeague(scored, 'nhl'),
+    nba: fitLeague(scored, 'nba'),
   };
 }
 

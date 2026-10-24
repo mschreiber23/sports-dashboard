@@ -8,17 +8,20 @@ import { recentPlayerLogs, chartLabel } from '../api/playerLogs';
 import { bookLabel } from '../utils/propHit';
 import { nhlPropEdge, nhlFactorLines, NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { nflPropEdge, nflFactorLines, nflModeled } from '../utils/nflEdge';
+import { nbaPropEdge, nbaFactorLines, nbaModeled } from '../utils/nbaEdge';
 import { loadTeamRoles, mergeTeammates, playerRole, rolesForTeam, sameName, sameTeam } from '../api/nflInjuries';
+import { loadNbaInjuries, teamAbsences } from '../api/nbaInjuries';
 import { nflWeekSpan } from '../api/nfl';
-import { espnAbbr, homeSide, matchupContext, teamRecentGames } from '../api/teamForm';
+import { espnAbbr, homeSide, matchupContext, orientGame, teamRecentGames } from '../api/teamForm';
 import { loadNflWeather } from '../api/nflWeather';
-import { gameLineRead } from '../utils/gameLineEdge';
+import { gameEnvironment, gameLineRead, lineCardModel } from '../utils/gameLineEdge';
 import PropLedger from '../components/PropLedger';
 import ModelTicker from '../components/ModelTicker';
 import TradeBook from '../components/TradeBook';
 import TradeButton from '../components/TradeButton';
 import { usePropSync } from '../components/PropSync';
 import { BET_PRICE_MAX, affordablePrice } from '../utils/scoredProps';
+import { keptLikelySide, takerQuote, yesOnlyLeague } from '../utils/propBook';
 import { rememberSport } from '../utils/lastSport';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
@@ -219,15 +222,15 @@ function mainListed(rows, kind) {
 }
 
 function addGameLines(picks, game, forms) {
-  if (game.league !== 'nhl' && game.league !== 'nfl') return;
+  if (game.league !== 'nhl' && game.league !== 'nfl' && game.league !== 'nba') return;
   const winner = mainListed(game.rows, 'winner');
   const total = mainListed(game.rows, 'total');
   const teams = winner?.teams?.length >= 2 ? winner.teams : total?.teams;
   if (!teams || teams.length < 2) return;
-  const formA = forms?.[`${game.league}|${espnAbbr(teams[0].abbr)}`];
-  const formB = forms?.[`${game.league}|${espnAbbr(teams[1].abbr)}`];
+  const formA = forms?.[`${game.league}|${espnAbbr(teams[0].abbr, game.league)}`];
+  const formB = forms?.[`${game.league}|${espnAbbr(teams[1].abbr, game.league)}`];
   if (!formA?.recent?.length || !formB?.recent?.length) return;
-  const firstIsHome = homeSide(formA.rows, teams[1].abbr, game.gameStart);
+  const firstIsHome = homeSide(formA.rows, teams[1].abbr, game.gameStart, game.league);
   if (firstIsHome == null) return;
   const home = firstIsHome ? teams[0] : teams[1];
   const away = firstIsHome ? teams[1] : teams[0];
@@ -249,7 +252,9 @@ function addGameLines(picks, game, forms) {
     overPrice: over?.price,
   });
   if (!read?.winner) return;
-  if (read.winner.price <= BET_PRICE_MAX) picks.push({
+  const winnerTakers = takersFor(winner?.sides, read.winner.name);
+  const winnerButton = winnerTakers.takerYes ?? read.winner.price;
+  if (read.winner.price <= BET_PRICE_MAX && winnerButton <= BET_PRICE_MAX) picks.push({
     id: `win|${game.key}`,
     player: read.winner.name,
     prop: 'to win',
@@ -262,7 +267,7 @@ function addGameLines(picks, game, forms) {
     gameStart: game.gameStart,
     market: marketPct(read.winner.price),
     price: read.winner.price,
-    ...takersFor(winner?.sides, read.winner.name),
+    ...winnerTakers,
     league: game.league,
     kind: 'winner',
     propType: 'game_winner',
@@ -271,8 +276,8 @@ function addGameLines(picks, game, forms) {
       const name = team.name.toLowerCase();
       const pick = read.winner.name.toLowerCase();
       return name === pick || name.includes(pick) || pick.includes(name);
-    }) || {}).abbr),
-    teams: teams.map((team) => ({ name: team.name, abbr: espnAbbr(team.abbr) })),
+    }) || {}).abbr, game.league),
+    teams: teams.map((team) => ({ name: team.name, abbr: espnAbbr(team.abbr, game.league) })),
     rate: null,
     edge: read.winner.edge,
     edgePts: edgePoints(read.winner.edge),
@@ -282,6 +287,8 @@ function addGameLines(picks, game, forms) {
     tags: read.winner.tags,
   });
   if (!read.total || read.total.price > BET_PRICE_MAX) return;
+  const totalTakers = takersFor(total?.sides, read.total.label.startsWith('Over') ? 'Over' : 'Under');
+  if ((totalTakers.takerYes ?? read.total.price) > BET_PRICE_MAX) return;
   picks.push({
     id: `total|${game.key}`,
     player: read.total.label,
@@ -295,12 +302,12 @@ function addGameLines(picks, game, forms) {
     gameStart: game.gameStart,
     market: marketPct(read.total.price),
     price: read.total.price,
-    ...takersFor(total?.sides, read.total.label.startsWith('Over') ? 'Over' : 'Under'),
+    ...totalTakers,
     league: game.league,
     kind: 'total',
     propType: 'game_total',
     pick: read.total.label.startsWith('Over') ? 'Over' : 'Under',
-    teams: teams.map((team) => ({ name: team.name, abbr: espnAbbr(team.abbr) })),
+    teams: teams.map((team) => ({ name: team.name, abbr: espnAbbr(team.abbr, game.league) })),
     rate: null,
     edge: read.total.edge,
     edgePts: edgePoints(read.total.edge),
@@ -328,7 +335,7 @@ function hurtLog(logs, name) {
   return hit ? hit[1] : null;
 }
 
-function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, weatherByGame) {
+function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, weatherByGame, injuries) {
   const picks = [];
   for (const game of games) {
     if (!game.rows) continue;
@@ -349,12 +356,15 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
       if (!recent || recent.length < LIKELY_MIN_GAMES) continue;
       const edgeFn = (sample.type === 'hockey_player_goals' || sample.type === 'hockey_player_points')
         ? nhlPropEdge
-        : (game.league === 'nfl' && nflModeled(sample.type) ? nflPropEdge : null);
+        : (game.league === 'nfl' && nflModeled(sample.type) ? nflPropEdge
+          : (game.league === 'nba' && nbaModeled(sample.type) ? nbaPropEdge : null));
       if (edgeFn) {
-        const ranked = game.league === 'nfl' || game.league === 'nhl';
+        const ranked = game.league === 'nfl' || game.league === 'nhl' || game.league === 'nba';
         const candidates = ranked ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
-          if (ranked && !affordablePrice(line.yes) && !affordablePrice(1 - line.yes)) continue;
+          const yesOnly = yesOnlyLeague(game.league);
+          if (ranked && yesOnly && !affordablePrice(line.yes)) continue;
+          if (ranked && !yesOnly && !affordablePrice(line.yes) && !affordablePrice(1 - line.yes)) continue;
           if (game.league === 'nfl' && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]))) continue;
           const model = edgeFn({
             type: sample.type,
@@ -391,13 +401,18 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
                 role: playerRole(teamRoles, sample.player, log?.position),
               };
             })() : {}),
+            ...(game.league === 'nba' ? {
+              playerName: sample.player,
+              absences: teamAbsences(injuries, sample.teamName),
+            } : {}),
             calibration: calibration?.[game.league],
           });
           if (!model) continue;
-          const call = ranked ? likelyCall(model, line.yes) : 'yes';
+          const call = keptLikelySide(game.league, ranked ? likelyCall(model, line.yes) : 'yes');
           if (ranked && !call) continue;
           const no = call === 'no';
-          if (ranked && !affordablePrice(no ? 1 - line.yes : line.yes)) continue;
+          const quote = takerQuote(line, no ? 'no' : 'yes');
+          if (ranked && !affordablePrice(quote)) continue;
           const sideEdge = no ? line.yes - model.p : model.edge;
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
@@ -425,6 +440,8 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
       }
       for (const best of byRate.values()) {
         const yes = typeof best.line.yes === 'number' ? best.line.yes : null;
+        const quote = takerQuote(best.line, 'yes');
+        if (quote == null || quote > BET_PRICE_MAX) continue;
         const edge = yes == null ? 0 : best.rate / 100 - yes;
         picks.push(likelyPick(game, sample, best.line, recent, {
           rate: best.rate,
@@ -541,6 +558,30 @@ const NFL_FACTOR_KEY = [
   ['Weather', 'Outdoor wind and precipitation. From 12 mph, or in rain or snow, passing and receiving volume comes down. Rushing picks up in heavy wind, rain, or snow. A dome does not move the read.'],
 ];
 
+const NBA_FACTOR_KEY = [
+  ['Model', 'Our read of the chance this line hits. Most of it is expected minutes times per-minute production, with shooting pulled toward a normal rate. The last-10 record is a small piece, and this book’s price pulls the read back unless the gap is large.'],
+  ['Edge', 'The model percent minus the contract’s yes price, in percentage points. A positive number means the read is above the price. This is this book only.'],
+  ['Last 10', 'How many of the last 10 games cleared this exact line. The big percentage beside the name is this same record.'],
+  ['Long sample', 'How often the line hit in the older games, up to 30. With fewer than 8 of those games, this shows a typical rate instead.'],
+  ['Minutes', 'Average minutes over the last five games. Expected minutes lean on the last five, unless the last three are a sharp drop or jump.'],
+  ['Prior min', 'Average minutes in the games before those five.'],
+  ['FGA, 3PA, rebounds, assists', 'The chances that feed this prop. Points use field-goal attempts, threes use three-point attempts, and rebounds and assists use those totals. PRA shows all three.'],
+  ['Security', 'Stable means the recent minutes barely move. Volatile means they swing by about eight minutes. Foul risk is four or more fouls a game, which trims the minutes a little.'],
+  ['Shooting', 'Points per field-goal attempt, or three-point percentage, pulled toward a normal NBA rate. A hot or cold stretch is faded. The chip still shows the faded rate.'],
+  ['Volume', 'The chance implied by expected minutes and that rate, before the price pulls it back.'],
+  ['Proj', 'The projected stat for tonight, after minutes, role, matchup, pace, total, spread, site, and rest.'],
+  ['Out', 'Teammates listed out. Their names are shown. The projection does not add their shots unless this player’s own minutes have already changed.'],
+  ['Lineup', 'This player is listed out or day-to-day. Out caps the read. Day-to-day trims it.'],
+  ['vs opponent', 'How often this line hit against tonight’s opponent. It moves the read only with at least three of those games.'],
+  ['Opp pts', 'Points the opponent has allowed per game lately. More than about 114.5 raises scoring props. Fewer lowers them.'],
+  ['Pace', 'The two teams’ recent games, scored as combined points. This is a points environment, not a possession count. A faster environment adds a little.'],
+  ['Spread', 'This team’s spread. A double-digit number trims minutes for a player already at 28 or more, because a blowout can cost the fourth quarter.'],
+  ['Game total', 'The full-game total priced closest to 50/50. The model compares it with 226.'],
+  ['Site', 'Home or road. Home is a small lift.'],
+  ['Rest', 'Hours since the last game. Under 36 hours is a back-to-back. A third game in four nights trims a little more.'],
+  ['Not in this feed', 'The likely defender, how the opponent defends a position, prices at other books, and whether a parlay leg overlaps this one are not scored. Counting those as extra yes votes would not be a projection.'],
+];
+
 const FACTOR_TAGS = {
   'shot volume': 'volume',
   chances: 'volume',
@@ -577,6 +618,20 @@ const FACTOR_TAGS = {
   'run script': 'script',
   'implied points': 'implied',
   'low implied': 'implied',
+  'minutes up': 'min',
+  'minutes down': 'min',
+  'usage up': 'usage',
+  'usage down': 'usage',
+  'foul risk': 'security',
+  'volatile minutes': 'security',
+  'blowout': 'spread',
+  'hot shooting': 'shoot',
+  'cold shooting': 'shoot',
+  'pace up': 'pace',
+  'pace down': 'pace',
+  out: 'lineup',
+  'day to day': 'lineup',
+  '3 in 4': 'rest',
 };
 
 function shortOpp(name, abbr) {
@@ -603,6 +658,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
     focusKey && focus?.line != null ? { [focusKey]: focus.line } : {}
   ));
   const [keyOpen, setKeyOpen] = useState(false);
+  const [injuries, setInjuries] = useState([]);
   const focusNode = useRef(null);
   const scrolledFocus = useRef('');
 
@@ -641,6 +697,13 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
     Promise.all(Array.from({ length: Math.min(4, players.length) }, worker));
     return () => { cancel = true; };
   }, [logKey, league, activeStat]);
+
+  useEffect(() => {
+    if (league !== 'nba') return undefined;
+    let cancel = false;
+    loadNbaInjuries().then((rows) => { if (!cancel) setInjuries(rows || []); }).catch(() => {});
+    return () => { cancel = true; };
+  }, [league]);
 
   const teams = useMemo(() => {
     const names = new Set();
@@ -714,7 +777,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
         </select>
       </div>
 
-      {(league === 'nhl' || league === 'nfl') && (
+      {(league === 'nhl' || league === 'nfl' || league === 'nba') && (
         <>
           <button type="button" className="pp-key-btn" aria-expanded={keyOpen} onClick={() => setKeyOpen((open) => !open)}>
             {keyOpen ? 'Hide stat key' : 'Stat key'}
@@ -722,7 +785,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
           {keyOpen && (
             <div className="pp-key">
               <p>Blue numbers are the inputs that moved the model for the line selected on that player. Yes and No stay the contract price.</p>
-              {(league === 'nfl' ? NFL_FACTOR_KEY : FACTOR_KEY).map(([label, text]) => (
+              {(league === 'nfl' ? NFL_FACTOR_KEY : league === 'nba' ? NBA_FACTOR_KEY : FACTOR_KEY).map(([label, text]) => (
                 <div key={label} className="pp-key-row">
                   <div className="pp-key-label">{label}</div>
                   <div className="pp-key-text">{text}</div>
@@ -770,6 +833,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
             opponentLabel: shortOpp(group.opponentName, group.opponentAbbr),
             matchup: log?.matchup,
             weather: weather || null,
+            playerName: group.player,
+            absences: league === 'nba' ? teamAbsences(injuries, group.teamName) : [],
             ...matchupContext(forms, league, group.teamAbbr, group.opponentAbbr, group.gameStart),
             ...(league === 'nfl' ? (() => {
               const teamRoles = rolesForTeam(roles, group.teamName);
@@ -788,8 +853,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
               };
             })() : {}),
           };
-          const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : null);
-          const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : null);
+          const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : (league === 'nba' ? nbaFactorLines : null));
+          const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : (league === 'nba' ? nbaPropEdge : null));
           const factors = factorFn ? factorFn(factorInput) : [];
           const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes, calibration }) : null;
           const moved = new Set((model?.tags || []).map((tag) => {
@@ -835,7 +900,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                 </div>
                 <div className="pp-sides">
                   <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>
-                  <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>
+                  {league !== 'nba' && <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>}
                 </div>
               </div>
               {factors.length > 0 && (
@@ -843,13 +908,13 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                   {model && (
                     <div className="pp-factor pp-factor-on">
                       <span>Model</span>
-                      <span>{(-model.edge >= NHL_EDGE_MIN) ? `No ${Math.round((1 - model.p) * 100)}%` : `${Math.round(model.p * 100)}%`}</span>
+                      <span>{(league !== 'nba' && -model.edge >= NHL_EDGE_MIN) ? `No ${Math.round((1 - model.p) * 100)}%` : `${Math.round(model.p * 100)}%`}</span>
                     </div>
                   )}
                   {model && (
-                    <div className={`pp-factor ${(model.edge >= NHL_EDGE_MIN || -model.edge >= NHL_EDGE_MIN) ? 'pp-factor-on' : ''}`}>
+                    <div className={`pp-factor ${(league === 'nba' ? model.edge >= NHL_EDGE_MIN : (model.edge >= NHL_EDGE_MIN || -model.edge >= NHL_EDGE_MIN)) ? 'pp-factor-on' : ''}`}>
                       <span>Edge</span>
-                      <span>{(-model.edge >= NHL_EDGE_MIN) ? `+${Math.round(-model.edge * 100)}` : (model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100))}</span>
+                      <span>{(league !== 'nba' && -model.edge >= NHL_EDGE_MIN) ? `+${Math.round(-model.edge * 100)}` : (model.edge >= 0 ? `+${Math.round(model.edge * 100)}` : Math.round(model.edge * 100))}</span>
                     </div>
                   )}
                   {factors.map((item) => (
@@ -879,7 +944,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                     pick: 'yes',
                     edge: model ? model.edge : null,
                     modelP: model ? model.p : null,
-                  }} recommend={model && -model.edge >= NHL_EDGE_MIN ? 'no' : (model && model.edge >= NHL_EDGE_MIN ? 'yes' : null)} />
+                  }} yesOnly={league === 'nba'} recommend={league === 'nba' ? (model && model.edge >= NHL_EDGE_MIN ? 'yes' : null) : (model && -model.edge >= NHL_EDGE_MIN ? 'no' : (model && model.edge >= NHL_EDGE_MIN ? 'yes' : null))} />
                 </div>
               )}
               {(recent || versus) && (
@@ -926,6 +991,25 @@ function GameDetail({ game, rows, loading, calibration, focus, roles, opportunit
   const lines = primaryLines(list.filter((row) => row.section === 'line'));
   const props = list.filter((row) => row.section === 'prop');
   const cards = section === 'lines' ? lines : props;
+  const slate = slateContext(list);
+  const env = useMemo(() => {
+    const markets = rows || [];
+    const teams = markets.find((row) => row.teams?.length >= 2)?.teams;
+    const oriented = orientGame({ league: game.league, teams, forms, gameStart: game.gameStart });
+    if (!oriented) return null;
+    return gameEnvironment({
+      league: game.league,
+      homeGames: oriented.homeForm.recent,
+      awayGames: oriented.awayForm.recent,
+      homeName: oriented.home.name,
+      awayName: oriented.away.name,
+      homeAbbr: espnAbbr(oriented.home.abbr, game.league),
+      awayAbbr: espnAbbr(oriented.away.abbr, game.league),
+      homeRows: oriented.homeForm.rows,
+      awayRows: oriented.awayForm.rows,
+      gameStart: game.gameStart,
+    });
+  }, [game, rows, forms]);
   useEffect(() => {
     if (scrolledLine.current || section !== 'lines' || !lineNode.current) return;
     scrolledLine.current = true;
@@ -948,10 +1032,35 @@ function GameDetail({ game, rows, loading, calibration, focus, roles, opportunit
           ? <div className="loading-text">Loading markets…</div>
           : (
             <div className="props-list">
+              {(env || slate.spreadLabel || slate.total != null) && (
+                <div className="pp-game-env">
+                  <div className="pp-game-env-label">{section === 'lines' ? 'Game pick factors' : 'Game prop factors'}</div>
+                  <div className="pp-factors">
+                    {(env?.factors || []).map((item) => (
+                      <div key={`${item.label}-${item.value}`} className="pp-factor">
+                        <span>{item.label}</span>
+                        <span>{item.value}</span>
+                      </div>
+                    ))}
+                    {slate.spreadLabel && (
+                      <div className="pp-factor">
+                        <span>Spread</span>
+                        <span>{slate.spreadLabel}</span>
+                      </div>
+                    )}
+                    {slate.total != null && (
+                      <div className="pp-factor">
+                        <span>Total</span>
+                        <span>{slate.total}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {cards.length === 0 && <div className="empty-state"><p>No markets in this section.</p></div>}
               {cards.map((row) => {
                 const focused = lineMatchesFocus(row, focus);
-                return <PropCard key={row.id} row={row} focused={focused} cardRef={focused ? lineNode : null} />;
+                return <PropCard key={row.id} row={row} focused={focused} cardRef={focused ? lineNode : null} modelChips={lineCardModel(row, env)} />;
               })}
             </div>
           )
@@ -960,7 +1069,7 @@ function GameDetail({ game, rows, loading, calibration, focus, roles, opportunit
   );
 }
 
-function PropCard({ row, focused, cardRef }) {
+function PropCard({ row, focused, cardRef, modelChips }) {
   const spread = row.spread == null ? null : `${Math.round(row.spread * 100)}¢`;
   return (
     <a ref={cardRef} className={`props-card${focused ? ' props-card-focus' : ''}`} href={row.url} target="_blank" rel="noopener noreferrer">
@@ -983,6 +1092,16 @@ function PropCard({ row, focused, cardRef }) {
         {spread && <span>{spread} spread</span>}
         {row.liquidity != null && <span>{formatLiquidity(row.liquidity)}</span>}
       </div>
+      {modelChips?.length > 0 && (
+        <div className="pp-factors">
+          {modelChips.map((item) => (
+            <div key={`${item.label}-${item.value}`} className={`pp-factor ${item.on ? 'pp-factor-on' : ''}`}>
+              <span>{item.label}</span>
+              <span>{item.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </a>
   );
 }
@@ -1036,7 +1155,7 @@ function LikelyRow({ item, sport, onOpen }) {
           <span>edge</span>
         </div>
       </button>
-      <TradeButton draft={likelyDraft(item)} compact recommend={item.edge >= NHL_EDGE_MIN ? (item.prediction === 'no' ? 'no' : 'yes') : null} />
+      <TradeButton draft={likelyDraft(item)} compact maxPrice={BET_PRICE_MAX} yesOnly={yesOnlyLeague(item.league) && !item.gameLine} recommend={item.edge >= NHL_EDGE_MIN ? (item.prediction === 'no' ? 'no' : 'yes') : null} />
     </div>
   );
 }
@@ -1058,6 +1177,7 @@ export default function PropsPage() {
   const [teamDone, setTeamDone] = useState(0);
   const [roleReport, setRoleReport] = useState([]);
   const [hurtLogs, setHurtLogs] = useState({});
+  const [nbaInjuries, setNbaInjuries] = useState([]);
   const hurtTried = useRef(new Set());
   const [reloadKey, setReloadKey] = useState(0);
   const [loadingSlug, setLoadingSlug] = useState('');
@@ -1137,7 +1257,7 @@ export default function PropsPage() {
     const seen = new Set();
     const teams = [];
     for (const game of games) {
-      if (game.league !== 'nhl' && game.league !== 'nfl') continue;
+      if (game.league !== 'nhl' && game.league !== 'nfl' && game.league !== 'nba') continue;
       for (const row of game.rows || []) {
         const abbrs = [
           row.teamAbbr,
@@ -1145,7 +1265,7 @@ export default function PropsPage() {
           ...(row.teams || []).map((team) => team.abbr),
         ];
         for (const abbr of abbrs) {
-          const id = `${game.league}|${espnAbbr(abbr)}`;
+          const id = `${game.league}|${espnAbbr(abbr, game.league)}`;
           if (!abbr || seen.has(id)) continue;
           seen.add(id);
           teams.push({ id, league: game.league, abbr });
@@ -1166,7 +1286,7 @@ export default function PropsPage() {
     return names;
   }, [games]);
   const injuryKey = injuryTeams.join('|');
-  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame) : []), [view, games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame]);
+  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries) : []), [view, games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries]);
   const gamesLoaded = games.filter((game) => game.rows).length;
 
   useEffect(() => {
@@ -1249,6 +1369,14 @@ export default function PropsPage() {
     }).catch(() => {});
     return () => { cancel = true; };
   }, [weatherKey]);
+
+  const wantsNbaInjuries = view === 'likely' && games.some((game) => game.league === 'nba');
+  useEffect(() => {
+    if (!wantsNbaInjuries) return undefined;
+    let cancel = false;
+    loadNbaInjuries().then((rows) => { if (!cancel) setNbaInjuries(rows || []); }).catch(() => {});
+    return () => { cancel = true; };
+  }, [wantsNbaInjuries]);
 
   useEffect(() => {
     hurtTried.current = new Set();
@@ -1396,7 +1524,7 @@ export default function PropsPage() {
           {games.length > 0 && view === 'likely' && (
             <>
               <p className="props-likely-note">
-                NHL and NFL list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the price at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the read uses the games they played together. If a quarterback, back, receiver, or tight end is out or doubtful, the next player at that position takes on that work. Questionable moves about 40% of it. Other sports stay when they hit in 70% or more of the last 10.
+                NHL, NFL, and NBA list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the button at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and that button is still inside the cap. NBA player props are Yes only. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the read uses the games they played together. If a quarterback, back, receiver, or tight end is out or doubtful, the next player at that position takes on that work. Questionable moves about 40% of it. Other sports stay when they hit in 70% or more of the last 10 and the yes button is inside that same cap.
                 {gamesLoaded < games.length ? ` Loading games ${gamesLoaded}/${games.length}.` : ''}
                 {teamJob.length > 0 && teamDone < teamJob.length ? ` Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}.` : ''}
                 {logJob.length > 0 && logDone < logJob.length ? ` Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}.` : ''}

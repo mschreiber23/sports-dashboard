@@ -3,6 +3,7 @@ import { recentPlayerLogs, playerResultOnDate } from './playerLogs';
 import { loadTeamRoles, sameName, sameTeam } from './nflInjuries';
 import { espnAbbr, teamRecentGames } from './teamForm';
 import { loadNflWeather } from './nflWeather';
+import { loadNbaInjuries } from './nbaInjuries';
 import { loadReads, saveReads } from './propStore';
 import { loadTrades, saveTrades } from './tradeStore';
 import { finalScore, gradeMarketTrade } from './gameResult';
@@ -82,7 +83,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   if (stop()) return { reads: rows, calibration };
   const due = gamesToRecord(events, rows, Date.now(), force);
   if (!due.length) {
-    onStatus?.(rows.length ? '' : 'No upcoming NHL or NFL games to record.');
+    onStatus?.(rows.length ? '' : 'No upcoming NHL, NFL, or NBA games to record.');
     return { reads: rows, calibration };
   }
 
@@ -90,7 +91,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   const withRows = await pool(due, 4, async (game) => {
     const props = await loadGameProps(game.key).catch(() => []);
     loaded += 1;
-    onStatus?.(`Recording NHL and NFL games ${loaded}/${due.length}…`);
+    onStatus?.(`Recording NHL, NFL, and NBA games ${loaded}/${due.length}…`);
     return { ...game, rows: props };
   });
   if (stop()) return { reads: rows, calibration };
@@ -164,7 +165,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   const forms = {};
   const abbrs = new Set();
   for (const game of withRows) {
-    if (game.league !== 'nhl' && game.league !== 'nfl') continue;
+    if (game.league !== 'nhl' && game.league !== 'nfl' && game.league !== 'nba') continue;
     for (const row of game.rows || []) {
       if (row.teamAbbr) abbrs.add(`${game.league}|${row.teamAbbr}`);
       if (row.opponentAbbr) abbrs.add(`${game.league}|${row.opponentAbbr}`);
@@ -172,11 +173,14 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   }
   await pool([...abbrs], 4, async (key) => {
     const [league, abbr] = key.split('|');
-    forms[`${league}|${espnAbbr(abbr)}`] = await teamRecentGames(league, abbr).catch(() => null);
+    forms[`${league}|${espnAbbr(abbr, league)}`] = await teamRecentGames(league, abbr).catch(() => null);
   });
   const weatherByGame = await loadNflWeather(withRows).catch(() => ({}));
+  const injuries = withRows.some((game) => game.league === 'nba')
+    ? await loadNbaInjuries().catch(() => [])
+    : [];
   if (stop()) return { reads: rows, calibration };
-  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs, forms, weatherByGame }).map((row) => stampPrediction(priceRead(row, calibration)));
+  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs, forms, weatherByGame, injuries }).map((row) => stampPrediction(priceRead(row, calibration)));
   rows = refreshReads(rows, fresh);
   calibration = learnCalibration(rows);
   publish(rows, calibration, trades);

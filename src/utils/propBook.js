@@ -63,6 +63,29 @@ function quoteContracts(price, unit) {
   };
 }
 
+// Polymarket US sells an NBA player prop as Yes only. No is not a bet there.
+export function yesOnlyLeague(league) {
+  return league === 'nba';
+}
+
+export function keptLikelySide(league, call) {
+  if (call !== 'yes' && call !== 'no') return null;
+  if (yesOnlyLeague(league) && call === 'no') return null;
+  return call;
+}
+
+export function takerQuote(line, prediction) {
+  if (!line) return null;
+  return sideDraft({
+    price: line.yes ?? line.price,
+    bid: line.bid,
+    ask: line.ask,
+    takerYes: line.takerYes,
+    takerNo: line.takerNo,
+    edge: typeof line.edge === 'number' ? line.edge : 0,
+  }, prediction === 'no' ? 'no' : 'yes').price;
+}
+
 export function sideDraft(draft, prediction) {
   const listed = openPrice(draft.price);
   const takingNo = prediction === 'no';
@@ -227,13 +250,13 @@ function seriesFor(rows) {
 
 export function accuracyReport(reads) {
   const graded = (reads || []).filter((row) => countsInScore(row) && (row.result === 'hit' || row.result === 'miss'));
-  const byLeague = new Map([['nhl', []], ['nfl', []]]);
+  const byLeague = new Map([['nhl', []], ['nfl', []], ['nba', []]]);
   for (const row of graded) {
     const league = row.league || 'other';
     if (!byLeague.has(league)) byLeague.set(league, []);
     byLeague.get(league).push(row);
   }
-  const rank = { nhl: 0, nfl: 1 };
+  const rank = { nhl: 0, nfl: 1, nba: 2 };
   const sports = [...byLeague.entries()].map(([league, rows]) => {
     const hits = rows.filter((row) => callGrade(row) === 'hit').length;
     return {
