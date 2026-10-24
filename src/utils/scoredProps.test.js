@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildReads, ledgerReport, refreshReads } from './propReads.js';
-import { accuracyReport, stakeForUnit } from './propBook.js';
+import { accuracyReport, stakeForUnit, takerQuote } from './propBook.js';
 import { learnCalibration } from './propCalibration.js';
-import { BET_PRICE_MAX, countsInScore } from './scoredProps.js';
+import { BET_PRICE_MAX, affordablePrice, countsInScore } from './scoredProps.js';
 
 const goal = {
   league: 'nhl',
@@ -218,4 +218,18 @@ test('new reads skip goal props and keep point props', () => {
   assert.equal(reads.length, 1);
   assert.equal(reads[0].propType, 'hockey_player_points');
   assert.equal(reads[0].line, 1);
+});
+
+test('a 72% mid with a 95% ask is not a realistic price to win $25', () => {
+  const wide = { yes: 0.72, bid: 0.47, ask: 0.95 };
+  assert.equal(takerQuote(wide, 'yes'), 0.95);
+  assert.equal(affordablePrice(takerQuote(wide, 'yes')), false);
+  assert.ok(stakeForUnit(takerQuote(wide, 'yes'), 25) > 36);
+  const no = takerQuote(wide, 'no');
+  assert.ok(no > 0.5 && no <= BET_PRICE_MAX);
+  const tight = takerQuote({ yes: 0.52, bid: 0.5, ask: 0.54 }, 'yes');
+  assert.equal(tight, 0.54);
+  assert.equal(affordablePrice(tight), true);
+  assert.ok(stakeForUnit(tight, 25) <= 36);
+  assert.equal(takerQuote({ yes: 0.52 }, 'yes'), 0.52);
 });

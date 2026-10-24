@@ -7,7 +7,7 @@ function gradeable(draft) {
   return canGradeProp(draft.propType);
 }
 
-function SideButton({ draft, prediction, trades, unit, compact, addTrade, removeTrade, recommend }) {
+function SideButton({ draft, prediction, trades, unit, compact, addTrade, removeTrade, recommend, maxPrice }) {
   const next = sideDraft(draft, prediction);
   if (!(next.price > 0 && next.price < 1)) return null;
   const id = tradeId(next);
@@ -27,6 +27,7 @@ function SideButton({ draft, prediction, trades, unit, compact, addTrade, remove
       </button>
     );
   }
+  if (maxPrice != null && next.price > maxPrice) return null;
   return (
     <button type="button" className={`props-trade${recommend ? ' props-trade-pick' : ''}`} onClick={() => addTrade(next)}>
       {stakeText ? `${label} ${stakeText}` : label}
@@ -34,7 +35,7 @@ function SideButton({ draft, prediction, trades, unit, compact, addTrade, remove
   );
 }
 
-export default function TradeButton({ draft, compact = false, recommend = null }) {
+export default function TradeButton({ draft, compact = false, recommend = null, maxPrice = null }) {
   const { trades, unit, addTrade, removeTrade } = usePropSync();
   if (!draft || !(draft.price > 0 && draft.price < 1)) return null;
   const yesId = tradeId(sideDraft(draft, 'yes'));
@@ -43,8 +44,8 @@ export default function TradeButton({ draft, compact = false, recommend = null }
   if (!existing && !gradeable(draft)) return null;
   return (
     <div className="props-trade-pair">
-      <SideButton draft={draft} prediction="yes" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'yes'} />
-      <SideButton draft={draft} prediction="no" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'no'} />
+      <SideButton draft={draft} prediction="yes" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'yes'} maxPrice={maxPrice} />
+      <SideButton draft={draft} prediction="no" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'no'} maxPrice={maxPrice} />
     </div>
   );
 }

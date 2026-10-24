@@ -63,6 +63,18 @@ function quoteContracts(price, unit) {
   };
 }
 
+export function takerQuote(line, prediction) {
+  if (!line) return null;
+  return sideDraft({
+    price: line.yes ?? line.price,
+    bid: line.bid,
+    ask: line.ask,
+    takerYes: line.takerYes,
+    takerNo: line.takerNo,
+    edge: typeof line.edge === 'number' ? line.edge : 0,
+  }, prediction === 'no' ? 'no' : 'yes').price;
+}
+
 export function sideDraft(draft, prediction) {
   const listed = openPrice(draft.price);
   const takingNo = prediction === 'no';
