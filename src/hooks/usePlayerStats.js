@@ -15,7 +15,7 @@ function readStatsCache(key) {
 
 export default function usePlayerStats(sport, playerId) {
   const year = activeSeasonYear(sport);
-  const ck = `ps_${sport}_${playerId}_${year}`;
+  const ck = `ps2_${sport}_${playerId}_${year}`;
   const [stats, setStats] = useState(() => readStatsCache(ck));
   const [loading, setLoading] = useState(!readStatsCache(ck));
   const [error, setError] = useState(null);
