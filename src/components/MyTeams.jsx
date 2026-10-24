@@ -4,6 +4,7 @@ import HomeTeamScores from './HomeTeamScores';
 import { SPORTS } from '../api/espn';
 import useSportsDaySelection from '../hooks/useSportsDay';
 import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
+import { keptHideFlags, omittedFavorites } from '../utils/homeTeamBoard';
 
 const SLUG_TO_SPORT = { mlb:'mlb', nba:'nba', nfl:'nfl', nhl:'nhl', baseball:'mlb', basketball:'nba', football:'nfl', hockey:'nhl' };
 const SPORT_COLORS  = { mlb:'#e74c3c', nba:'#f39c12', nfl:'#27ae60', nhl:'#3498db' };
@@ -47,8 +48,11 @@ export default function MyTeams({ editMode = false, setEditMode }) {
     });
   }, []);
 
-  const isManuallyHidden = (teamId, sport) => !!manuallyHidden[`${sport}-${teamId}`];
-  const manualHideCount = Object.values(manuallyHidden).filter(Boolean).length;
+  const isManuallyHidden = (teamId, sport) => manuallyHidden[`${sport}-${teamId}`] === true;
+  const boardTeams = favorites.teams.filter((ft) => ft.sport !== 'milb');
+  const boardTeamsRef = useRef(boardTeams);
+  boardTeamsRef.current = boardTeams;
+  const favoriteKey = boardTeams.map((ft) => `${ft.sport}-${ft.team.id}`).join('|');
 
   // Team search state
   const [teamQuery, setTeamQuery]         = useState('');
@@ -61,7 +65,22 @@ export default function MyTeams({ editMode = false, setEditMode }) {
     setHiddenTeams((prev) => ({ ...prev, [`${teamId}-${sport}`]: isHidden }));
   }, []);
 
-  const hiddenCount = Object.values(hiddenTeams).filter(Boolean).length;
+  const hiddenCount = omittedFavorites(boardTeams, manuallyHidden, hiddenTeams).length;
+
+  useEffect(() => {
+    setManuallyHidden((prev) => {
+      // Favorites can still be the empty local cache while the account list
+      // loads. Don't throw away a real hide flag in that gap.
+      const loaded = boardTeamsRef.current;
+      if (!loaded.length && Object.values(prev).some((value) => value === true)) return prev;
+      const next = keptHideFlags(loaded, prev);
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (prevKeys.length === nextKeys.length && nextKeys.every((key) => prev[key] === true)) return prev;
+      try { localStorage.setItem(HIDE_KEY, JSON.stringify(next)); } catch { /* keep the in-memory list */ }
+      return next;
+    });
+  }, [favoriteKey]);
 
   // Auto-focus when picker opens
   useEffect(() => {
@@ -115,9 +134,9 @@ export default function MyTeams({ editMode = false, setEditMode }) {
       <div className="section-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h2 className="section-title">My Teams</h2>
-          {(hiddenCount > 0 || manualHideCount > 0) && (
+          {hiddenCount > 0 && (
             <button className="show-all-btn" onClick={() => setShowHidden((v) => !v)}>
-              {showHidden ? 'Collapse' : `Show All${manualHideCount > 0 ? ` (${manualHideCount} hidden)` : ''}`}
+              {showHidden ? 'Collapse' : `Show All (${hiddenCount} hidden)`}
             </button>
           )}
           {/* Date nav — inline, compact */}
@@ -263,12 +282,8 @@ export default function MyTeams({ editMode = false, setEditMode }) {
 
       {!editMode && (
         <HomeTeamScores
-          teams={favorites.teams.filter((ft) => {
-            if (ft.sport === 'milb') return false;
-            const autoHidden = hiddenTeams[`${ft.team.id}-${ft.sport}`] === true;
-            const manualHidden = isManuallyHidden(ft.team.id, ft.sport);
-            return showHidden || (!autoHidden && !manualHidden);
-          })}
+          teams={boardTeams}
+          concealed={showHidden ? '' : omittedFavorites(boardTeams, manuallyHidden, hiddenTeams).map((ft) => `${ft.sport}-${ft.team.id}`).join('|')}
           dateStr={dateStr}
           onHiddenChange={handleHiddenChange}
         />

@@ -157,8 +157,10 @@ function TeamWatcher({ sport, team, dateStr, onUpdate, onHiddenChange }) {
   const homeScore = teamScoreValue(matchupSides(game).home);
 
   useEffect(() => {
-    if (hasUpcomingGame !== undefined) onHiddenChange?.(team.id, sport, !hasUpcomingGame);
-  }, [hasUpcomingGame, team.id, sport, onHiddenChange]);
+    if (hasUpcomingGame === undefined && !game?.id) return undefined;
+    onHiddenChange?.(team.id, sport, !game?.id && hasUpcomingGame === false);
+    return undefined;
+  }, [hasUpcomingGame, game?.id, team.id, sport, onHiddenChange]);
 
   useEffect(() => {
     onUpdate(`${sport}-${team.id}`, {
@@ -197,7 +199,7 @@ function accentFor(team) {
   return adaptColorForDarkBg(raw, alt, '#0092ff');
 }
 
-export default function HomeTeamScores({ teams, dateStr, onHiddenChange }) {
+export default function HomeTeamScores({ teams, dateStr, onHiddenChange, concealed = '' }) {
   const [status, setStatus] = useState({});
   const onUpdate = useCallback((key, value) => {
     setStatus((prev) => {
@@ -211,9 +213,13 @@ export default function HomeTeamScores({ teams, dateStr, onHiddenChange }) {
     });
   }, []);
 
-  const ordered = (teams || []).map((entry) => status[`${entry.sport}-${entry.team.id}`]).filter(Boolean);
+  const concealedIds = new Set(concealed ? concealed.split('|') : []);
+  const visibleTeams = (teams || []).filter((entry) => !concealedIds.has(`${entry.sport}-${entry.team.id}`));
+  const ordered = visibleTeams
+    .map((entry) => status[`${entry.sport}-${entry.team.id}`])
+    .filter(Boolean);
   const { scores, upcoming } = buildHomeBoard(ordered);
-  const waiting = (teams || []).length > 0 && ordered.length < teams.length && scores.length === 0 && upcoming.length === 0;
+  const waiting = visibleTeams.length > 0 && ordered.length < visibleTeams.length && scores.length === 0 && upcoming.length === 0;
 
   return (
     <div className="hts">
