@@ -35,17 +35,20 @@ function SideButton({ draft, prediction, trades, unit, compact, addTrade, remove
   );
 }
 
-export default function TradeButton({ draft, compact = false, recommend = null, maxPrice = null }) {
+export default function TradeButton({ draft, compact = false, recommend = null, maxPrice = null, yesOnly = false }) {
   const { trades, unit, addTrade, removeTrade } = usePropSync();
   if (!draft || !(draft.price > 0 && draft.price < 1)) return null;
   const yesId = tradeId(sideDraft(draft, 'yes'));
   const noId = tradeId(sideDraft(draft, 'no'));
-  const existing = (trades || []).some((trade) => trade.id === yesId || trade.id === noId);
+  const hasNo = (trades || []).some((trade) => trade.id === noId);
+  const existing = hasNo || (trades || []).some((trade) => trade.id === yesId);
   if (!existing && !gradeable(draft)) return null;
   return (
     <div className="props-trade-pair">
       <SideButton draft={draft} prediction="yes" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'yes'} maxPrice={maxPrice} />
-      <SideButton draft={draft} prediction="no" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'no'} maxPrice={maxPrice} />
+      {(!yesOnly || hasNo) && (
+        <SideButton draft={draft} prediction="no" trades={trades} unit={unit} compact={compact} addTrade={addTrade} removeTrade={removeTrade} recommend={recommend === 'no'} maxPrice={maxPrice} />
+      )}
     </div>
   );
 }

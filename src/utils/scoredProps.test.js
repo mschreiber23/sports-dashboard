@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildReads, ledgerReport, refreshReads } from './propReads.js';
-import { accuracyReport, stakeForUnit, takerQuote } from './propBook.js';
+import { accuracyReport, keptLikelySide, stakeForUnit, takerQuote, yesOnlyLeague } from './propBook.js';
 import { learnCalibration } from './propCalibration.js';
 import { BET_PRICE_MAX, affordablePrice, countsInScore } from './scoredProps.js';
 
@@ -218,6 +218,16 @@ test('new reads skip goal props and keep point props', () => {
   assert.equal(reads.length, 1);
   assert.equal(reads[0].propType, 'hockey_player_points');
   assert.equal(reads[0].line, 1);
+});
+
+test('an nba prop can be yes and cannot be no', () => {
+  assert.equal(yesOnlyLeague('nba'), true);
+  assert.equal(yesOnlyLeague('nhl'), false);
+  assert.equal(yesOnlyLeague('nfl'), false);
+  assert.equal(keptLikelySide('nba', 'no'), null);
+  assert.equal(keptLikelySide('nba', 'yes'), 'yes');
+  assert.equal(keptLikelySide('nhl', 'no'), 'no');
+  assert.equal(keptLikelySide('nfl', null), null);
 });
 
 test('a 72% mid with a 95% ask is not a realistic price to win $25', () => {

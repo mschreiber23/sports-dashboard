@@ -63,6 +63,17 @@ function quoteContracts(price, unit) {
   };
 }
 
+// Polymarket US sells an NBA player prop as Yes only. No is not a bet there.
+export function yesOnlyLeague(league) {
+  return league === 'nba';
+}
+
+export function keptLikelySide(league, call) {
+  if (call !== 'yes' && call !== 'no') return null;
+  if (yesOnlyLeague(league) && call === 'no') return null;
+  return call;
+}
+
 export function takerQuote(line, prediction) {
   if (!line) return null;
   return sideDraft({
