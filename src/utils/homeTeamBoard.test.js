@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildHomeBoard, finalStatusText, liveStatusText, teamForMark, teamLabel, teamScoreValue } from './homeTeamBoard.js';
+import { buildHomeBoard, finalStatusText, keptHideFlags, liveStatusText, omittedFavorites, teamForMark, teamLabel, teamScoreValue } from './homeTeamBoard.js';
 
 function game(id, state, extra = {}) {
   return {
@@ -112,6 +112,21 @@ test('a favorite saved without a logo uses the mark from its next game', () => {
   assert.equal(mark.displayName, 'Florida Panthers');
   const kept = teamForMark({ id: '26', logo: 'https://example.com/saved.png', logos: [{ href: 'https://example.com/saved.png' }] }, games);
   assert.equal(kept.logo, 'https://example.com/saved.png');
+});
+
+test('a hide flag for a team that is not a favorite does not count as hidden', () => {
+  const teams = [
+    { sport: 'nba', team: { id: '1', displayName: 'Wizards' } },
+    { sport: 'nhl', team: { id: '8', displayName: 'Sabres' } },
+  ];
+  const stored = { 'nba-1': false, 'nhl-99': true, 'mlb-4': true };
+  assert.deepEqual(keptHideFlags(teams, stored), {});
+  assert.equal(omittedFavorites(teams, stored, {}).length, 0);
+  const hidden = { 'nhl-8': true };
+  assert.deepEqual(keptHideFlags(teams, hidden), hidden);
+  assert.equal(omittedFavorites(teams, hidden, {})[0].team.displayName, 'Sabres');
+  assert.equal(omittedFavorites(teams, {}, { '1-nba': true }).length, 1);
+  assert.equal(omittedFavorites([{ sport: 'milb', team: { id: '9' } }], { 'milb-9': true }, {}).length, 0);
 });
 
 test('names and scores prefer the short label and a display value', () => {

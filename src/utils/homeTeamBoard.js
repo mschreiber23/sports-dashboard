@@ -91,3 +91,31 @@ export function buildHomeBoard(entries) {
 
   return { scores, upcoming };
 }
+
+export function hideFlagKey(sport, teamId) {
+  return `${sport}-${teamId}`;
+}
+
+// A hide flag only counts when that team is still a favorite and is left off
+// the board. Flags for a removed team are not a hidden team.
+export function omittedFavorites(teams, manuallyHidden, autoHidden) {
+  return (teams || []).filter((entry) => {
+    if (!entry?.team?.id || entry.sport === 'milb') return false;
+    const manual = manuallyHidden?.[hideFlagKey(entry.sport, entry.team.id)] === true;
+    const auto = autoHidden?.[`${entry.team.id}-${entry.sport}`] === true;
+    return manual || auto;
+  });
+}
+
+export function keptHideFlags(teams, manuallyHidden) {
+  const current = new Set(
+    (teams || [])
+      .filter((entry) => entry?.team?.id && entry.sport !== 'milb')
+      .map((entry) => hideFlagKey(entry.sport, entry.team.id)),
+  );
+  const next = {};
+  for (const [key, value] of Object.entries(manuallyHidden || {})) {
+    if (value === true && current.has(key)) next[key] = true;
+  }
+  return next;
+}
