@@ -37,6 +37,7 @@ test('NBA card averages are per game, not totals or per 48 minutes', () => {
         { name: 'avg48Steals', abbreviation: 'STL', displayValue: '5.3' },
         { name: 'blocks', abbreviation: 'BLK', displayValue: '0' },
         { name: 'avgBlocks', abbreviation: 'BLK', displayValue: '0.0' },
+        { name: 'gamesPlayed', abbreviation: 'GP', displayValue: '1' },
       ],
     },
     {
@@ -56,5 +57,6 @@ test('NBA card averages are per game, not totals or per 48 minutes', () => {
     AST: '3.0',
     STL: '3.0',
     BLK: '0.0',
+    GP: '1',
   });
 });

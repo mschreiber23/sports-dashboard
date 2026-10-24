@@ -447,6 +447,33 @@ body {
   font-size: 48px; font-weight: 900; color: rgba(255,255,255,0.3);
 }
 
+.sports-card-gp {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 12;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 2px 5px 1px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.62);
+  line-height: 1;
+  pointer-events: none;
+}
+.sports-card-gp-value {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.sports-card-gp-label {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
 .sports-card-fade {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -548,6 +575,9 @@ body {
   .sports-card-stat { padding: 1px 0; }
   .sports-card-stat-value { font-size: 12px; letter-spacing: -0.4px; }
   .sports-card-stat-label { font-size: 7px; letter-spacing: 0; margin-top: 1px; }
+  .sports-card-gp { top: 4px; left: 4px; padding: 1px 4px 1px; border-radius: 5px; }
+  .sports-card-gp-value { font-size: 10px; }
+  .sports-card-gp-label { font-size: 6px; }
 }
 
 .player-card {

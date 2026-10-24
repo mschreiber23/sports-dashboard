@@ -177,6 +177,7 @@ export function nbaSeasonAverages(categories) {
     AST: byName.avgAssists ?? null,
     STL: byName.avgSteals ?? null,
     BLK: byName.avgBlocks ?? null,
+    GP: byName.gamesPlayed ?? null,
   };
 }
 
