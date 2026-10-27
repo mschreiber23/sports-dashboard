@@ -8942,6 +8942,117 @@ thead .dfs-sticky-player {
 }
 .props-view-on { border-color: rgba(255,255,255,0.72); }
 .props-likely-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
+.pick-sheet { display: flex; flex-direction: column; gap: 10px; }
+.pick-lead { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); }
+.pick-status { margin: 0; font-size: 12px; color: var(--text2); font-weight: 700; }
+.pick-list { display: flex; flex-direction: column; gap: 8px; }
+.pick-group {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.pick-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.pick-card-open { border-color: rgba(255,255,255,0.28); }
+.pick-card-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pick-card-copy { flex: 1; min-width: 0; }
+.pick-sport {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+}
+.pick-card h3 {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.pick-card-copy p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.35;
+}
+.pick-price { font-weight: 700; color: var(--text) !important; }
+.pick-chance {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 64px;
+}
+.pick-chance b {
+  font-size: 22px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.pick-chance span { font-size: 11px; font-weight: 700; color: var(--text2); }
+.pick-chance i {
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text2);
+}
+.pick-why { padding: 0 14px 14px; }
+.pick-why h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.pick-why ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pick-why li {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.pick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pick-open {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .props-likely-head {
   margin: 12px 0 2px;
   font-size: 11px;
