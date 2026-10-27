@@ -15,6 +15,7 @@ import { nflWeekSpan } from '../api/nfl';
 import { espnAbbr, homeSide, matchupContext, orientGame, teamRecentGames } from '../api/teamForm';
 import { loadNflWeather } from '../api/nflWeather';
 import { gameEnvironment, gameLineRead, lineCardModel } from '../utils/gameLineEdge';
+import PickSheet from '../components/PickSheet';
 import PropLedger from '../components/PropLedger';
 import ModelTicker from '../components/ModelTicker';
 import TradeBook from '../components/TradeBook';
@@ -359,6 +360,10 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
         : (game.league === 'nfl' && nflModeled(sample.type) ? nflPropEdge
           : (game.league === 'nba' && nbaModeled(sample.type) ? nbaPropEdge : null));
       if (edgeFn) {
+        const factorFn = (sample.type === 'hockey_player_goals' || sample.type === 'hockey_player_points')
+          ? nhlFactorLines
+          : (game.league === 'nfl' && nflModeled(sample.type) ? nflFactorLines
+            : (game.league === 'nba' && nbaModeled(sample.type) ? nbaFactorLines : null));
         const ranked = game.league === 'nfl' || game.league === 'nhl' || game.league === 'nba';
         const candidates = ranked ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
@@ -366,7 +371,7 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
           if (ranked && yesOnly && !affordablePrice(line.yes)) continue;
           if (ranked && !yesOnly && !affordablePrice(line.yes) && !affordablePrice(1 - line.yes)) continue;
           if (game.league === 'nfl' && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]))) continue;
-          const model = edgeFn({
+          const input = {
             type: sample.type,
             line: line.line,
             recent,
@@ -380,6 +385,7 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
             gameTotal: slate.total,
             teamName: sample.teamName,
             opponentName: sample.opponentName,
+            opponentLabel: shortOpp(sample.opponentName, sample.opponentAbbr),
             favoriteName: slate.favorite,
             favoriteYes: slate.favoriteYes,
             spreadLine: slate.spreadLine,
@@ -406,7 +412,8 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
               absences: teamAbsences(injuries, sample.teamName),
             } : {}),
             calibration: calibration?.[game.league],
-          });
+          };
+          const model = edgeFn(input);
           if (!model) continue;
           const call = keptLikelySide(game.league, ranked ? likelyCall(model, line.yes) : 'yes');
           if (ranked && !call) continue;
@@ -426,6 +433,7 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
             prediction: no ? 'no' : 'yes',
             modeled: true,
             tags: model.tags,
+            factors: factorFn ? factorFn(input) : [],
           }));
         }
         continue;
@@ -1226,11 +1234,12 @@ export default function PropsPage() {
   }, [events, day, nflWeek]);
 
   const openGame = games.find((game) => game.key === gameKey) || null;
-  const fetchKey = games.length > 0 && (view === 'likely' || games.length <= 16)
+  const boardView = view === 'likely' || view === 'picks';
+  const fetchKey = games.length > 0 && (boardView || games.length <= 16)
     ? games.map((game) => game.key).join('|')
     : '';
   const logJob = useMemo(() => {
-    if (view !== 'likely') return [];
+    if (!boardView) return [];
     const seen = new Set();
     const players = [];
     for (const game of games) {
@@ -1251,7 +1260,7 @@ export default function PropsPage() {
       }
     }
     return players;
-  }, [view, games]);
+  }, [boardView, games]);
   const logJobKey = logJob.map((player) => player.id).join(';');
   const teamJob = useMemo(() => {
     const seen = new Set();
@@ -1286,7 +1295,7 @@ export default function PropsPage() {
     return names;
   }, [games]);
   const injuryKey = injuryTeams.join('|');
-  const likelyPicks = useMemo(() => (view === 'likely' ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries) : []), [view, games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries]);
+  const likelyPicks = useMemo(() => (boardView ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries) : []), [boardView, games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries]);
   const gamesLoaded = games.filter((game) => game.rows).length;
 
   useEffect(() => {
@@ -1370,7 +1379,7 @@ export default function PropsPage() {
     return () => { cancel = true; };
   }, [weatherKey]);
 
-  const wantsNbaInjuries = view === 'likely' && games.some((game) => game.league === 'nba');
+  const wantsNbaInjuries = boardView && games.some((game) => game.league === 'nba');
   useEffect(() => {
     if (!wantsNbaInjuries) return undefined;
     let cancel = false;
@@ -1483,6 +1492,7 @@ export default function PropsPage() {
           <ModelTicker onOpen={() => setView('results')} />
           <div className="props-view-nav">
             <button type="button" className={`props-view-btn ${view === 'games' ? 'props-view-on' : ''}`} onClick={() => setView('games')}>Games</button>
+            <button type="button" className={`props-view-btn ${view === 'picks' ? 'props-view-on' : ''}`} onClick={() => setView('picks')}>Picks</button>
             <button type="button" className={`props-view-btn ${view === 'likely' ? 'props-view-on' : ''}`} onClick={() => setView('likely')}>Likely</button>
             <button type="button" className={`props-view-btn ${view === 'results' ? 'props-view-on' : ''}`} onClick={() => setView('results')}>Results</button>
             <button type="button" className={`props-view-btn ${view === 'trades' ? 'props-view-on' : ''}`} onClick={() => setView('trades')}>Trades</button>
@@ -1519,6 +1529,20 @@ export default function PropsPage() {
                 : `No ${sport === 'All' ? '' : `${sport} `}games ${formatDayLabel(day) === 'Today' ? 'today' : `on ${formatDayLabel(day)}`}.`}
               </p>
             </div>
+          )}
+
+          {games.length > 0 && view === 'picks' && (
+            <PickSheet
+              picks={likelyPicks}
+              draftFor={likelyDraft}
+              onOpen={openLikely}
+              ready={gamesLoaded === games.length && logDone >= logJob.length && teamDone >= teamJob.length}
+              status={[
+                gamesLoaded < games.length ? `Loading games ${gamesLoaded}/${games.length}` : '',
+                teamJob.length > 0 && teamDone < teamJob.length ? `Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}` : '',
+                logJob.length > 0 && logDone < logJob.length ? `Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}` : '',
+              ].filter(Boolean).join(' · ')}
+            />
           )}
 
           {games.length > 0 && view === 'likely' && (
@@ -1571,7 +1595,7 @@ export default function PropsPage() {
 
       {openGame && (
         <>
-          <button type="button" className="props-back" onClick={() => { setGameKey(null); setPropFocus(null); }}>{view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
+          <button type="button" className="props-back" onClick={() => { setGameKey(null); setPropFocus(null); }}>{view === 'picks' ? '‹ Picks' : view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
           <div className="props-sport-head">
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>
