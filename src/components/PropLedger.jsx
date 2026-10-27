@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatGameTime } from '../api/polymarket';
 import { ledgerReport } from '../utils/propReads';
+import { pastPickSports, picksForSport } from '../utils/pastPicks';
 import { callGrade, sideQuote } from '../utils/modelCall';
 import { countsInScore } from '../utils/scoredProps';
 import { calibrationMoves } from '../utils/propCalibration';
@@ -61,9 +62,19 @@ function BandList({ rows }) {
 export default function PropLedger() {
   const { reads, status, error, calibration, working, refresh } = usePropSync();
   const [showAll, setShowAll] = useState(false);
+  const [sport, setSport] = useState('all');
 
   const scored = useMemo(() => (reads || []).filter(countsInScore), [reads]);
-  const report = useMemo(() => ledgerReport(scored), [scored]);
+  const recent = useMemo(() => scored
+    .filter((row) => row.result)
+    .slice()
+    .sort((a, b) => (b.gradedAt || b.gameStart) - (a.gradedAt || a.gameStart) || a.player.localeCompare(b.player)), [scored]);
+  const sports = useMemo(() => pastPickSports(recent), [recent]);
+  const activeSport = sport !== 'all' && sports.includes(sport) ? sport : 'all';
+  const filteredScored = useMemo(() => picksForSport(scored, activeSport), [scored, activeSport]);
+  const filteredRecent = useMemo(() => picksForSport(recent, activeSport), [recent, activeSport]);
+  const report = useMemo(() => ledgerReport(filteredScored), [filteredScored]);
+  const allReport = useMemo(() => ledgerReport(scored), [scored]);
   const waitingGames = useMemo(() => {
     const map = new Map();
     for (const row of scored) {
@@ -72,11 +83,13 @@ export default function PropLedger() {
     }
     return [...map.values()].sort((a, b) => a.gameStart - b.gameStart);
   }, [scored]);
-  const recent = useMemo(() => scored
-    .filter((row) => row.result)
-    .slice()
-    .sort((a, b) => (b.gradedAt || b.gameStart) - (a.gradedAt || a.gameStart) || a.player.localeCompare(b.player)), [scored]);
-  const visible = showAll ? recent : recent.slice(0, 20);
+
+  const chooseSport = (next) => {
+    setSport(next);
+    setShowAll(false);
+  };
+  const visible = showAll ? filteredRecent : filteredRecent.slice(0, 20);
+  const sportCount = (league) => recent.filter((row) => row.league === league).length;
 
   return (
     <div className="ledger">
@@ -96,16 +109,16 @@ export default function PropLedger() {
         <WeightFit name="NBA" fit={calibration?.nba} />
       </section>
 
-      {reads && report.graded === 0 && (
+      {reads && allReport.graded === 0 && (
         <div className="empty-state">
           <p>
-            {report.open
-              ? `${report.open} ${report.open === 1 ? 'read is' : 'reads are'} saved and waiting on the games.`
+            {allReport.open
+              ? `${allReport.open} ${allReport.open === 1 ? 'read is' : 'reads are'} saved and waiting on the games.`
               : 'The log starts with the next slate. Open this before the games lock.'}
           </p>
         </div>
       )}
-      {reads && report.graded === 0 && waitingGames.length > 0 && (
+      {reads && allReport.graded === 0 && waitingGames.length > 0 && (
         <div className="ledger-waiting">
           {waitingGames.map((game) => (
             <div className="ledger-wait" key={game.eventSlug}>
@@ -116,8 +129,22 @@ export default function PropLedger() {
         </div>
       )}
 
-      {report.graded > 0 && (
+      {allReport.graded > 0 && (
         <>
+          <div className="scores-sport-tabs ledger-sports" role="tablist" aria-label="Filter past picks by sport">
+            <button type="button" role="tab" aria-selected={activeSport === 'all'} className={`ts-tab ${activeSport === 'all' ? 'ts-tab-active' : ''}`} onClick={() => chooseSport('all')}>
+              All
+              <span className="props-tab-count">{recent.length}</span>
+            </button>
+            {sports.map((league) => (
+              <button key={league} type="button" role="tab" aria-selected={activeSport === league} className={`ts-tab ${activeSport === league ? 'ts-tab-active' : ''}`} onClick={() => chooseSport(league)}>
+                {league.toUpperCase()}
+                <span className="props-tab-count">{sportCount(league)}</span>
+              </button>
+            ))}
+          </div>
+          {report.graded > 0 && (
+          <>
           <div className="ledger-stats">
             <div className="ledger-stat"><b>{report.graded}</b><span>Graded</span></div>
             <div className="ledger-stat"><b>{pct(report.callRate)}</b><span>Hit</span></div>
@@ -155,6 +182,9 @@ export default function PropLedger() {
             </section>
           )}
 
+          </>
+          )}
+          {filteredRecent.length > 0 && (
           <section className="ledger-section">
             <h3>Graded props</h3>
             <div className="props-list">
@@ -176,12 +206,13 @@ export default function PropLedger() {
                 );
               })}
             </div>
-            {recent.length > 20 && (
+            {filteredRecent.length > 20 && (
               <button type="button" className="props-more" onClick={() => setShowAll((open) => !open)}>
-                {showAll ? 'Show fewer' : `Show all ${recent.length}`}
+                {showAll ? 'Show fewer' : `Show all ${filteredRecent.length}`}
               </button>
             )}
           </section>
+          )}
         </>
       )}
     </div>
