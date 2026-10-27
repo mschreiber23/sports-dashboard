@@ -9491,6 +9491,7 @@ thead .dfs-sticky-player {
   line-height: 1;
 }
 .ledger-stat span { display: block; margin-top: 4px; font-size: 11px; color: var(--text2); font-weight: 700; }
+.ledger-sports { margin: 4px 0 12px; }
 .ledger-section h3 { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 8px; font-size: 13px; font-weight: 800; }
 .ledger-row {
   display: flex;
