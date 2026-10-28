@@ -30,7 +30,7 @@ export default function NbaScoreStats({ gameId, awayId, homeId, live = false }) 
   const played = (sides || []).reduce((sum, side) => sum + side.players.length, 0);
 
   return (
-    <div className="nba-stats-wrap">
+    <div className="nba-stats-wrap" onClick={(event) => event.stopPropagation()}>
       <div className="mlbc-divider" />
       <button
         type="button"
@@ -38,7 +38,7 @@ export default function NbaScoreStats({ gameId, awayId, homeId, live = false }) 
         aria-expanded={open}
         onClick={(event) => { event.stopPropagation(); setOpen((value) => !value); }}
       >
-        Stats
+        Player Stats
       </button>
       {open && (
         <div className="nba-stats">
