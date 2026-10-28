@@ -6,6 +6,7 @@ import useMlbLiveGame from '../hooks/useMlbLiveGame';
 import { mlbHeadshot, extractTopPerformers } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import NbaScoreStats from './NbaScoreStats';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { nflScoreSituation } from '../utils/nflScoreSituation';
 import { formatKickoff, formatScheduleLine, gameOpponent } from '../utils/upcomingGames';
@@ -1456,7 +1457,7 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = 
   );
 }
 
-function SportPreCard({ game, sport, navigate, accentColor }) {
+function SportPreCard({ game, sport, navigate, accentColor, stats = false }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
@@ -1474,11 +1475,12 @@ function SportPreCard({ game, sport, navigate, accentColor }) {
         <div className="mlbc-divider" />
         <GenericTeamRows away={away} home={home} sport={sport} />
       </div>
+      {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />}
     </div>
   );
 }
 
-function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
+function SportLiveCard({ game, sport, navigate, accentColor, nhlScore, stats = false }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
@@ -1540,11 +1542,12 @@ function SportLiveCard({ game, sport, navigate, accentColor, nhlScore }) {
           <div className="sport-sit-line">{sitLine}</div>
         </>
       )}
+      {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} live />}
     </div>
   );
 }
 
-function SportFinalCard({ game, sport, navigate, accentColor }) {
+function SportFinalCard({ game, sport, navigate, accentColor, stats = false }) {
   const comp = game.competitions?.[0];
   const competitors = comp?.competitors || [];
   const away = competitors.find(c => c.homeAway === 'away') || competitors[0];
@@ -1600,6 +1603,7 @@ function SportFinalCard({ game, sport, navigate, accentColor }) {
           </div>
         </>
       )}
+      {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />}
       <div className="mlbc-divider" />
       <div className="mlbc-actions">
         <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } }); }}>Box Score</span>

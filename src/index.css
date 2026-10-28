@@ -7086,6 +7086,7 @@ thead .dfs-sticky-player {
   max-width: 100%;
 }
 .teams-grid > * { min-width: 0; max-width: 100%; }
+.scores-page .teams-grid { align-items: start; }
 
 /* Compact home score tiles. The full cards stay on the Scores page. */
 .hts { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -7522,6 +7523,42 @@ thead .dfs-sticky-player {
   white-space: nowrap;
 }
 .mlbc-action-btn:hover { color: var(--accent2); }
+.nba-stats-wrap { display: flex; flex-direction: column; }
+.nba-stats-toggle {
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.nba-stats-toggle:hover, .nba-stats-on { color: var(--accent2); }
+.nba-stats { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 12px; }
+.nba-stats-team {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+}
+.nba-stats-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+}
+.nba-stats-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.nba-stats-line {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.nba-stats-empty { margin: 0; font-size: 12px; color: var(--text2); }
 
 /* Score column on Scoring Summary tab */
 .scoring-play-score {
