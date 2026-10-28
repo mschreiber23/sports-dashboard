@@ -1,8 +1,13 @@
 import { supabase } from '../lib/supabase';
 import { idbStorage } from '../lib/idbStorage';
+import { mergeStoredReads, sameReads } from '../utils/readSync';
 
 const KEY = 'prop_reads_v1';
 let remoteOff = false;
+
+function storageKey(userId) {
+  return userId ? `${KEY}:${userId}` : KEY;
+}
 
 function parseLocal(raw) {
   if (!raw) return [];
@@ -85,29 +90,15 @@ function toRemote(userId, read) {
   };
 }
 
-function prefer(local, remote) {
-  if (!local) return remote;
-  if (!remote) return local;
-  const first = (local.recordedAt || 0) <= (remote.recordedAt || 0) ? local : remote;
-  const latestPrice = (local.pricedAt || local.recordedAt || 0) >= (remote.pricedAt || remote.recordedAt || 0)
-    ? local
-    : remote;
-  const graded = [local, remote]
-    .filter((row) => row.result)
-    .sort((a, b) => (b.gradedAt || 0) - (a.gradedAt || 0))[0];
-  return {
-    ...first,
-    price: latestPrice.price,
-    baseP: typeof latestPrice.baseP === 'number' ? latestPrice.baseP : first.baseP,
-    modelP: latestPrice.modelP,
-    edge: latestPrice.edge,
-    prediction: latestPrice.prediction || first.prediction || null,
-    tags: latestPrice.tags || first.tags,
-    pricedAt: latestPrice.pricedAt || latestPrice.recordedAt || null,
-    result: graded?.result || null,
-    actual: graded ? graded.actual : null,
-    gradedAt: graded?.gradedAt || null,
-  };
+async function readLocal(userId) {
+  const key = storageKey(userId);
+  const scoped = parseLocal(await idbStorage.getItem(key));
+  if (scoped.length || !userId) return scoped;
+  const legacy = parseLocal(await idbStorage.getItem(KEY));
+  if (!legacy.length) return [];
+  await idbStorage.setItem(key, JSON.stringify(legacy));
+  await idbStorage.removeItem(KEY);
+  return legacy;
 }
 
 async function remoteLoad(userId) {
@@ -143,7 +134,7 @@ async function remoteSave(userId, rows) {
 }
 
 export async function loadReads(userId) {
-  const local = parseLocal(await idbStorage.getItem(KEY));
+  const local = await readLocal(userId);
   let remote = null;
   try {
     remote = await remoteLoad(userId);
@@ -151,16 +142,20 @@ export async function loadReads(userId) {
     remote = null;
   }
   if (!remote) return local;
-  const map = new Map();
-  for (const row of local) map.set(row.id, row);
-  for (const row of remote) map.set(row.id, prefer(map.get(row.id), row));
-  const merged = [...map.values()];
-  await idbStorage.setItem(KEY, JSON.stringify(merged));
+  const merged = mergeStoredReads(local, remote);
+  await idbStorage.setItem(storageKey(userId), JSON.stringify(merged));
+  if (!sameReads(merged, remote)) {
+    try {
+      await remoteSave(userId, merged);
+    } catch {
+      remoteOff = true;
+    }
+  }
   return merged;
 }
 
 export async function saveReads(userId, rows) {
-  await idbStorage.setItem(KEY, JSON.stringify(rows));
+  await idbStorage.setItem(storageKey(userId), JSON.stringify(rows));
   try {
     await remoteSave(userId, rows);
   } catch {
