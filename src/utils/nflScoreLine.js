@@ -61,14 +61,13 @@ function playedGroup(group, spec) {
         id: String(row.athlete?.id || row.athlete?.displayName || ''),
         name: playedName(row.athlete),
         yards: Number(statNumber(read(row, 'YDS'))),
-        targets: Number(statNumber(read(row, 'TGTS'))),
         values,
       };
     })
     .filter((player) => {
       if (spec.key === 'passing') return attempts(player.values['C/ATT']) > 0;
       if (spec.key === 'rushing') return Number(player.values.CAR) > 0;
-      return Number(player.values.REC) > 0 || player.targets > 0;
+      return Number(player.values.REC) > 0;
     })
     .sort((a, b) => b.yards - a.yards || a.name.localeCompare(b.name))
     .map((player) => ({

@@ -56,6 +56,7 @@ test('each side keeps the players who touched the ball, away then home', () => {
               athlete('11', 'Tee Higgins', ['6', '148', '24.7', '1', '44', '7']),
               athlete('12', 'Ja\'Marr Chase', ['5', '62', '12.4', '1', '30', '7']),
               athlete('13', 'Dohnte Meyers', ['0', '0', '0.0', '0', '0', '2']),
+              athlete('14', 'No Touches', ['0', '8', '0.0', '0', '0', '0']),
             ] },
           ],
         },
@@ -68,7 +69,7 @@ test('each side keeps the players who touched the ball, away then home', () => {
   assert.deepEqual(sides[0].sections[0].players.map((player) => [player.name, ...player.stats]), [
     ['J. Burrow', '22/30', '292', '4', '0'],
   ]);
-  assert.deepEqual(sides[0].sections[2].players.map((player) => player.name), ['T. Higgins', 'J. Chase', 'D. Meyers']);
+  assert.deepEqual(sides[0].sections[2].players.map((player) => player.name), ['T. Higgins', 'J. Chase']);
   assert.deepEqual(sides[1].sections[1].players.map((player) => player.name), ['D. Henry', 'R. Ali']);
   assert.equal(JSON.stringify(sides).includes('Roquan'), false);
 });
