@@ -217,10 +217,10 @@ export default function ScoresPage() {
               if (st === 'in')   return <NhlLiveCard  key={game.id} game={game} navigate={navigate} accentColor={accentColor} collapseSummary />;
               return <SportPreCard key={game.id} game={game} sport="nhl" navigate={navigate} accentColor={accentColor} />;
             }
-            const nbaStats = activeSport === 'nba';
-            if (st === 'pre')  return <SportPreCard   key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} stats={nbaStats} />;
-            if (st === 'post') return <SportFinalCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} stats={nbaStats} />;
-            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} stats={nbaStats} />;
+            const scoreStats = activeSport === 'nba' || activeSport === 'nfl' ? activeSport : false;
+            if (st === 'pre')  return <SportPreCard   key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} stats={scoreStats} />;
+            if (st === 'post') return <SportFinalCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} stats={scoreStats} />;
+            return <SportLiveCard key={game.id} game={game} sport={activeSport} navigate={navigate} accentColor={accentColor} stats={scoreStats} />;
           })}
         </div>
       )}

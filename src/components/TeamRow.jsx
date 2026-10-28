@@ -7,6 +7,7 @@ import { mlbHeadshot, extractTopPerformers } from '../hooks/useMlbLiveFeed';
 import { useFavorites } from '../context/FavoritesContext';
 import { SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import NbaScoreStats from './NbaScoreStats';
+import NflScoreStats from './NflScoreStats';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { nflScoreSituation } from '../utils/nflScoreSituation';
 import { formatKickoff, formatScheduleLine, gameOpponent } from '../utils/upcomingGames';
@@ -1519,9 +1520,15 @@ function SportPreCard({ game, sport, navigate, accentColor, stats = false }) {
         <div className="mlbc-divider" />
         <GenericTeamRows away={away} home={home} sport={sport} />
       </div>
-      {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />}
+      <ScoreStats kind={stats} gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />
     </div>
   );
+}
+
+function ScoreStats({ kind, gameId, awayId, homeId, live = false }) {
+  if (kind === 'nba') return <NbaScoreStats gameId={gameId} awayId={awayId} homeId={homeId} live={live} />;
+  if (kind === 'nfl') return <NflScoreStats gameId={gameId} awayId={awayId} homeId={homeId} live={live} />;
+  return null;
 }
 
 function SportLiveCard({ game, sport, navigate, accentColor, nhlScore, stats = false }) {
@@ -1586,7 +1593,7 @@ function SportLiveCard({ game, sport, navigate, accentColor, nhlScore, stats = f
           <div className="sport-sit-line">{sitLine}</div>
         </>
       )}
-      {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} live />}
+      <ScoreStats kind={stats} gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} live />
     </div>
   );
 }
@@ -1647,7 +1654,7 @@ function SportFinalCard({ game, sport, navigate, accentColor, stats = false }) {
           </div>
         </>
       )}
-      {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />}
+      <ScoreStats kind={stats} gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />
     </div>
   );
 }
