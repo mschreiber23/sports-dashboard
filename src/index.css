@@ -7540,8 +7540,8 @@ thead .dfs-sticky-player {
 .nba-stats-head,
 .nba-stats-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) repeat(6, minmax(1.65rem, 1fr));
-  column-gap: 6px;
+  grid-template-columns: minmax(7.6rem, 1.45fr) repeat(6, minmax(1.7rem, 0.62fr));
+  column-gap: 3px;
   align-items: center;
 }
 .nba-stats-head {
