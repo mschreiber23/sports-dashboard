@@ -61,14 +61,11 @@ function last10Hit(values, line) {
 const LIKELY_MIN_GAMES = 5;
 const LIKELY_MIN_RATE = 70;
 
-function likelyAgrees(model) {
-  return model.p >= 0.45 && model.edge >= NHL_EDGE_MIN;
-}
-
-function likelyCall(model, yes) {
-  if (likelyAgrees(model)) return 'yes';
-  const noEdge = yes - model.p;
+function likelyCall(model, yesPrice, noPrice) {
+  if (yesPrice != null && model.p >= 0.45 && model.p - yesPrice >= NHL_EDGE_MIN) return 'yes';
+  if (noPrice == null) return null;
   const noP = 1 - model.p;
+  const noEdge = noP - noPrice;
   if (!(noEdge >= NHL_EDGE_MIN && noP >= 0.45)) return null;
   return 'no';
 }
@@ -105,11 +102,16 @@ function cardClock(ms) {
   }).format(new Date(ms))} ET`;
 }
 
+// Polymarket prints the ask on Yes. The midpoint is not a price anyone can buy.
+function buttonYes(line) {
+  return takerQuote(line, 'yes');
+}
+
 function mainLine(lines) {
   return lines
-    .filter((line) => typeof line.yes === 'number' && Number.isFinite(line.yes))
+    .filter((line) => buttonYes(line) != null)
     .slice()
-    .sort((a, b) => Math.abs(a.yes - 0.5) - Math.abs(b.yes - 0.5) || a.line - b.line)[0] || null;
+    .sort((a, b) => Math.abs(buttonYes(a) - 0.5) - Math.abs(buttonYes(b) - 0.5) || a.line - b.line)[0] || null;
 }
 
 function edgePoints(edge) {
@@ -121,6 +123,7 @@ function marketPct(yes) {
 }
 
 function likelyPick(game, sample, line, recent, extra) {
+  const yes = buttonYes(line);
   return {
     id: line.id,
     player: sample.player,
@@ -134,11 +137,11 @@ function likelyPick(game, sample, line, recent, extra) {
     league: game.league,
     gameStart: sample.gameStart,
     propType: sample.type,
-    price: line.yes,
+    price: yes,
     bid: line.bid,
     ask: line.ask,
     kind: 'player',
-    market: marketPct(line.yes),
+    market: marketPct(yes),
     ...extra,
   };
 }
@@ -368,8 +371,10 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
         const candidates = ranked ? [mainLine(lines)].filter(Boolean) : lines;
         for (const line of candidates) {
           const yesOnly = yesOnlyLeague(game.league);
-          if (ranked && yesOnly && !affordablePrice(line.yes)) continue;
-          if (ranked && !yesOnly && !affordablePrice(line.yes) && !affordablePrice(1 - line.yes)) continue;
+          const yesPrice = buttonYes(line);
+          const noPrice = takerQuote(line, 'no');
+          if (ranked && yesOnly && !affordablePrice(yesPrice)) continue;
+          if (ranked && !yesOnly && !affordablePrice(yesPrice) && !affordablePrice(noPrice)) continue;
           if (game.league === 'nfl' && (NFL_LIKELY_SKIP.has(sample.type) || !(line.line >= NFL_LIKELY_MIN_LINE[sample.type]))) continue;
           const input = {
             type: sample.type,
@@ -379,7 +384,7 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
             recentContext: log?.context,
             priorContext: log?.priorContext,
             versus: log?.versus?.[sample.type],
-            marketYes: line.yes,
+            marketYes: yesPrice,
             lastPlayed: log?.lastPlayed,
             gameStart: sample.gameStart,
             gameTotal: slate.total,
@@ -415,19 +420,19 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
           };
           const model = edgeFn(input);
           if (!model) continue;
-          const call = keptLikelySide(game.league, ranked ? likelyCall(model, line.yes) : 'yes');
+          const call = keptLikelySide(game.league, ranked ? likelyCall(model, yesPrice, noPrice) : 'yes');
           if (ranked && !call) continue;
           const no = call === 'no';
-          const quote = takerQuote(line, no ? 'no' : 'yes');
+          const quote = no ? noPrice : yesPrice;
           if (ranked && !affordablePrice(quote)) continue;
-          const sideEdge = no ? line.yes - model.p : model.edge;
+          const sideEdge = no ? (1 - model.p) - noPrice : model.edge;
           picks.push(likelyPick(game, sample, line, recent, {
             rate: model.rate,
             hits: model.hits,
             edge: sideEdge,
             edgePts: edgePoints(sideEdge),
             modelPct: Math.round((no ? 1 - model.p : model.p) * 100),
-            market: marketPct(no ? 1 - line.yes : line.yes),
+            market: marketPct(quote),
             yesEdge: model.edge,
             yesModel: model.p,
             prediction: no ? 'no' : 'yes',
@@ -447,10 +452,9 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
         if (!prev || line.line > prev.line) byRate.set(rate, { line, hits, rate });
       }
       for (const best of byRate.values()) {
-        const yes = typeof best.line.yes === 'number' ? best.line.yes : null;
         const quote = takerQuote(best.line, 'yes');
         if (quote == null || quote > BET_PRICE_MAX) continue;
-        const edge = yes == null ? 0 : best.rate / 100 - yes;
+        const edge = best.rate / 100 - quote;
         picks.push(likelyPick(game, sample, best.line, recent, {
           rate: best.rate,
           hits: best.hits,
@@ -810,8 +814,10 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
         {visible.map((group) => {
           const shown = lineWindow(group.lines, group.selected);
           const idx = group.lines.findIndex((line) => line.line === group.selected);
-          const yesPct = `${Math.round(group.current.yes * 100)}%`;
-          const noPct = `${Math.round(group.current.no * 100)}%`;
+          const yesPrice = buttonYes(group.current);
+          const noPrice = takerQuote(group.current, 'no');
+          const yesPct = yesPrice == null ? '—' : `${Math.round(yesPrice * 100)}%`;
+          const noPct = noPrice == null ? '—' : `${Math.round(noPrice * 100)}%`;
           const log = logs[group.player];
           const recent = log?.series?.[activeStat] || null;
           const versus = log?.versus?.[activeStat] || null;
@@ -864,7 +870,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
           const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : (league === 'nba' ? nbaFactorLines : null));
           const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : (league === 'nba' ? nbaPropEdge : null));
           const factors = factorFn ? factorFn(factorInput) : [];
-          const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: group.current.yes, calibration }) : null;
+          const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: buttonYes(group.current), calibration }) : null;
           const moved = new Set((model?.tags || []).map((tag) => {
             if (FACTOR_TAGS[tag]) return FACTOR_TAGS[tag];
             if (String(tag).endsWith(' back') || String(tag).endsWith(' out') || String(tag).endsWith(' Q') || tag === 'Out' || tag === 'Questionable') return 'usage';
@@ -945,7 +951,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                     propLabel: `${lineText(group.selected)} ${chartLabel(group.type)}`,
                     line: group.selected,
                     side: 'yes',
-                    price: group.current?.yes,
+                    price: buttonYes(group.current),
                     bid: group.current?.bid,
                     ask: group.current?.ask,
                     kind: 'player',
@@ -1152,7 +1158,7 @@ function LikelyRow({ item, sport, onOpen }) {
             {sport === 'All' ? `${item.sport} · ` : ''}{item.game}
             {item.gameLine ? '' : ` · ${item.hits}/${item.total}`}
             {item.modeled ? ` · model ${item.modelPct}%` : ` · L10 ${item.rate}%`}
-            {item.market == null ? '' : ` · market ${item.market}%`}
+            {item.market == null ? '' : ` · price ${item.market}%`}
           </div>
           {item.tags.length > 0 && (
             <div className="props-game-meta props-likely-tags">{item.tags.join(' · ')}</div>
