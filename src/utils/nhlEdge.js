@@ -4,10 +4,11 @@
 // sharp drop or jump in the last three games becomes the rate. Power-play
 // points add a little for shot quality. The opponent's recent goals allowed
 // and home ice move it a little more, then the game total, the favorite, and
-// a back-to-back. The result is pulled toward the yes price.
+// a back-to-back. The result is pulled toward the yes price, and harder when
+// the recent hits and the shot projection disagree.
 
 import { applyLearned } from './propCalibration.js';
-import { NHL_BARE_MARKET_WEIGHT, NHL_HIT_WEIGHT, NHL_MARKET_WEIGHT, fairProbability } from './fairPrice.js';
+import { NHL_BARE_MARKET_WEIGHT, NHL_HIT_WEIGHT, NHL_MARKET_WEIGHT, settledProbability } from './fairPrice.js';
 
 const GOALS = 'hockey_player_goals';
 const POINTS = 'hockey_player_points';
@@ -310,6 +311,7 @@ function projectNhl({
   const strength = goals ? 14 : 8;
   const anchor = priorN >= 8 ? priorHits / priorN : fallbackRate(type, line);
   let p = (hits + anchor * strength) / (n + strength);
+  const hitP = p;
   const tags = [];
 
   const volumeP = volumeProbability(type, line, recentContext, priorContext);
@@ -394,13 +396,20 @@ function projectNhl({
     total: n,
     rate: Math.round((hits / n) * 100),
     volumeP,
+    hitP,
   };
 }
 
 function finishRead(read, marketYes, calibration) {
   const priced = validMarket(marketYes);
   let p = read.p;
-  if (priced) p = fairProbability(p, marketYes, read.volumeP != null ? NHL_MARKET_WEIGHT : NHL_BARE_MARKET_WEIGHT);
+  if (priced) {
+    p = settledProbability(p, marketYes, read.volumeP != null ? NHL_MARKET_WEIGHT : NHL_BARE_MARKET_WEIGHT, {
+      hitP: read.hitP,
+      volumeP: read.volumeP,
+      hitWeight: NHL_HIT_WEIGHT,
+    });
+  }
   p = applyLearned(clamp(p, 0.02, 0.92), read.tags, calibration);
   return {
     p,

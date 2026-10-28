@@ -181,7 +181,7 @@ export default function PropLedger() {
       <details className="props-details">
         <summary>How a result is scored</summary>
         <p className="props-likely-note">
-          A call needs at least a 4-point edge. That side has to be at least 38%, and winning $25 cannot cost more than $36 after the fee, which keeps the price at 57% or under. A 58% favorite stays off: that stake is $37.02. The points score is the 1+ line. Goal props, 2+ and 3+ lines, penny quotes, and empty-book asks stay off. NBA player props are Yes only, and a Yes is a hit when the player clears the line. A No in the NHL or NFL is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
+          A call needs at least a 4-point edge. That side has to be at least 38%, and winning $25 cannot cost more than $36 after the fee, which keeps the price at 57% or under. A 58% favorite stays off: that stake is $37.02. The points score is the 1+ line. Goal props, 2+ and 3+ lines, penny quotes, and empty-book asks stay off. NBA player props are Yes only, and a Yes is a hit when the player clears the line. A No in the NHL or NFL is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities. A site that counts heavy favorites will show a higher hit rate. This score stays between 38% and 57%, so a fair record lives near the price.
         </p>
       </details>
       <AccuracyPanel />

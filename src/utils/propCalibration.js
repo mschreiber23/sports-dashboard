@@ -8,9 +8,11 @@ import { countsInScore } from './scoredProps.js';
 const MIN_LEAGUE = 40;
 const MIN_TAG = 25;
 const PRIOR = 80;
-const GLOBAL_CAP = 0.025;
-const TAG_CAP = 0.03;
-const TAG_STACK_CAP = 0.05;
+// A 40-prop sample still shrinks hard (40 / 120). Once a league has a few
+// hundred graded props, a real bias can move up to 5 points instead of 2.5.
+const GLOBAL_CAP = 0.05;
+const TAG_CAP = 0.04;
+const TAG_STACK_CAP = 0.06;
 
 function clamp(value, lo, hi) {
   return Math.min(hi, Math.max(lo, value));

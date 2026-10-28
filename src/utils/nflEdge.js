@@ -10,7 +10,8 @@
 // team implied point total, and a short week or extra rest can still move it.
 // Outdoor wind, rain, and snow scale the passing game down and, in the
 // heavier cases, the running game up. The result is pulled toward the yes
-// price. Edge is what is left after that pull.
+// price, and harder when the recent hits and the carry or target projection
+// disagree. Edge is what is left after that pull.
 
 import { applyLearned } from './propCalibration.js';
 import {
@@ -19,7 +20,7 @@ import {
   NFL_STABLE_MARKET_WEIGHT,
   NFL_VOLATILE_HIT_WEIGHT,
   NFL_VOLATILE_MARKET_WEIGHT,
-  fairProbability,
+  settledProbability,
 } from './fairPrice.js';
 
 const PASS_YDS = 'football_player_passing_yards';
@@ -719,7 +720,9 @@ export function nflPropEdge(input) {
   const strength = VOLATILE.has(type) ? 14 : 8;
   const anchor = priorN >= 8 ? priorHits / priorN : fallbackRate(type, line);
   let p = (hits + anchor * strength) / (n + strength);
+  const hitP = p;
   const tags = [];
+  const hitWeight = VOLATILE.has(type) ? NFL_VOLATILE_HIT_WEIGHT : NFL_STABLE_HIT_WEIGHT;
 
   const volume = volumeRead(type, line, recentContext, priorContext, teammates, matchup, role, weather);
   if (volume.back) tags.push(`${volume.back} back`);
@@ -728,7 +731,6 @@ export function nflPropEdge(input) {
     for (const part of volume.out.split(', ')) if (part) tags.push(part);
   }
   if (volume.p != null) {
-    const hitWeight = VOLATILE.has(type) ? NFL_VOLATILE_HIT_WEIGHT : NFL_STABLE_HIT_WEIGHT;
     const blended = hitWeight * p + (1 - hitWeight) * volume.p;
     p = applyShift(p, tags, blended - p, 'volume', 'low volume');
   }
@@ -797,7 +799,11 @@ export function nflPropEdge(input) {
   const marketWeight = volume.p != null
     ? (VOLATILE.has(type) ? NFL_VOLATILE_MARKET_WEIGHT : NFL_STABLE_MARKET_WEIGHT)
     : NFL_BARE_MARKET_WEIGHT;
-  p = fairProbability(p, marketYes, marketWeight);
+  p = settledProbability(p, marketYes, marketWeight, {
+    hitP,
+    volumeP: volume.p,
+    hitWeight,
+  });
   p = applyLearned(clamp(p, 0.02, 0.92), tags, input.calibration);
   return {
     p,
