@@ -211,13 +211,28 @@ test('new reads skip goal props and keep point props', () => {
       rows: [
         row('hockey_player_goals', 0.3),
         row('hockey_player_points', 0.45, 1),
-        row('hockey_player_points', 0.48, 2),
+        row('hockey_player_points', 0.32, 2),
       ],
     }],
   });
   assert.equal(reads.length, 1);
   assert.equal(reads[0].propType, 'hockey_player_points');
   assert.equal(reads[0].line, 1);
+  const crossed = buildReads({
+    now,
+    logs,
+    games: [{
+      league: 'nhl',
+      key: 'game',
+      title: 'X at Y',
+      gameStart,
+      rows: [
+        row('hockey_player_points', 0.53, 1),
+        row('hockey_player_points', 0.73, 2),
+      ],
+    }],
+  });
+  assert.equal(crossed.length, 0);
 });
 
 test('an nba yes is graded and an nba no stays out of the score', () => {

@@ -9679,6 +9679,7 @@ thead .dfs-sticky-player {
 }
 .pp-switch button:disabled { opacity: 0.35; cursor: default; }
 .pp-line-on { color: var(--accent) !important; }
+.pp-line-off { color: #6a6a74; text-decoration: line-through; }
 .pp-sides {
   display: flex;
   justify-content: flex-end;
@@ -9696,6 +9697,8 @@ thead .dfs-sticky-player {
   white-space: nowrap;
 }
 .pp-yn:hover { background: #3a3a44; }
+.pp-yn-off { color: #8a8a96; cursor: default; }
+.pp-yn-off:hover { background: #2c2c34; }
 
 .ledger { display: flex; flex-direction: column; gap: 8px; }
 .ledger .empty-state { padding: 12px; }

@@ -11,6 +11,7 @@ import { nhlPropEdge } from './nhlEdge.js';
 import { nbaModeled, nbaPropEdge } from './nbaEdge.js';
 import { callGrade } from './modelCall.js';
 import { countsInScore, GOAL_PROP, POINTS_PROP } from './scoredProps.js';
+import { soundLines } from './quoteLadder.js';
 
 export const LOOKAHEAD_MS = 8 * 24 * 60 * 60 * 1000;
 const NEAR_MS = 12 * 60 * 60 * 1000;
@@ -49,8 +50,9 @@ function mainLine(lines) {
 }
 
 function scoredLine(lines, type) {
-  if (type === POINTS_PROP) return lines.find((line) => Number(line.line) === 1) || null;
-  return mainLine(lines);
+  const clean = soundLines(lines);
+  if (type === POINTS_PROP) return clean.find((line) => Number(line.line) === 1) || null;
+  return mainLine(clean);
 }
 
 function slateContext(rows) {
