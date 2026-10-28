@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getGameBoxscore } from '../api/espn';
-import { nbaPlayedSides } from '../utils/nbaScoreLine';
+import { NBA_STAT_COLUMNS, nbaPlayedSides } from '../utils/nbaScoreLine';
 
 export default function NbaScoreStats({ gameId, awayId, homeId, live = false }) {
   const [open, setOpen] = useState(false);
@@ -47,11 +47,23 @@ export default function NbaScoreStats({ gameId, awayId, homeId, live = false }) 
           {!error && sides && played === 0 && <p className="nba-stats-empty">No one has played yet.</p>}
           {!error && sides && played > 0 && sides.map((side) => (
             <div className="nba-stats-side" key={side.id || side.abbr}>
-              <div className="nba-stats-team">{side.abbr}</div>
+              <div className="nba-stats-head">
+                <span className="nba-stats-team">{side.abbr}</span>
+                {NBA_STAT_COLUMNS.map((col) => (
+                  <span className="nba-stats-col" key={col.key}>{col.label}</span>
+                ))}
+              </div>
               {side.players.map((player) => (
                 <div className="nba-stats-row" key={player.id || player.name}>
                   <span className="nba-stats-name">{player.name}</span>
-                  <span className="nba-stats-line">{player.line}</span>
+                  {player.stats.map((value, index) => (
+                    <span
+                      className={`nba-stats-cell${value === '0' ? ' is-zero' : ''}`}
+                      key={NBA_STAT_COLUMNS[index].key}
+                    >
+                      {value}
+                    </span>
+                  ))}
                 </div>
               ))}
             </div>

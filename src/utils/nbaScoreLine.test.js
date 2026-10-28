@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { nbaPlayedSides, nbaStatLine, playedName } from './nbaScoreLine.js';
+import { NBA_STAT_COLUMNS, nbaPlayedSides, nbaStatValues, playedName } from './nbaScoreLine.js';
 
 const labels = ['MIN', 'PTS', 'FG', '3PT', 'FT', 'REB', 'AST', 'TO', 'STL', 'BLK', 'OREB', 'DREB', 'PF', '+/-'];
 
-test('a played line is points, rebounds, assists, steals, blocks, turnovers, and fouls', () => {
+test('a played line is points, rebounds, assists, blocks, steals, and turnovers', () => {
   const stats = ['44', '24', '10-23', '0-7', '4-5', '9', '4', '5', '2', '0', '2', '7', '6', '+8'];
-  assert.equal(nbaStatLine(labels, stats), '24p/9r/4a/2s/0b/5t/6f');
+  assert.deepEqual(NBA_STAT_COLUMNS.map((col) => col.key), ['PTS', 'REB', 'AST', 'BLK', 'STL', 'TO']);
+  assert.deepEqual(nbaStatValues(labels, stats), ['24', '9', '4', '0', '2', '5']);
 });
 
 test('a name is the first initial and the last name', () => {
@@ -47,6 +48,6 @@ test('each side keeps the players who actually played, away then home', () => {
   };
   const sides = nbaPlayedSides(summary, '17', '2');
   assert.deepEqual(sides.map((side) => side.abbr), ['BKN', 'BOS']);
-  assert.deepEqual(sides[0].players.map((player) => `${player.name} ${player.line}`), ['M. Porter Jr. 27p/12r/2a/0s/2b/3t/2f']);
+  assert.deepEqual(sides[0].players.map((player) => [player.name, ...player.stats]), [['M. Porter Jr.', '27', '12', '2', '2', '0', '3']]);
   assert.deepEqual(sides[1].players.map((player) => player.name), ['J. Tatum', 'P. George']);
 });

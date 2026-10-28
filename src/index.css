@@ -7536,29 +7536,49 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .nba-stats-toggle:hover, .nba-stats-on { color: var(--accent2); }
-.nba-stats { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 12px; }
+.nba-stats { display: flex; flex-direction: column; gap: 16px; padding: 2px 12px 14px; }
+.nba-stats-head,
+.nba-stats-row {
+  display: grid;
+  grid-template-columns: minmax(7.6rem, 1.45fr) repeat(6, minmax(1.7rem, 0.62fr));
+  column-gap: 3px;
+  align-items: center;
+}
+.nba-stats-head {
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
 .nba-stats-team {
-  margin-bottom: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.nba-stats-col {
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text2);
 }
-.nba-stats-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 3px 0;
-}
-.nba-stats-name { font-size: 13px; font-weight: 700; color: var(--text); }
-.nba-stats-line {
-  font-size: 12px;
+.nba-stats-row { padding: 4px 0; }
+.nba-stats-name {
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text2);
-  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
+.nba-stats-cell {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.nba-stats-cell.is-zero { color: #5c5c6c; font-weight: 600; }
 .nba-stats-empty { margin: 0; font-size: 12px; color: var(--text2); }
 
 /* Score column on Scoring Summary tab */

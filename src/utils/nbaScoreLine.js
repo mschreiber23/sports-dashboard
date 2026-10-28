@@ -1,11 +1,10 @@
-const LINE = [
-  ['PTS', 'p'],
-  ['REB', 'r'],
-  ['AST', 'a'],
-  ['STL', 's'],
-  ['BLK', 'b'],
-  ['TO', 't'],
-  ['PF', 'f'],
+export const NBA_STAT_COLUMNS = [
+  { key: 'PTS', label: 'PTS' },
+  { key: 'REB', label: 'REB' },
+  { key: 'AST', label: 'AST' },
+  { key: 'BLK', label: 'BLK' },
+  { key: 'STL', label: 'STL' },
+  { key: 'TO', label: 'TO' },
 ];
 
 function statNumber(value) {
@@ -32,9 +31,9 @@ export function playedName(athlete) {
   return `${parts[0][0].toUpperCase()}. ${parts.slice(1).join(' ')}`;
 }
 
-export function nbaStatLine(labels, stats) {
+export function nbaStatValues(labels, stats) {
   const index = new Map((labels || []).map((label, i) => [label, i]));
-  return LINE.map(([label, letter]) => `${statNumber(stats?.[index.get(label)])}${letter}`).join('/');
+  return NBA_STAT_COLUMNS.map(({ key }) => statNumber(stats?.[index.get(key)]));
 }
 
 export function nbaPlayedSides(summary, awayId, homeId) {
@@ -50,7 +49,7 @@ export function nbaPlayedSides(summary, awayId, homeId) {
         id: String(row.athlete?.id || row.athlete?.displayName || ''),
         name: playedName(row.athlete),
         points: Number(statNumber(pointIndex >= 0 ? row.stats?.[pointIndex] : 0)),
-        line: nbaStatLine(labels, row.stats),
+        stats: nbaStatValues(labels, row.stats),
       }))
       .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
     return {
