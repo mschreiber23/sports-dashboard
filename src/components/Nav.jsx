@@ -62,19 +62,6 @@ function MeIcon({ active }) {
   );
 }
 
-function DFSIcon({ active }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/>
-      <line x1="8" y1="21" x2="16" y2="21"/>
-      <line x1="12" y1="17" x2="12" y2="21"/>
-      <line x1="7" y1="10" x2="7" y2="13"/>
-      <line x1="12" y1="7" x2="12" y2="13"/>
-      <line x1="17" y1="9" x2="17" y2="13"/>
-    </svg>
-  );
-}
-
 function PlayersIcon({ active }) {
   // Search / magnifying glass icon
   return (
@@ -134,25 +121,11 @@ function PointsIcon({ active }) {
   );
 }
 
-function MiLBIcon({ active }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M12 3 C9 7 9 17 12 21"/>
-      <path d="M12 3 C15 7 15 17 12 21"/>
-      <path d="M3 12 L21 12"/>
-    </svg>
-  );
-}
-
 const MORE_ITEMS = [
   { path: '/nhl-points', label: 'NHL Points', Icon: PointsIcon },
-  { path: '/props',    label: 'Props',      Icon: PropsIcon },
-  { path: '/milb',     label: 'MiLB',       Icon: MiLBIcon },
-  { path: '/me',       label: 'My Profile', Icon: MeIcon },
-  { path: '/leaders',  label: 'Leaders',    Icon: LeadersIcon },
-  { path: '/rankings', label: 'Rankings',   Icon: LeadersIcon },
-  { path: '/dfs',      label: 'ShribeIQ',   Icon: DFSIcon },
+  { path: '/props',      label: 'Props',      Icon: PropsIcon },
+  { path: '/me',         label: 'My Profile', Icon: MeIcon },
+  { path: '/leaders',    label: 'Leaders',    Icon: LeadersIcon },
 ];
 
 const NAV_ITEMS = [
