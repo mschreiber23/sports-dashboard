@@ -65,6 +65,15 @@ test('an open read keeps the newer price from either device', () => {
   assert.equal(merged[0].result, null);
 });
 
+test('the account copy wins when both devices settled the same grade', () => {
+  const phone = read({ modelP: 0.54, price: 0.48, edge: 0.06 });
+  const desktop = read({ modelP: 0.61, price: 0.5, edge: 0.11 });
+  const merged = mergeStoredReads([desktop], [phone]);
+  assert.equal(merged[0].modelP, 0.54);
+  assert.equal(merged[0].price, 0.48);
+  assert.equal(ledgerReport(merged).model, ledgerReport([phone]).model);
+});
+
 test('a read saved on only one device stays in the log', () => {
   const phone = read();
   const desktop = read({ id: 'nba|game|Other|points|1', player: 'Other', league: 'nba' });

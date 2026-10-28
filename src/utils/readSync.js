@@ -6,16 +6,8 @@ export function preferRead(local, remote) {
   if (!local) return remote;
   if (!remote) return local;
   const graded = [local, remote].filter((row) => row.result);
-  if (graded.length) {
-    graded.sort((a, b) => {
-      const clean = settledRank(b) - settledRank(a);
-      if (clean) return clean;
-      const when = (b.gradedAt || 0) - (a.gradedAt || 0);
-      if (when) return when;
-      return (a.pricedAt || a.recordedAt || 0) - (b.pricedAt || b.recordedAt || 0);
-    });
-    return graded[0];
-  }
+  if (graded.length === 1) return graded[0];
+  if (graded.length === 2) return newerGrade(local, remote);
   const first = (local.recordedAt || 0) <= (remote.recordedAt || 0) ? local : remote;
   const latestPrice = (local.pricedAt || local.recordedAt || 0) >= (remote.pricedAt || remote.recordedAt || 0)
     ? local
@@ -36,6 +28,16 @@ function settledRank(row) {
   if (!row?.result) return 0;
   if (row.pricedAt && row.gradedAt && row.pricedAt > row.gradedAt) return 0;
   return 1;
+}
+
+function newerGrade(local, remote) {
+  const rank = settledRank(remote) - settledRank(local);
+  if (rank) return rank > 0 ? remote : local;
+  const when = (remote.gradedAt || 0) - (local.gradedAt || 0);
+  if (when) return when > 0 ? remote : local;
+  const priced = (local.pricedAt || local.recordedAt || 0) - (remote.pricedAt || remote.recordedAt || 0);
+  if (priced) return priced < 0 ? local : remote;
+  return remote;
 }
 
 export function mergeStoredReads(local, remote) {
