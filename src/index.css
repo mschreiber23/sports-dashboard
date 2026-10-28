@@ -7378,6 +7378,7 @@ thead .dfs-sticky-player {
 .mlbc-pitcher-stats { font-size: 11px; color: var(--text2); }
 
 /* Clickable top section of game cards */
+.mlbc-card-link { cursor: pointer; }
 .mlbc-top-tap { cursor: pointer; }
 .mlbc-top-tap:hover { background: rgba(255,255,255,0.025); border-radius: 12px 12px 0 0; }
 

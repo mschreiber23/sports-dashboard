@@ -25,6 +25,7 @@ test('each side keeps the players who actually played, away then home', () => {
           statistics: [{
             labels,
             athletes: [
+              { athlete: { id: '9', shortName: 'P. George' }, stats: ['36', '20', '8-16', '1-6', '3-3', '7', '7', '3', '2', '0', '0', '7', '3', '-2'] },
               { athlete: { id: '1', shortName: 'J. Tatum' }, stats: ['42', '40', '10-20', '2-7', '18-22', '5', '8', '0', '0', '1', '0', '5', '3', '+5'] },
               { didNotPlay: true, athlete: { id: '2', shortName: 'C. Cenac Jr.' }, stats: [] },
               { athlete: { id: '3', shortName: 'Z. Zero' }, stats: ['0', '0', '0-0', '0-0', '0-0', '0', '0', '0', '0', '0', '0', '0', '0', '0'] },
@@ -47,5 +48,5 @@ test('each side keeps the players who actually played, away then home', () => {
   const sides = nbaPlayedSides(summary, '17', '2');
   assert.deepEqual(sides.map((side) => side.abbr), ['BKN', 'BOS']);
   assert.deepEqual(sides[0].players.map((player) => `${player.name} ${player.line}`), ['M. Porter Jr. 27p/12r/2a/0s/2b/3t/2f']);
-  assert.deepEqual(sides[1].players.map((player) => player.name), ['J. Tatum']);
+  assert.deepEqual(sides[1].players.map((player) => player.name), ['J. Tatum', 'P. George']);
 });

@@ -1580,8 +1580,8 @@ function SportFinalCard({ game, sport, navigate, accentColor, stats = false }) {
   }).filter(Boolean);
 
   return (
-    <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: sport === 'nhl' ? 'Gamecast' : undefined } })}>
+    <div className="mlbc-card mlbc-card-link" style={accentStyle(accentColor)} onClick={() => navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } })}>
+      <div className="mlbc-top-tap">
         <GenericTeamRows away={away} home={home} sport={sport} showScore finalLabel={finalStatusLabel(comp?.status)} />
       </div>
       {topLeaders.length > 0 && (
@@ -1604,10 +1604,6 @@ function SportFinalCard({ game, sport, navigate, accentColor, stats = false }) {
         </>
       )}
       {stats && <NbaScoreStats gameId={game.id} awayId={away?.team?.id} homeId={home?.team?.id} />}
-      <div className="mlbc-divider" />
-      <div className="mlbc-actions">
-        <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/${sport}/${game.id}`, { state: { tab: 'Box Score' } }); }}>Box Score</span>
-      </div>
     </div>
   );
 }

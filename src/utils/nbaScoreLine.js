@@ -43,13 +43,16 @@ export function nbaPlayedSides(summary, awayId, homeId) {
     const statGroup = (group.statistics || [])[0] || {};
     const labels = statGroup.labels || [];
     const minuteIndex = labels.indexOf('MIN');
+    const pointIndex = labels.indexOf('PTS');
     const players = (statGroup.athletes || [])
       .filter((row) => !row.didNotPlay && minutesPlayed(minuteIndex >= 0 ? row.stats?.[minuteIndex] : '') > 0)
       .map((row) => ({
         id: String(row.athlete?.id || row.athlete?.displayName || ''),
         name: playedName(row.athlete),
+        points: Number(statNumber(pointIndex >= 0 ? row.stats?.[pointIndex] : 0)),
         line: nbaStatLine(labels, row.stats),
-      }));
+      }))
+      .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
     return {
       id: String(group.team?.id || ''),
       abbr: group.team?.abbreviation || '',
