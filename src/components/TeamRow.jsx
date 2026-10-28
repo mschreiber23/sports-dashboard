@@ -1337,6 +1337,27 @@ function NhlTeamRows({ away, home, showScore, finalLabel, liveLabel, awayScoreOv
   );
 }
 
+function NhlSummaryToggle({ open, onToggle, goalies, goals, onPlayer }) {
+  const hasSummary = goalies.length > 0 || goals.length > 0;
+  return (
+    <div className="nhl-summary-wrap" onClick={(ev) => ev.stopPropagation()}>
+      <div className="mlbc-divider" />
+      <button
+        type="button"
+        className={`nba-stats-toggle${open ? ' nba-stats-on' : ''}`}
+        aria-expanded={open}
+        onClick={() => onToggle()}
+      >
+        Scoring Summary
+      </button>
+      {open && hasSummary && (
+        <NhlScoringSummary goalies={goalies} goals={goals} showGoals onPlayer={onPlayer} />
+      )}
+      {open && !hasSummary && <p className="nba-stats-empty">No scoring yet.</p>}
+    </div>
+  );
+}
+
 function NhlExpandButton({ open, onToggle }) {
   return (
     <>
@@ -1354,7 +1375,7 @@ function NhlExpandButton({ open, onToggle }) {
 }
 
 /* ── NHL Final card ──────────────────────────────────── */
-function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false }) {
+function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false, collapseSummary = false }) {
   const [nhlData, setNhlData] = useState(null);
   const [scoringOpen, setScoringOpen] = useState(false);
   const comp        = game.competitions?.[0];
@@ -1369,33 +1390,45 @@ function NhlFinalCard({ game, navigate, accentColor, collapseScoring = false }) 
 
   const { goalies = [], goals = [], teamStats = {} } = nhlData || {};
 
+  const openGame = () => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } });
   return (
-    <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
+    <div className={`mlbc-card${collapseSummary ? ' mlbc-card-link' : ''}`} style={accentStyle(accentColor)} onClick={collapseSummary ? openGame : undefined}>
+      <div className="mlbc-top-tap" onClick={collapseSummary ? undefined : openGame}>
         <NhlTeamRows away={away} home={home} showScore finalLabel={finalStatusLabel(comp?.status)} teamStats={teamStats} />
       </div>
 
-      <NhlScoringSummary
-        goalies={goalies}
-        goals={goals}
-        showGoals={!collapseScoring || scoringOpen}
-        onPlayer={(id) => navigate(`/player/nhl/${id}`)}
-        between={collapseScoring && goals.length > 0
-          ? <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
-          : null}
-      />
-
-      <div className="mlbc-divider" />
-      <div className="mlbc-actions">
-        <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } }); }}>Gamecast</span>
-        <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Box Score' } }); }}>Box Score</span>
-      </div>
+      {collapseSummary ? (
+        <NhlSummaryToggle
+          open={scoringOpen}
+          onToggle={() => setScoringOpen((v) => !v)}
+          goalies={goalies}
+          goals={goals}
+          onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+        />
+      ) : (
+        <>
+          <NhlScoringSummary
+            goalies={goalies}
+            goals={goals}
+            showGoals={!collapseScoring || scoringOpen}
+            onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+            between={collapseScoring && goals.length > 0
+              ? <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
+              : null}
+          />
+          <div className="mlbc-divider" />
+          <div className="mlbc-actions">
+            <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); openGame(); }}>Gamecast</span>
+            <span className="mlbc-action-btn" onClick={(ev) => { ev.stopPropagation(); navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Box Score' } }); }}>Box Score</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 /* ── NHL Live card ───────────────────────────────────── */
-function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = false }) {
+function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = false, collapseSummary = false }) {
   const [nhlData, setNhlData] = useState(null);
   const [scoringOpen, setScoringOpen] = useState(false);
   const timerRef    = useRef(null);
@@ -1430,22 +1463,33 @@ function NhlLiveCard({ game, navigate, accentColor, nhlScore, collapseScoring = 
     </span>
   );
 
+  const openGame = () => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } });
   return (
-    <div className="mlbc-card" style={accentStyle(accentColor)}>
-      <div className="mlbc-top-tap" onClick={() => navigate(`/boxscore/nhl/${game.id}`, { state: { tab: 'Gamecast' } })}>
+    <div className={`mlbc-card${collapseSummary ? ' mlbc-card-link' : ''}`} style={accentStyle(accentColor)} onClick={collapseSummary ? openGame : undefined}>
+      <div className="mlbc-top-tap" onClick={collapseSummary ? undefined : openGame}>
         <NhlTeamRows away={away} home={home} showScore liveLabel={liveLabel}
           awayScoreOverride={awayScore} homeScoreOverride={homeScore} teamStats={teamStats} />
       </div>
 
-      <NhlScoringSummary
-        goalies={goalies}
-        goals={goals}
-        showGoals={!collapseScoring || scoringOpen}
-        onPlayer={(id) => navigate(`/player/nhl/${id}`)}
-        between={collapseScoring && goals.length > 0
-          ? <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
-          : null}
-      />
+      {collapseSummary ? (
+        <NhlSummaryToggle
+          open={scoringOpen}
+          onToggle={() => setScoringOpen((v) => !v)}
+          goalies={goalies}
+          goals={goals}
+          onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+        />
+      ) : (
+        <NhlScoringSummary
+          goalies={goalies}
+          goals={goals}
+          showGoals={!collapseScoring || scoringOpen}
+          onPlayer={(id) => navigate(`/player/nhl/${id}`)}
+          between={collapseScoring && goals.length > 0
+            ? <NhlExpandButton open={scoringOpen} onToggle={() => setScoringOpen((v) => !v)} />
+            : null}
+        />
+      )}
 
       {nhlScore?.ppTeam && (
         <>
