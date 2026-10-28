@@ -8862,9 +8862,43 @@ thead .dfs-sticky-player {
 .bsp-gh { position: relative; }
 
 /* ── Polymarket props ── */
-.props-page { gap: 16px; min-width: 0; max-width: 100%; }
+.props-page { gap: 10px; min-width: 0; max-width: 100%; }
 .props-page > * { min-width: 0; max-width: 100%; }
-.props-header { display: flex; flex-direction: column; gap: 6px; }
+.props-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.props-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.props-toolbar .scores-sport-tabs { flex: 1; min-width: 0; }
+.props-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.props-board > .props-likely-head,
+.props-board > .pick-group,
+.pick-card-open { grid-column: 1 / -1; }
+@media (max-width: 680px) {
+  .props-header { align-items: stretch; flex-direction: column; }
+  .props-toolbar { align-items: stretch; flex-direction: column; }
+  .props-toolbar .scores-sport-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .props-toolbar .scores-sport-tabs::-webkit-scrollbar { display: none; }
+  .props-toolbar .ts-tab { flex-shrink: 0; }
+  .props-board:not(.props-games) { grid-template-columns: 1fr; }
+}
+@media (min-width: 1080px) {
+  .props-games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .props-note {
   font-size: 13px;
   color: var(--text2);
@@ -8889,6 +8923,7 @@ thead .dfs-sticky-player {
 }
 .props-sport-head span { font-size: 12px; color: var(--text2); font-weight: 700; }
 .props-list { display: flex; flex-direction: column; gap: 8px; }
+.props-list.props-board { display: grid; }
 .pp-game-env {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -9003,10 +9038,18 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .props-day-label { font-size: 14px; font-weight: 800; min-width: 88px; text-align: center; }
-.props-view-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.props-view-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.props-view-nav::-webkit-scrollbar { display: none; }
 .props-view-btn {
-  height: 32px;
-  padding: 0 12px;
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.16);
   background: transparent;
@@ -9017,10 +9060,23 @@ thead .dfs-sticky-player {
 }
 .props-view-on { border-color: rgba(255,255,255,0.72); }
 .props-likely-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
-.pick-sheet { display: flex; flex-direction: column; gap: 10px; }
+.pick-sheet { display: flex; flex-direction: column; gap: 8px; }
 .pick-lead { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); }
+.props-details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg2);
+  padding: 8px 12px;
+}
+.props-details summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+.props-details p { margin: 8px 0 0; }
 .pick-status { margin: 0; font-size: 12px; color: var(--text2); font-weight: 700; }
 .pick-list { display: flex; flex-direction: column; gap: 8px; }
+.pick-list.props-board { display: grid; }
 .pick-group {
   margin: 6px 0 0;
   font-size: 12px;
@@ -9041,7 +9097,7 @@ thead .dfs-sticky-player {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px;
+  padding: 10px 12px;
   border: 0;
   background: none;
   color: inherit;
@@ -9129,7 +9185,7 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .props-likely-head {
-  margin: 12px 0 2px;
+  margin: 2px 0 0;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -9149,7 +9205,7 @@ thead .dfs-sticky-player {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 8px 10px;
   color: inherit;
   cursor: pointer;
 }
@@ -9235,10 +9291,12 @@ thead .dfs-sticky-player {
 .model-ticker {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0 0 12px;
-  padding: 10px 12px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 8px 12px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--bg2);
@@ -9639,7 +9697,8 @@ thead .dfs-sticky-player {
 }
 .pp-yn:hover { background: #3a3a44; }
 
-.ledger { display: flex; flex-direction: column; gap: 12px; }
+.ledger { display: flex; flex-direction: column; gap: 8px; }
+.ledger .empty-state { padding: 12px; }
 .ledger-status { margin: 0; font-size: 13px; font-weight: 700; color: var(--text); }
 .ledger-again { align-self: flex-start; }
 .ledger-waiting { display: flex; flex-direction: column; gap: 8px; }
@@ -9667,17 +9726,18 @@ thead .dfs-sticky-player {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 8px 10px;
 }
 .ledger-stat b {
   display: block;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .ledger-stat span { display: block; margin-top: 4px; font-size: 11px; color: var(--text2); font-weight: 700; }
-.ledger-sports { margin: 4px 0 12px; }
+.ledger-sports { margin: 0; }
+.ledger-section h3 .ledger-again { margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; }
 .ledger-section h3 { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 8px; font-size: 13px; font-weight: 800; }
 .ledger-row {
   display: flex;
@@ -9706,7 +9766,7 @@ thead .dfs-sticky-player {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 8px 10px;
 }
 .ledger-mark {
   font-size: 11px;
