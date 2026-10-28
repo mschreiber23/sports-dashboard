@@ -306,6 +306,14 @@ test('an nba prop can be yes and cannot be no', () => {
   assert.equal(keptLikelySide('nfl', null), null);
 });
 
+test('a 53% midpoint with an 82% ask is the 82 cent contract', () => {
+  const kuminga = { yes: 0.53, bid: 0.24, ask: 0.82 };
+  assert.equal(takerQuote(kuminga, 'yes'), 0.82);
+  assert.equal(Math.round(takerQuote(kuminga, 'yes') * 100), 82);
+  assert.equal(affordablePrice(takerQuote(kuminga, 'yes')), false);
+  assert.equal(Math.round(kuminga.yes * 100), 53);
+});
+
 test('a 72% mid with a 95% ask is not a realistic price to win $25', () => {
   const wide = { yes: 0.72, bid: 0.47, ask: 0.95 };
   assert.equal(takerQuote(wide, 'yes'), 0.95);
