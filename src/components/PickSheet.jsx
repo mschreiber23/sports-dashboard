@@ -63,13 +63,12 @@ export default function PickSheet({ picks, status, ready, onOpen, draftFor }) {
 
   return (
     <div className="pick-sheet">
-      <p className="pick-lead">The best reads on this slate. Open one for why.</p>
       {status && <p className="pick-status">{status}</p>}
       {ready && ranked.length === 0 && (
         <div className="empty-state"><p>Nothing cleared the bar for this slate.</p></div>
       )}
       {modeled.length > 0 && (
-        <section className="pick-list">
+        <section className="pick-list props-board">
           <h2 className="pick-group">Model</h2>
           {modeled.map((item) => (
             <PickCard
@@ -84,7 +83,7 @@ export default function PickSheet({ picks, status, ready, onOpen, draftFor }) {
         </section>
       )}
       {recent.length > 0 && (
-        <section className="pick-list">
+        <section className="pick-list props-board">
           <h2 className="pick-group">Cleared it lately</h2>
           {recent.map((item) => (
             <PickCard

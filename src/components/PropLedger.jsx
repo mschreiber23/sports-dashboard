@@ -91,32 +91,28 @@ export default function PropLedger() {
   const visible = showAll ? filteredRecent : filteredRecent.slice(0, 20);
   const sportCount = (league) => recent.filter((row) => row.league === league).length;
 
+  const refreshButton = (
+    <button type="button" className="btn-primary ledger-again" disabled={working} onClick={() => refresh(true)}>
+      Update now
+    </button>
+  );
+
   return (
     <div className="ledger">
-      <p className="props-likely-note">
-        A call needs at least a 4-point edge. That side has to be at least 38%, and winning $25 cannot cost more than $36 after the fee, which keeps the price at 57% or under. A 58% favorite stays off: that stake is $37.02. The points score is the 1+ line. Goal props, 2+ and 3+ lines, penny quotes, and empty-book asks stay off. NBA player props are Yes only, and a Yes is a hit when the player clears the line. A No in the NHL or NFL is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
-      </p>
       {status && <p className="ledger-status">{status}</p>}
       {error && <p className="ledger-status">{error}</p>}
-      <button type="button" className="btn-primary ledger-again" disabled={working} onClick={() => refresh(true)}>
-        Update now
-      </button>
-      <AccuracyPanel />
-      <section className="ledger-section">
-        <h3>Weight adjustments</h3>
-        <WeightFit name="NFL" fit={calibration?.nfl} />
-        <WeightFit name="NHL" fit={calibration?.nhl} />
-        <WeightFit name="NBA" fit={calibration?.nba} />
-      </section>
 
       {reads && allReport.graded === 0 && (
-        <div className="empty-state">
-          <p>
-            {allReport.open
-              ? `${allReport.open} ${allReport.open === 1 ? 'read is' : 'reads are'} saved and waiting on the games.`
-              : 'The log starts with the next slate. Open this before the games lock.'}
-          </p>
-        </div>
+        <>
+          {refreshButton}
+          <div className="empty-state">
+            <p>
+              {allReport.open
+                ? `${allReport.open} ${allReport.open === 1 ? 'read is' : 'reads are'} saved and waiting on the games.`
+                : 'The log starts with the next slate. Open this before the games lock.'}
+            </p>
+          </div>
+        </>
       )}
       {reads && allReport.graded === 0 && waitingGames.length > 0 && (
         <div className="ledger-waiting">
@@ -144,18 +140,59 @@ export default function PropLedger() {
             ))}
           </div>
           {report.graded > 0 && (
-          <>
-          <div className="ledger-stats">
-            <div className="ledger-stat"><b>{report.graded}</b><span>Graded</span></div>
-            <div className="ledger-stat"><b>{pct(report.callRate)}</b><span>Hit</span></div>
-            <div className="ledger-stat"><b>{pct(report.model)}</b><span>Model said</span></div>
-          </div>
-          <p className="props-likely-note ledger-summary">
-            The model was right on {pct(report.callRate)} of these calls. The yes price averaged {pct(report.price)}. The model’s yes probability averaged {pct(report.model)}.
-            {report.voids ? ` ${report.voids} ${report.voids === 1 ? 'void' : 'voids'} stayed out.` : ''}
-            {report.open ? ` ${report.open} still open.` : ''}
-          </p>
+            <div className="ledger-stats">
+              <div className="ledger-stat"><b>{report.graded}</b><span>Graded</span></div>
+              <div className="ledger-stat"><b>{pct(report.callRate)}</b><span>Hit</span></div>
+              <div className="ledger-stat"><b>{pct(report.model)}</b><span>Model said</span></div>
+            </div>
+          )}
+          {filteredRecent.length > 0 && (
+            <section className="ledger-section">
+              <h3>Graded props {refreshButton}</h3>
+              <div className="props-list props-board">
+                {visible.map((row) => {
+                  const grade = callGrade(row) || row.result;
+                  const quote = sideQuote(row);
+                  return (
+                    <div className="ledger-card" key={row.id}>
+                      <div>
+                        <div className="props-game-title">{row.player} <span className="props-likely-line">{quote.side === 'no' ? `No ${row.propLabel}` : row.propLabel}</span></div>
+                        <div className="props-game-meta">
+                          {row.league.toUpperCase()} · {row.game} · {formatGameTime(row.gameStart)}
+                          {row.actual == null ? '' : ` · actual ${row.actual}`}
+                          {` · model ${pct(quote.modelP)} · price ${pct(quote.price)} · ${points(quote.edge)}`}
+                        </div>
+                      </div>
+                      <div className={`ledger-mark ledger-${grade}`}>{grade}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              {filteredRecent.length > 20 && (
+                <button type="button" className="props-more" onClick={() => setShowAll((open) => !open)}>
+                  {showAll ? 'Show fewer' : `Show all ${filteredRecent.length}`}
+                </button>
+              )}
+            </section>
+          )}
+        </>
+      )}
 
+      <details className="props-details">
+        <summary>How a result is scored</summary>
+        <p className="props-likely-note">
+          A call needs at least a 4-point edge. That side has to be at least 38%, and winning $25 cannot cost more than $36 after the fee, which keeps the price at 57% or under. A 58% favorite stays off: that stake is $37.02. The points score is the 1+ line. Goal props, 2+ and 3+ lines, penny quotes, and empty-book asks stay off. NBA player props are Yes only, and a Yes is a hit when the player clears the line. A No in the NHL or NFL is a hit when they stay under. The percentages on a No are the chance of staying under. A player who did not play is a void, and voids stay out of the hit rate. After 40 graded props in a league, how often the line actually hit nudges that league’s probabilities.
+        </p>
+      </details>
+      <AccuracyPanel />
+      <section className="ledger-section">
+        <h3>Weight adjustments</h3>
+        <WeightFit name="NFL" fit={calibration?.nfl} />
+        <WeightFit name="NHL" fit={calibration?.nhl} />
+        <WeightFit name="NBA" fit={calibration?.nba} />
+      </section>
+      {report.graded > 0 && (
+        <>
           <section className="ledger-section">
             <h3>When the model said</h3>
             <BandList rows={report.modelBands} />
@@ -180,38 +217,6 @@ export default function PropLedger() {
                 </div>
               ))}
             </section>
-          )}
-
-          </>
-          )}
-          {filteredRecent.length > 0 && (
-          <section className="ledger-section">
-            <h3>Graded props</h3>
-            <div className="props-list">
-              {visible.map((row) => {
-                const grade = callGrade(row) || row.result;
-                const quote = sideQuote(row);
-                return (
-                  <div className="ledger-card" key={row.id}>
-                    <div>
-                      <div className="props-game-title">{row.player} <span className="props-likely-line">{quote.side === 'no' ? `No ${row.propLabel}` : row.propLabel}</span></div>
-                      <div className="props-game-meta">
-                        {row.league.toUpperCase()} · {row.game} · {formatGameTime(row.gameStart)}
-                        {row.actual == null ? '' : ` · actual ${row.actual}`}
-                        {` · model ${pct(quote.modelP)} · price ${pct(quote.price)} · ${points(quote.edge)}`}
-                      </div>
-                    </div>
-                    <div className={`ledger-mark ledger-${grade}`}>{grade}</div>
-                  </div>
-                );
-              })}
-            </div>
-            {filteredRecent.length > 20 && (
-              <button type="button" className="props-more" onClick={() => setShowAll((open) => !open)}>
-                {showAll ? 'Show fewer' : `Show all ${filteredRecent.length}`}
-              </button>
-            )}
-          </section>
           )}
         </>
       )}

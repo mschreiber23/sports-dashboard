@@ -28,7 +28,7 @@ export function AccuracyPanel() {
   return (
     <section className="ledger-section">
       <h3>Accuracy over time</h3>
-      <p className="props-likely-note">Each day is that day’s record. The line is the running rate after that day, and the record at the right is the whole sample. A call needs a 4-point edge, and winning $25 cannot cost more than $36 after the fee, so the price stays at 57% or under. The points score is the 1+ line. Voids stay out.</p>
+      <p className="props-likely-note">Each day is that day’s record. The line is the running rate, and the record at the right is the whole sample.</p>
       {report.sports.map((sport) => (
         <div className="model-sport" key={sport.league}>
           <div className="model-sport-top">
