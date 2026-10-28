@@ -40,6 +40,8 @@ function scorePlayer(player, log, marketYes, calibration) {
     opponentLabel: player.opponentAbbr,
     opponentGoalsAgainst: player.opponentGoalsAgainst,
     home: player.home,
+    position: log?.position || '',
+    defense: log?.defense || null,
     marketYes,
     calibration,
   };

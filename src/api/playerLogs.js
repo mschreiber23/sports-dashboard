@@ -1,4 +1,5 @@
 import { opponentReceiving, receivingGroup } from './nflMatchup.js';
+import { loadDefense } from './positionDefense.js';
 
 const LEAGUES = {
   nhl: { path: 'hockey/nhl', search: ['nhl'] },
@@ -249,16 +250,18 @@ function contextOf(games) {
   return any ? rows : null;
 }
 
-async function athletePosition(id) {
-  if (!id) return '';
-  if (positionCache.has(id)) return positionCache.get(id);
+async function athletePosition(league, id) {
+  const sport = LEAGUES[league];
+  if (!sport || !id) return '';
+  const key = `${league}|${id}`;
+  if (positionCache.has(key)) return positionCache.get(key);
   const pending = (async () => {
-    const res = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/football/nfl/athletes/${id}`);
+    const res = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/${sport.path}/athletes/${id}`);
     if (!res.ok) return '';
     const data = await res.json();
     return data.athlete?.position?.abbreviation || '';
   })().catch(() => '');
-  positionCache.set(id, pending);
+  positionCache.set(key, pending);
   return pending;
 }
 
@@ -379,8 +382,12 @@ export async function recentPlayerLogs(league, players) {
       const lastPlayed = games[0] ? new Date(games[0].date).getTime() : null;
       let position = '';
       let matchup = null;
+      let defense = null;
+      let teamPace = null;
+      if (league === 'nfl' || league === 'nhl' || league === 'nba') {
+        position = await athletePosition(league, id);
+      }
       if (league === 'nfl') {
-        position = await athletePosition(id);
         const group = receivingGroup(position);
         if (group && player.opponentAbbr) {
           const profile = await opponentReceiving(player.opponentAbbr);
@@ -389,6 +396,13 @@ export async function recentPlayerLogs(league, players) {
             matchup = { group, games: profile.games, ...row };
           }
         }
+      }
+      if ((league === 'nhl' || league === 'nba') && player.opponentAbbr) {
+        defense = await loadDefense(league, player.opponentAbbr);
+      }
+      if (league === 'nba' && player.teamAbbr) {
+        const own = await loadDefense(league, player.teamAbbr);
+        teamPace = own?.pace ?? null;
       }
       out[player.name] = {
         series,
@@ -400,6 +414,8 @@ export async function recentPlayerLogs(league, players) {
         opponent: player.opponentName || player.opponentAbbr || '',
         position,
         matchup,
+        defense,
+        teamPace,
       };
     }
   }

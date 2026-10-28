@@ -149,6 +149,23 @@ function nflContext(game, sample, logs, roles, opportunityLogs) {
   };
 }
 
+function nbaTeammates(game, sample, logs) {
+  const teammates = [];
+  const seen = new Set();
+  for (const row of game.rows || []) {
+    if (row.section !== 'player' || !row.player || row.player === sample.player) continue;
+    if (!row.teamName || row.teamName !== sample.teamName || seen.has(row.player)) continue;
+    seen.add(row.player);
+    const mate = logs[`${game.league}|${row.player}|${row.gameStart}`];
+    teammates.push({
+      name: row.player,
+      position: mate?.position || '',
+      recent: mate?.context || null,
+    });
+  }
+  return teammates;
+}
+
 export function buildReads({ games, logs, now = Date.now(), roles = [], opportunityLogs = {}, forms = {}, weatherByGame = {}, injuries = [] }) {
   const reads = [];
   for (const game of games || []) {
@@ -196,10 +213,14 @@ export function buildReads({ games, logs, now = Date.now(), roles = [], opportun
         matchup: log?.matchup,
         weather: weatherByGame[game.key] || null,
         ...matchupContext(forms, game.league, sample.teamAbbr, sample.opponentAbbr, sample.gameStart),
+        position: log?.position || '',
+        defense: log?.defense || null,
+        teamPace: log?.teamPace ?? null,
         ...(game.league === 'nfl' ? nflContext(game, sample, logs, roles, opportunityLogs) : {}),
         ...(game.league === 'nba' ? {
           playerName: sample.player,
           absences: teamAbsences(injuries, sample.teamName),
+          teammates: nbaTeammates(game, sample, logs),
         } : {}),
       });
       if (!model) continue;
