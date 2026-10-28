@@ -23,6 +23,7 @@ import TradeButton from '../components/TradeButton';
 import { usePropSync } from '../components/PropSync';
 import { BET_PRICE_MAX, affordablePrice } from '../utils/scoredProps';
 import { keptLikelySide, takerQuote, yesOnlyLeague } from '../utils/propBook';
+import { crossedLines, soundLines } from '../utils/quoteLadder';
 import { rememberSport } from '../utils/lastSport';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
@@ -108,7 +109,7 @@ function buttonYes(line) {
 }
 
 function mainLine(lines) {
-  return lines
+  return soundLines(lines)
     .filter((line) => buttonYes(line) != null)
     .slice()
     .sort((a, b) => Math.abs(buttonYes(a) - 0.5) - Math.abs(buttonYes(b) - 0.5) || a.line - b.line)[0] || null;
@@ -444,7 +445,7 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
         continue;
       }
       const byRate = new Map();
-      for (const line of lines) {
+      for (const line of soundLines(lines)) {
         const hits = recent.filter((value) => value >= line.line).length;
         const rate = Math.round((hits / recent.length) * 100);
         if (rate < LIKELY_MIN_RATE) continue;
@@ -730,7 +731,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
       .filter((group) => team === 'all' || group.teamName === team)
       .filter((group) => !q || group.player.toLowerCase().includes(q))
       .map((group) => {
-        const fallback = mainLine(group.lines)?.line ?? group.lines[0].line;
+        const clean = soundLines(group.lines);
+        const fallback = mainLine(clean)?.line ?? clean[0]?.line ?? group.lines[0].line;
         const selected = group.lines.some((line) => line.line === picked[group.key])
           ? picked[group.key]
           : fallback;
@@ -814,8 +816,10 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
         {visible.map((group) => {
           const shown = lineWindow(group.lines, group.selected);
           const idx = group.lines.findIndex((line) => line.line === group.selected);
-          const yesPrice = buttonYes(group.current);
-          const noPrice = takerQuote(group.current, 'no');
+          const offLines = crossedLines(group.lines);
+          const off = offLines.has(group.current);
+          const yesPrice = off ? null : buttonYes(group.current);
+          const noPrice = off ? null : takerQuote(group.current, 'no');
           const yesPct = yesPrice == null ? '—' : `${Math.round(yesPrice * 100)}%`;
           const noPct = noPrice == null ? '—' : `${Math.round(noPrice * 100)}%`;
           const log = logs[group.player];
@@ -870,7 +874,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
           const factorFn = league === 'nhl' ? nhlFactorLines : (league === 'nfl' ? nflFactorLines : (league === 'nba' ? nbaFactorLines : null));
           const edgeFn = league === 'nhl' ? nhlPropEdge : (league === 'nfl' ? nflPropEdge : (league === 'nba' ? nbaPropEdge : null));
           const factors = factorFn ? factorFn(factorInput) : [];
-          const model = factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: buttonYes(group.current), calibration }) : null;
+          const model = !off && factors.length && edgeFn ? edgeFn({ ...factorInput, marketYes: buttonYes(group.current), calibration }) : null;
           const moved = new Set((model?.tags || []).map((tag) => {
             if (FACTOR_TAGS[tag]) return FACTOR_TAGS[tag];
             if (String(tag).endsWith(' back') || String(tag).endsWith(' out') || String(tag).endsWith(' Q') || tag === 'Out' || tag === 'Questionable') return 'usage';
@@ -898,7 +902,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                         <button
                           key={line.id}
                           type="button"
-                          className={line.line === group.selected ? 'pp-line-on' : ''}
+                          className={`${line.line === group.selected ? 'pp-line-on' : ''}${offLines.has(line) ? ' pp-line-off' : ''}`}
+                          title={offLines.has(line) ? 'This price is below a higher line' : undefined}
                           onClick={() => setPicked((prev) => ({ ...prev, [group.key]: line.line }))}
                         >
                           {lineText(line.line)}
@@ -913,8 +918,8 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                   <span className="pp-pct-l10">L10</span>
                 </div>
                 <div className="pp-sides">
-                  <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>
-                  {league !== 'nba' && <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>}
+                  {off ? <span className="pp-yn pp-yn-off" title="This price is below a higher line">Price off</span> : <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">Yes {yesPct}</a>}
+                  {!off && league !== 'nba' && <a className="pp-yn" href={group.current.url} target="_blank" rel="noopener noreferrer">No {noPct}</a>}
                 </div>
               </div>
               {factors.length > 0 && (
@@ -939,7 +944,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
                   ))}
                 </div>
               )}
-              {game && (
+              {game && !off && (
                 <div className="pp-trade-row">
                   <TradeButton draft={{
                     league: game.league,
