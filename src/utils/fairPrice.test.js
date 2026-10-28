@@ -3,9 +3,12 @@ import test from 'node:test';
 import {
   NFL_STABLE_HIT_WEIGHT,
   NFL_STABLE_MARKET_WEIGHT,
+  NFL_VOLATILE_HIT_WEIGHT,
+  NFL_VOLATILE_MARKET_WEIGHT,
   NHL_HIT_WEIGHT,
   NHL_MARKET_WEIGHT,
   fairProbability,
+  settledProbability,
 } from './fairPrice.js';
 import { nhlPropEdge } from './nhlEdge.js';
 import { nflPropEdge } from './nflEdge.js';
@@ -104,6 +107,52 @@ test('rushing yards still bet when expected yards are well above a stale price',
   assert.ok(model);
   assert.equal(model.rate, 40);
   assert.ok(model.edge >= 0.04, `edge ${model.edge} p ${model.p}`);
+});
+
+test('a hot streak against the volume projection is not a 4-point edge', () => {
+  const hitP = 0.9;
+  const volumeP = 0.46;
+  const market = 0.5;
+  const blended = projection(hitP, volumeP, NFL_VOLATILE_HIT_WEIGHT);
+  const next = settledProbability(blended, market, NFL_VOLATILE_MARKET_WEIGHT, {
+    hitP,
+    volumeP,
+    hitWeight: NFL_VOLATILE_HIT_WEIGHT,
+  });
+  assert.ok(next - market < 0.04, next);
+});
+
+test('a cold recent record still leaves 4 points after the heavier pull', () => {
+  const hitP = (4 + 0.5 * 8) / 18;
+  const volumeP = 0.7;
+  const market = 0.52;
+  const blended = projection(hitP, volumeP, NHL_HIT_WEIGHT);
+  const next = settledProbability(blended, market, NHL_MARKET_WEIGHT, {
+    hitP,
+    volumeP,
+    hitWeight: NHL_HIT_WEIGHT,
+  });
+  assert.ok(next - market >= 0.04, next);
+});
+
+test('a passing-touchdown streak does not clear 4 points when the attempt rate is under the price', () => {
+  function passRow(date, att, td) {
+    return { date, passAtt: att, passYds: att * 7, passTd: td, completions: Math.round(att * 0.65), ints: 0 };
+  }
+  const recent = Array.from({ length: 10 }, (_, index) => passRow(`2026-09-${String(index + 1).padStart(2, '0')}`, 28, index < 8 ? 2 : 0));
+  const prior = Array.from({ length: 8 }, (_, index) => passRow(`2025-11-${String(index + 2).padStart(2, '0')}`, 32, 1));
+  const model = nflPropEdge({
+    type: 'football_player_passing_touchdowns',
+    line: 1.5,
+    recent: recent.map((row) => row.passTd),
+    prior: prior.map((row) => row.passTd),
+    recentContext: recent,
+    priorContext: prior,
+    marketYes: 0.55,
+  });
+  assert.ok(model);
+  assert.equal(model.rate, 80);
+  assert.ok(model.edge < 0.04, `edge ${model.edge} p ${model.p}`);
 });
 
 test('seven of the last ten is not a bet when there is no volume projection', () => {

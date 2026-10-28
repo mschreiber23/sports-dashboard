@@ -2,7 +2,8 @@
 // with shooting pulled toward a normal rate so a hot or cold week does not
 // take over. Role, opponent scoring, pace, the game total, the spread, site,
 // and rest move that projection. The last-10 hit rate is a small piece. The
-// result is then pulled toward this book's yes price.
+// result is then pulled toward this book's yes price, and harder when the
+// recent hits and the minutes projection disagree.
 //
 // A primary defender, positional defense splits, other books' prices, and
 // parlay correlation are not in this feed, so they are left off rather than
@@ -16,7 +17,7 @@ import {
   NBA_MARKET_WEIGHT,
   NBA_VOLATILE_HIT_WEIGHT,
   NBA_VOLATILE_MARKET_WEIGHT,
-  fairProbability,
+  settledProbability,
 } from './fairPrice.js';
 
 const POINTS = 'basketball_player_points';
@@ -524,11 +525,12 @@ export function nbaPropEdge(args) {
   const strength = VOLATILE.has(args.type) ? 14 : 8;
   const anchor = priorN >= 8 ? priorHits / priorN : fallbackRate(args.type, args.line);
   let p = (hits + anchor * strength) / (n + strength);
+  const hitP = p;
   const tags = [...read.tags];
+  const hitWeight = VOLATILE.has(args.type) ? NBA_VOLATILE_HIT_WEIGHT : NBA_HIT_WEIGHT;
 
   if (read.volumeP != null) {
-    const weight = VOLATILE.has(args.type) ? NBA_VOLATILE_HIT_WEIGHT : NBA_HIT_WEIGHT;
-    const blended = weight * p + (1 - weight) * read.volumeP;
+    const blended = hitWeight * p + (1 - hitWeight) * read.volumeP;
     p = applyShift(p, tags, blended - p, 'volume', 'low volume');
   }
 
@@ -541,7 +543,11 @@ export function nbaPropEdge(args) {
   const marketWeight = read.volumeP == null
     ? NBA_BARE_MARKET_WEIGHT
     : (VOLATILE.has(args.type) ? NBA_VOLATILE_MARKET_WEIGHT : NBA_MARKET_WEIGHT);
-  p = fairProbability(clamp(p, 0.02, 0.95), args.marketYes, marketWeight);
+  p = settledProbability(clamp(p, 0.02, 0.95), args.marketYes, marketWeight, {
+    hitP,
+    volumeP: read.volumeP,
+    hitWeight,
+  });
   if (read.dtd) {
     p -= 0.025;
     if (!tags.includes('day to day')) tags.push('day to day');
