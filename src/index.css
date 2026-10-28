@@ -9700,7 +9700,12 @@ thead .dfs-sticky-player {
 .pp-yn-off { color: #8a8a96; cursor: default; }
 .pp-yn-off:hover { background: #2c2c34; }
 
-.ledger { display: flex; flex-direction: column; gap: 8px; }
+.ledger { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.ledger .props-board { grid-template-columns: 1fr; }
+/* A 390px phone has a 362px column. Keep that measure on a desktop so the stats wrap in the same places. */
+@media (min-width: 681px) {
+  .ledger { max-width: 362px; margin-inline: auto; }
+}
 .ledger .empty-state { padding: 12px; }
 .ledger-status { margin: 0; font-size: 13px; font-weight: 700; color: var(--text); }
 .ledger-again { align-self: flex-start; }

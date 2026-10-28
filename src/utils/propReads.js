@@ -9,7 +9,7 @@ import { teamAbsences } from '../api/nbaInjuries.js';
 import { nflModeled, nflPropEdge } from './nflEdge.js';
 import { nhlPropEdge } from './nhlEdge.js';
 import { nbaModeled, nbaPropEdge } from './nbaEdge.js';
-import { callGrade } from './modelCall.js';
+import { callGrade, sideQuote } from './modelCall.js';
 import { countsInScore, GOAL_PROP, POINTS_PROP } from './scoredProps.js';
 import { soundLines } from './quoteLadder.js';
 
@@ -291,22 +291,29 @@ export function gradeRead(read, stat, now = Date.now()) {
   return read;
 }
 
+function finite(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function average(rows, pick) {
+  const values = rows.map(pick).filter(finite);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+}
+
 function bandRows(rows, bands, valueOf) {
   return bands.map(([lo, hi, label]) => {
     const group = rows.filter((row) => {
       const value = valueOf(row);
-      return value >= lo && value < hi;
+      return finite(value) && value >= lo && value < hi;
     });
-    const hits = group.filter((row) => row.result === 'hit').length;
-    const price = group.reduce((sum, row) => sum + row.price, 0);
-    const model = group.reduce((sum, row) => sum + row.modelP, 0);
+    const hits = group.filter((row) => callGrade(row) === 'hit').length;
     return {
       label,
       count: group.length,
       hits,
       hitRate: group.length ? hits / group.length : null,
-      price: group.length ? price / group.length : null,
-      model: group.length ? model / group.length : null,
+      price: average(group, (row) => sideQuote(row).price),
+      model: average(group, (row) => sideQuote(row).modelP),
     };
   }).filter((band) => band.count > 0);
 }
@@ -320,13 +327,21 @@ export function ledgerReport(rows) {
   const open = list.filter((row) => !row.result).length;
   const tags = new Map();
   for (const row of graded) {
+    const quote = sideQuote(row);
+    const hit = callGrade(row) === 'hit';
     for (const tag of row.tags || []) {
-      if (!tags.has(tag)) tags.set(tag, { tag, count: 0, hits: 0, model: 0, price: 0 });
+      if (!tags.has(tag)) tags.set(tag, { tag, count: 0, hits: 0, model: 0, price: 0, modelN: 0, priceN: 0 });
       const item = tags.get(tag);
       item.count += 1;
-      item.model += row.modelP;
-      item.price += row.price;
-      if (row.result === 'hit') item.hits += 1;
+      if (finite(quote.modelP)) {
+        item.model += quote.modelP;
+        item.modelN += 1;
+      }
+      if (finite(quote.price)) {
+        item.price += quote.price;
+        item.priceN += 1;
+      }
+      if (hit) item.hits += 1;
     }
   }
   const tagRows = [...tags.values()].map((item) => ({
@@ -334,8 +349,8 @@ export function ledgerReport(rows) {
     count: item.count,
     hits: item.hits,
     hitRate: item.hits / item.count,
-    model: item.model / item.count,
-    price: item.price / item.count,
+    model: item.modelN ? item.model / item.modelN : null,
+    price: item.priceN ? item.price / item.priceN : null,
   })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
   return {
     saved: list.length,
@@ -346,10 +361,10 @@ export function ledgerReport(rows) {
     callRate: graded.length ? callHits / graded.length : null,
     voids,
     open,
-    model: graded.length ? graded.reduce((sum, row) => sum + row.modelP, 0) / graded.length : null,
-    price: graded.length ? graded.reduce((sum, row) => sum + row.price, 0) / graded.length : null,
-    modelBands: bandRows(graded, MODEL_BANDS, (row) => row.modelP),
-    edgeBands: bandRows(graded, EDGE_BANDS, (row) => row.edge),
+    model: average(graded, (row) => sideQuote(row).modelP),
+    price: average(graded, (row) => sideQuote(row).price),
+    modelBands: bandRows(graded, MODEL_BANDS, (row) => sideQuote(row).modelP),
+    edgeBands: bandRows(graded, EDGE_BANDS, (row) => sideQuote(row).edge),
     tags: tagRows,
   };
 }

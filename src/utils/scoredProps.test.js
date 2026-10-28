@@ -134,6 +134,26 @@ test('winning $25 cannot cost more than $36', () => {
   assert.equal(ledger.callHits, 2);
 });
 
+test('a No result uses the side shown on the card', () => {
+  const no = {
+    ...points,
+    id: 'under',
+    player: 'Under',
+    modelP: 0.38,
+    price: 0.48,
+    edge: -0.1,
+    result: 'miss',
+    prediction: 'no',
+  };
+  const ledger = ledgerReport([no]);
+  assert.equal(ledger.graded, 1);
+  assert.equal(ledger.callHits, 1);
+  assert.equal(Math.round(ledger.model * 100), 62);
+  assert.equal(Math.round(ledger.price * 100), 52);
+  assert.equal(ledger.edgeBands.find((band) => band.count)?.label, '+8 to +15');
+  assert.equal(ledger.modelBands.find((band) => band.count)?.label, '55–64%');
+});
+
 test('a 70% No touchdown stays out and a 52% No with an edge still counts', () => {
   const favorite = {
     ...points,

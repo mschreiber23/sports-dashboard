@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useAuth } from '../context/AuthContext';
 import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
+import { loadReads } from '../api/propStore';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
+import { countsInScore } from '../utils/scoredProps';
 import { expectedProfit, quoteForUnit, tradeId } from '../utils/propBook';
 import { mergeTradeLists } from '../utils/tradeSync';
 
@@ -151,12 +153,28 @@ export function PropSyncProvider({ children }) {
 
   useEffect(() => {
     if (!userId) return undefined;
+    let cancel = false;
+    const pullReads = () => {
+      if (document.visibilityState === 'hidden' || busy.current) return;
+      loadReads(userId).then((rows) => {
+        if (cancel || busy.current) return;
+        const scored = (rows || []).filter(countsInScore);
+        setReads(scored);
+        setCalibration(learnCalibration(scored));
+      });
+    };
     const onVis = () => {
       if (document.visibilityState !== 'visible') return;
-      loadTrades(userId).then((rows) => setTrades(rows));
+      pullReads();
+      loadTrades(userId).then((rows) => { if (!cancel) setTrades(rows); });
     };
+    const timer = setInterval(pullReads, 20000);
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    return () => {
+      cancel = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [userId]);
 
   return (
