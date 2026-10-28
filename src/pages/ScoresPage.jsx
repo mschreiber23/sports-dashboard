@@ -213,8 +213,8 @@ export default function ScoresPage() {
               return <MlbLiveCard key={game.id} game={game} sport="mlb" navigate={navigate} accentColor={accentColor} />;
             }
             if (activeSport === 'nhl') {
-              if (st === 'post') return <NhlFinalCard key={game.id} game={game} navigate={navigate} accentColor={accentColor} />;
-              if (st === 'in')   return <NhlLiveCard  key={game.id} game={game} navigate={navigate} accentColor={accentColor} />;
+              if (st === 'post') return <NhlFinalCard key={game.id} game={game} navigate={navigate} accentColor={accentColor} collapseSummary />;
+              if (st === 'in')   return <NhlLiveCard  key={game.id} game={game} navigate={navigate} accentColor={accentColor} collapseSummary />;
               return <SportPreCard key={game.id} game={game} sport="nhl" navigate={navigate} accentColor={accentColor} />;
             }
             const nbaStats = activeSport === 'nba';
