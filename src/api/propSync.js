@@ -110,6 +110,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
         name: row.player,
         opponentAbbr: row.opponentAbbr,
         opponentName: row.opponentName,
+        teamAbbr: row.teamAbbr,
         before: row.gameStart,
       });
     }

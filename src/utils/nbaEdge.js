@@ -5,11 +5,15 @@
 // result is then pulled toward this book's yes price, and harder when the
 // recent hits and the minutes projection disagree.
 //
-// A primary defender, positional defense splits, other books' prices, and
-// parlay correlation are not in this feed, so they are left off rather than
-// filled in.
+// Pace, opponent turnovers, and offensive rebounds come from the team page.
+// Points, rebounds, and assists allowed to guards, forwards, and centers come
+// from the opponent's recent box scores. A teammate at the same position who
+// is out moves a share of his minutes to the players still at that position.
+// A primary defender, other books' prices, and parlay correlation are not in
+// this feed, so they are left off rather than filled in.
 
 import { sameName } from '../api/nflInjuries.js';
+import { nbaGroup, nbaIndex } from '../api/positionDefense.js';
 import { applyLearned } from './propCalibration.js';
 import {
   NBA_BARE_MARKET_WEIGHT,
@@ -50,6 +54,11 @@ const OPP_LABEL = {
 };
 
 const SCORE_TYPES = new Set([POINTS, THREES, AST, PRA]);
+const PACE_ANCHOR = 99;
+const TO_ANCHOR = 14.5;
+const OREB_ANCHOR = 30;
+const PROFILE_PRIOR = 8;
+const GROUP_LABEL = { G: 'guards', F: 'forwards', C: 'centers' };
 
 export function nbaModeled(type) {
   return MODELED.has(type);
@@ -228,6 +237,58 @@ function teamSpread(teamName, opponentName, spreadLabel) {
   return null;
 }
 
+function shrunkProfile(value, games, anchor) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || !(games > 0)) return null;
+  return (value * games + anchor * PROFILE_PRIOR) / (games + PROFILE_PRIOR);
+}
+
+function possessionPace(args) {
+  const games = args.defense?.games;
+  const opp = shrunkProfile(args.defense?.pace, games, PACE_ANCHOR);
+  const own = shrunkProfile(args.teamPace, games, PACE_ANCHOR);
+  if (opp == null && own == null) return null;
+  return opp != null && own != null ? (opp + own) / 2 : (opp ?? own);
+}
+
+function positionMatch(args, type) {
+  const group = nbaGroup(args.position);
+  if (!args.defense || !group) return null;
+  if (type === PRA) {
+    const indexes = ['pts', 'reb', 'ast'].map((stat) => nbaIndex(args.defense, group, stat)).filter((value) => value != null);
+    if (!indexes.length) return null;
+    return indexes.reduce((sum, value) => sum + value, 0) / indexes.length;
+  }
+  const stat = type === REB ? 'reb' : type === AST ? 'ast' : (SCORE_TYPES.has(type) ? 'pts' : null);
+  if (!stat) return null;
+  return nbaIndex(args.defense, group, stat);
+}
+
+function borrowedMinutes(playerName, position, absences, teammates) {
+  const selfOut = (absences || []).some((row) => sameName(row.name, playerName) && row.status === 'out');
+  const group = nbaGroup(position);
+  if (selfOut || !group) return 0;
+  const missing = [];
+  for (const mate of teammates || []) {
+    if (!mate?.name || sameName(mate.name, playerName)) continue;
+    const absence = (absences || []).find((row) => sameName(row.name, mate.name));
+    if (!absence || (absence.status !== 'out' && absence.status !== 'dtd')) continue;
+    if ((nbaGroup(mate.position) || nbaGroup(absence.position)) !== group) continue;
+    const minutes = seriesMean(mate.recent, 'min', 5);
+    if (minutes.n < 3 || !(minutes.mean >= 16)) continue;
+    missing.push({ mean: minutes.mean, share: absence.status === 'out' ? 0.18 : 0.07 });
+  }
+  if (!missing.length) return 0;
+  const still = (teammates || []).filter((mate) => {
+    if (!mate?.name || sameName(mate.name, playerName)) return false;
+    const absence = (absences || []).find((row) => sameName(row.name, mate.name));
+    if (absence?.status === 'out') return false;
+    return (nbaGroup(mate.position) || nbaGroup(absence?.position)) === group;
+  }).length + 1;
+  let extra = 0;
+  for (const row of missing) extra += (row.mean * row.share) / still;
+  return Math.min(6, extra);
+}
+
 function paceOf({ teamFor, teamAgainst, opponentFor, opponentGoalsAgainst }) {
   const parts = [teamFor, teamAgainst, opponentFor, opponentGoalsAgainst].filter((value) => (
     typeof value === 'number' && Number.isFinite(value)
@@ -340,7 +401,7 @@ function analyze(args) {
   const {
     type, line, recent, prior, recentContext, priorContext, versus, opponentLabel,
     lastPlayed, gameStart, gameTotal, teamName, opponentName, spreadLabel,
-    opponentGoalsAgainst, home, playerName, absences,
+    opponentGoalsAgainst, home, playerName, absences, position, teammates,
   } = args;
   if (!nbaModeled(type) || line == null) return { lines: [], ready: false };
   const lines = [];
@@ -396,6 +457,12 @@ function analyze(args) {
   if (security) lines.push({ id: 'security', label: 'Security', value: security });
 
   const spread = teamSpread(teamName, opponentName, spreadLabel);
+  const added = borrowedMinutes(playerName, position, absences, teammates);
+  if (minutes != null && added >= 1.5) {
+    minutes += added;
+    tags.push('teammate out');
+    lines.push({ id: 'lineup', label: 'Added min', value: `+${added.toFixed(1)}` });
+  }
   if (minutes != null && spread != null && Math.abs(spread) >= 10 && minutes >= 28) {
     const cut = Math.abs(spread) >= 14 ? 0.88 : 0.93;
     minutes *= cut;
@@ -440,7 +507,19 @@ function analyze(args) {
   if (typeof opponentGoalsAgainst === 'number' && Number.isFinite(opponentGoalsAgainst)) {
     lines.push({ id: 'defense', label: 'Opp pts', value: `${opponentGoalsAgainst.toFixed(1)}/g` });
   }
-  if (env.pace != null) lines.push({ id: 'pace', label: 'Pace', value: env.pace.toFixed(0) });
+  if (env.pace != null) lines.push({ id: 'pace', label: env.possession ? 'Poss' : 'Pace', value: env.pace.toFixed(env.possession ? 1 : 0) });
+  const group = nbaGroup(position);
+  const matchStat = type === REB ? 'reb' : type === AST ? 'ast' : 'pts';
+  const matchIndex = group && args.defense ? nbaIndex(args.defense, group, matchStat) : null;
+  if (matchIndex != null) {
+    lines.push({ id: 'matchup', label: `vs ${GROUP_LABEL[group]}`, value: `${Math.round(matchIndex * 100)}%` });
+  }
+  if (typeof args.defense?.turnovers === 'number') {
+    lines.push({ id: 'defense', label: 'Opp TO', value: args.defense.turnovers.toFixed(1) });
+  }
+  if ((type === REB || type === PRA) && typeof args.defense?.offRebRate === 'number') {
+    lines.push({ id: 'defense', label: 'Opp boards', value: `${Math.round(args.defense.offRebRate)}%` });
+  }
   if (spread != null) {
     const text = spread > 0 ? `+${spread}` : String(spread);
     lines.push({ id: 'spread', label: 'Spread', value: text });
@@ -481,13 +560,42 @@ function environmentShift(args, type) {
     if (tilt >= 0.02) tags.push('soft defense');
     else if (tilt <= -0.02) tags.push('tough defense');
   }
-  const pace = paceOf(args);
+  const poss = possessionPace(args);
+  const pace = poss ?? paceOf(args);
   if (pace != null) {
-    const tilt = clamp((pace - 227) * 0.0025, -0.04, 0.04);
+    const tilt = poss != null
+      ? clamp((pace - PACE_ANCHOR) * 0.004, -0.04, 0.04)
+      : clamp((pace - 227) * 0.0025, -0.04, 0.04);
     const applied = scoring ? tilt : tilt * 0.65;
     mult *= 1 + applied;
     if (applied >= 0.015) tags.push('pace up');
     else if (applied <= -0.015) tags.push('pace down');
+  }
+  const match = positionMatch(args, type);
+  if (match != null) {
+    const gap = clamp((match - 1) * 0.12, -0.04, 0.04);
+    mult *= 1 + gap;
+    const label = GROUP_LABEL[nbaGroup(args.position)];
+    if (label && gap >= 0.015) tags.push(`soft vs ${label}`);
+    else if (label && gap <= -0.015) tags.push(`tough vs ${label}`);
+  }
+  if ((type === REB || type === PRA) && args.defense) {
+    const rate = shrunkProfile(args.defense.offRebRate, args.defense.games, OREB_ANCHOR);
+    if (rate != null) {
+      const gap = clamp((OREB_ANCHOR - rate) * 0.003, -0.03, 0.03);
+      mult *= 1 + gap;
+      if (gap >= 0.015) tags.push('boards available');
+      else if (gap <= -0.015) tags.push('boards taken');
+    }
+  }
+  if (args.defense && (type === STEALS || scoring)) {
+    const rate = shrunkProfile(args.defense.turnovers, args.defense.games, TO_ANCHOR);
+    if (rate != null) {
+      const gap = clamp((rate - TO_ANCHOR) * (type === STEALS ? 0.012 : 0.004), -0.03, 0.03);
+      mult *= 1 + gap;
+      if (type === STEALS && gap >= 0.015) tags.push('turnovers up');
+      else if (type === STEALS && gap <= -0.015) tags.push('turnovers down');
+    }
   }
   if (typeof args.gameTotal === 'number' && Number.isFinite(args.gameTotal)) {
     const tilt = clamp((args.gameTotal - 226) * 0.0025, -0.04, 0.04);
@@ -503,7 +611,7 @@ function environmentShift(args, type) {
     mult *= scoring ? 0.99 : 0.995;
     tags.push('road');
   }
-  return { mult: clamp(mult, 0.9, 1.1), tags, pace };
+  return { mult: clamp(mult, 0.9, 1.1), tags, pace, possession: poss != null };
 }
 
 function validMarket(marketYes) {

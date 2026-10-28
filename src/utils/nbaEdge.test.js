@@ -125,6 +125,93 @@ test('a player listed out is capped and a missing log does not produce NaN', () 
   assert.equal(lines.some((line) => line.id === 'l10'), true);
 });
 
+test('a teammate out at the same position adds minutes, and a guard does not', () => {
+  const context = {
+    recentContext: stretch(10, 28, 14, 18, 1),
+    priorContext: stretch(8, 28, 14, 18, 11),
+  };
+  const alone = nbaPropEdge({ ...base, ...context, position: 'F' });
+  const helped = nbaPropEdge({
+    ...base,
+    ...context,
+    position: 'F',
+    absences: [{ name: 'Jaylen Brown', status: 'out', position: 'F' }],
+    teammates: [{ name: 'Jaylen Brown', position: 'F', recent: stretch(5, 34, 18, 24, 1) }],
+  });
+  const guard = nbaPropEdge({
+    ...base,
+    ...context,
+    position: 'F',
+    absences: [{ name: 'Derrick White', status: 'out', position: 'G' }],
+    teammates: [{ name: 'Derrick White', position: 'G', recent: stretch(5, 32, 14, 16, 1) }],
+  });
+  assert.ok(helped.proj > alone.proj, `alone ${alone.proj} helped ${helped.proj}`);
+  assert.ok(helped.tags.includes('teammate out'));
+  assert.equal(guard.proj, alone.proj);
+  const lines = nbaFactorLines({
+    ...base,
+    ...context,
+    position: 'F',
+    absences: [{ name: 'Jaylen Brown', status: 'out', position: 'F' }],
+    teammates: [{ name: 'Jaylen Brown', position: 'F', recent: stretch(5, 34, 18, 24, 1) }],
+  });
+  assert.equal(lines.some((line) => line.label === 'Added min'), true);
+});
+
+test('points allowed to guards move a guard, and offensive rebounds move a rebound prop', () => {
+  const context = {
+    recentContext: stretch(10, 32, 16, 22, 1),
+    priorContext: stretch(8, 32, 16, 22, 11),
+  };
+  const soft = {
+    games: 5,
+    allowed: {
+      G: { pts: 400, reb: 40, ast: 80 },
+      F: { pts: 80, reb: 40, ast: 20 },
+      C: { pts: 40, reb: 20, ast: 8 },
+    },
+    turnovers: 18,
+    offRebRate: 22,
+  };
+  const tough = {
+    games: 5,
+    allowed: {
+      G: { pts: 40, reb: 40, ast: 10 },
+      F: { pts: 300, reb: 80, ast: 40 },
+      C: { pts: 80, reb: 40, ast: 10 },
+    },
+    turnovers: 11,
+    offRebRate: 38,
+  };
+  const easy = nbaPropEdge({ ...base, ...context, position: 'G', defense: soft });
+  const hard = nbaPropEdge({ ...base, ...context, position: 'G', defense: tough });
+  assert.ok(easy.p > hard.p, `easy ${easy.p} hard ${hard.p}`);
+  assert.ok(easy.tags.includes('soft vs guards'));
+  assert.ok(hard.tags.includes('tough vs guards'));
+
+  const boards = {
+    ...base,
+    type: 'basketball_player_rebounds',
+    line: 6.5,
+    recent: [6, 7, 5, 8, 6, 7, 5, 6, 7, 6],
+    prior: [6, 5, 7, 6, 8, 5, 6, 7],
+    position: 'F',
+  };
+  const neutral = {
+    games: 12,
+    allowed: {
+      G: { pts: 100, reb: 35, ast: 60 },
+      F: { pts: 80, reb: 47, ast: 32 },
+      C: { pts: 32, reb: 18, ast: 8 },
+    },
+  };
+  const open = nbaPropEdge({ ...boards, ...context, defense: { ...neutral, offRebRate: 18 } });
+  const closed = nbaPropEdge({ ...boards, ...context, defense: { ...neutral, offRebRate: 42 } });
+  assert.ok(open.proj > closed.proj, `open ${open.proj} closed ${closed.proj}`);
+  assert.ok(open.tags.includes('boards available'));
+  assert.ok(closed.tags.includes('boards taken'));
+});
+
 test('threes use three-point attempts and a faded percentage', () => {
   const edge = nbaPropEdge({
     ...base,

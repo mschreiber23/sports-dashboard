@@ -4,9 +4,12 @@
 // sharp drop or jump in the last three games becomes the rate. Power-play
 // points add a little for shot quality. The opponent's recent goals allowed
 // and home ice move it a little more, then the game total, the favorite, and
-// a back-to-back. The result is pulled toward the yes price, and harder when
-// the recent hits and the shot projection disagree.
+// a back-to-back. Points this defense has allowed to centers and to wingers
+// move a center or a winger when that share is off the usual split. The result
+// is pulled toward the yes price, and harder when the recent hits and the
+// shot projection disagree.
 
+import { hockeyGroup, hockeyIndex } from '../api/positionDefense.js';
 import { applyLearned } from './propCalibration.js';
 import { NHL_BARE_MARKET_WEIGHT, NHL_HIT_WEIGHT, NHL_MARKET_WEIGHT, settledProbability } from './fairPrice.js';
 
@@ -208,6 +211,8 @@ export function nhlFactorLines({
   opponentLabel,
   opponentGoalsAgainst,
   home,
+  position,
+  defense,
 }) {
   if (type !== GOALS && type !== POINTS || line == null) return [];
   const lines = [];
@@ -249,6 +254,12 @@ export function nhlFactorLines({
 
   if (typeof opponentGoalsAgainst === 'number' && Number.isFinite(opponentGoalsAgainst)) {
     lines.push({ id: 'defense', label: 'Opp goals', value: `${opponentGoalsAgainst.toFixed(1)}/g` });
+  }
+  const group = hockeyGroup(position);
+  const roleLabel = group === 'C' ? 'vs centers' : group === 'W' ? 'vs wingers' : '';
+  if (roleLabel && defense?.games >= 3 && defense.points) {
+    const perGame = (defense.points[group] || 0) / defense.games;
+    lines.push({ id: 'defense', label: roleLabel, value: `${perGame.toFixed(1)}/g` });
   }
   if (home === true) lines.push({ id: 'site', label: 'Site', value: 'Home' });
   else if (home === false) lines.push({ id: 'site', label: 'Site', value: 'Road' });
@@ -299,6 +310,8 @@ function projectNhl({
   favoriteYes,
   opponentGoalsAgainst,
   home,
+  position,
+  defense,
 }) {
   if (type !== GOALS && type !== POINTS) return null;
   if (!recent || recent.length < 5 || line == null) return null;
@@ -349,6 +362,15 @@ function projectNhl({
   if (typeof opponentGoalsAgainst === 'number' && Number.isFinite(opponentGoalsAgainst)) {
     const shift = clamp((opponentGoalsAgainst - 3.05) * (goals ? 0.025 : 0.03), -0.03, 0.03);
     p = applyShift(p, tags, shift, 'soft defense', 'tough defense');
+  }
+
+  const group = hockeyGroup(position);
+  const index = group === 'C' || group === 'W' ? hockeyIndex(defense, position) : null;
+  if (index != null) {
+    const shift = clamp((index - 1) * (goals ? 0.06 : 0.08), -0.025, 0.025);
+    const up = group === 'C' ? 'soft vs centers' : 'soft vs wingers';
+    const down = group === 'C' ? 'tough vs centers' : 'tough vs wingers';
+    p = applyShift(p, tags, shift, up, down);
   }
 
   if (home === true) {
@@ -470,6 +492,10 @@ export function explainNhlPoint(lines, { priced = false, marketYes = null } = {}
   if (powerPlay) parts.push(`Power-play points are ${powerPlay}.`);
   const goalsAgainst = value('Opp goals');
   if (goalsAgainst) parts.push(`The opponent has allowed ${goalsAgainst}.`);
+  const centers = value('vs centers');
+  const wingers = value('vs wingers');
+  if (centers) parts.push(`Centers have been scoring ${centers} against this defense.`);
+  if (wingers) parts.push(`Wingers have been scoring ${wingers} against this defense.`);
   const site = value('Site');
   if (site === 'Home') parts.push('This game is at home.');
   else if (site === 'Road') parts.push('This game is on the road.');

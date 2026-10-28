@@ -23,6 +23,7 @@ export function loadNbaInjuries() {
         players: (team.injuries || []).map((row) => ({
           name: row.athlete?.displayName || '',
           status: statusOf(row),
+          position: row.athlete?.position?.abbreviation || '',
         })).filter((row) => row.name && row.status),
       })))
       .catch(() => []);

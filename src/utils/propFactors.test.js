@@ -51,6 +51,27 @@ test('a defense allowing more goals raises the points chance', () => {
   assert.ok(tough.tags.includes('tough defense'));
 });
 
+test('a center rises when this defense has been giving points to centers', () => {
+  const context = {
+    recentContext: pointLog(10, 3, 16, 1),
+    priorContext: pointLog(8, 3, 16, 11),
+  };
+  const defense = { games: 6, points: { C: 30, W: 12, D: 6 } };
+  const center = nhlPropEdge({ ...points, ...context, position: 'C', defense });
+  const wing = nhlPropEdge({ ...points, ...context, position: 'LW', defense });
+  const stingy = nhlPropEdge({
+    ...points,
+    ...context,
+    position: 'C',
+    defense: { games: 6, points: { C: 4, W: 30, D: 8 } },
+  });
+  assert.ok(center.p > wing.p, `center ${center.p} wing ${wing.p}`);
+  assert.ok(center.p > stingy.p, `center ${center.p} stingy ${stingy.p}`);
+  assert.ok(center.tags.includes('soft vs centers'));
+  assert.ok(stingy.tags.includes('tough vs centers'));
+  assert.ok(wing.tags.includes('tough vs wingers'));
+});
+
 test('home ice is a small lift over the road', () => {
   const context = {
     recentContext: pointLog(10, 3, 16, 1),

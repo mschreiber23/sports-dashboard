@@ -399,6 +399,9 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
             matchup: log?.matchup,
             weather: weatherByGame?.[game.key] || null,
             ...matchupContext(forms, game.league, sample.teamAbbr, sample.opponentAbbr, sample.gameStart),
+            position: log?.position || '',
+            defense: log?.defense || null,
+            teamPace: log?.teamPace ?? null,
             ...(game.league === 'nfl' ? (() => {
               const teamRoles = rolesForTeam(roles, sample.teamName);
               const board = teammateLogs(game.rows.filter((row) => (
@@ -416,6 +419,12 @@ function likelyBoard(games, logs, calibration, forms, roles, opportunityLogs, we
             ...(game.league === 'nba' ? {
               playerName: sample.player,
               absences: teamAbsences(injuries, sample.teamName),
+              teammates: [...new Map(game.rows.filter((row) => (
+                row.section === 'player' && row.player && row.player !== sample.player && row.teamName === sample.teamName
+              )).map((row) => {
+                const mate = boardLog(logs, game.league, row.player, row.gameStart);
+                return [row.player, { name: row.player, position: mate?.position || '', recent: mate?.context || null }];
+              })).values()],
             } : {}),
             calibration: calibration?.[game.league],
           };
@@ -543,6 +552,8 @@ const FACTOR_KEY = [
   ['Volume', 'The chance implied by the shot rate at this line. Points props fold in the assist rate as well. This is most of the model percent, before the price pulls it back.'],
   ['Power play', 'Power-play points per game. The shot total already includes those chances. This adds a little because power-play shots are more likely to become points.'],
   ['Opp goals', 'Goals the opponent has allowed per game lately. More than about 3.1 a night raises the chance of a point. Fewer lowers it.'],
+  ['vs centers', 'Points per game this defense has allowed to centers in recent games. The read compares that share with the usual center share of a box score. A higher share raises a center.'],
+  ['vs wingers', 'Points per game this defense has allowed to wingers. A higher share than usual raises a winger. A defenseman does not get this split.'],
   ['Site', 'Home or road. Home ice is a small lift.'],
   ['vs opponent', 'How often this line hit in the recent games against tonight’s opponent.'],
   ['Game total', 'The game total priced closest to 50/50. The model compares that number with 6 goals.'],
@@ -583,16 +594,23 @@ const NBA_FACTOR_KEY = [
   ['Shooting', 'Points per field-goal attempt, or three-point percentage, pulled toward a normal NBA rate. A hot or cold stretch is faded. The chip still shows the faded rate.'],
   ['Volume', 'The chance implied by expected minutes and that rate, before the price pulls it back.'],
   ['Proj', 'The projected stat for tonight, after minutes, role, matchup, pace, total, spread, site, and rest.'],
-  ['Out', 'Teammates listed out. Their names are shown. The projection does not add their shots unless this player’s own minutes have already changed.'],
+  ['Out', 'Teammates listed out. Their names are shown.'],
+  ['Added min', 'A teammate at the same position is out or day-to-day. Out moves about 18% of his recent minutes, split across the players still at that position. Day-to-day moves about 7%. The added minutes stop at 6.'],
+  ['vs guards', 'How much of the points, rebounds, or assists this defense has allowed has gone to guards, compared with a normal box score. 100% is typical. Forwards and centers use their own row. This is the recent games, not a season-long rank.'],
+  ['vs forwards', 'The same split for forwards. Rebounds use the rebound share. Assists use the assist share. Points, threes, and PRA use the points share.'],
+  ['vs centers', 'The same split for centers.'],
+  ['Opp TO', 'Turnovers the opponent commits per game. More turnovers raise steal props, and they add a smaller bump to scoring because they create extra possessions.'],
+  ['Opp boards', 'The opponent’s offensive rebound rate. A higher rate means they are taking the glass, which lowers rebound props.'],
   ['Lineup', 'This player is listed out or day-to-day. Out caps the read. Day-to-day trims it.'],
   ['vs opponent', 'How often this line hit against tonight’s opponent. It moves the read only with at least three of those games.'],
   ['Opp pts', 'Points the opponent has allowed per game lately. More than about 114.5 raises scoring props. Fewer lowers them.'],
-  ['Pace', 'The two teams’ recent games, scored as combined points. This is a points environment, not a possession count. A faster environment adds a little.'],
+  ['Pace', 'When a possession pace is not on the team page yet, this is the two teams’ recent games scored as combined points. A faster environment adds a little.'],
+  ['Poss', 'The two teams’ possession pace from the team page, shrunk toward a normal pace so a short sample cannot take over. This replaces the points environment when it is available.'],
   ['Spread', 'This team’s spread. A double-digit number trims minutes for a player already at 28 or more, because a blowout can cost the fourth quarter.'],
   ['Game total', 'The full-game total priced closest to 50/50. The model compares it with 226.'],
   ['Site', 'Home or road. Home is a small lift.'],
   ['Rest', 'Hours since the last game. Under 36 hours is a back-to-back. A third game in four nights trims a little more.'],
-  ['Not in this feed', 'The likely defender, how the opponent defends a position, prices at other books, and whether a parlay leg overlaps this one are not scored. Counting those as extra yes votes would not be a projection.'],
+  ['Not in this feed', 'The likely defender, prices at other books, and whether a parlay leg overlaps this one are not scored. Counting those as extra yes votes would not be a projection.'],
 ];
 
 const FACTOR_TAGS = {
@@ -613,6 +631,19 @@ const FACTOR_TAGS = {
   'back to back': 'rest',
   'soft defense': 'defense',
   'tough defense': 'defense',
+  'soft vs centers': 'defense',
+  'tough vs centers': 'defense',
+  'soft vs wingers': 'defense',
+  'tough vs wingers': 'defense',
+  'soft vs guards': 'defense',
+  'tough vs guards': 'defense',
+  'soft vs forwards': 'defense',
+  'tough vs forwards': 'defense',
+  'boards available': 'defense',
+  'boards taken': 'defense',
+  'turnovers up': 'defense',
+  'turnovers down': 'defense',
+  'teammate out': 'lineup',
   home: 'site',
   road: 'site',
   wind: 'weather',
@@ -694,6 +725,7 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
         name: group.player,
         opponentAbbr: group.opponentAbbr,
         opponentName: group.opponentName,
+        teamAbbr: group.teamAbbr,
         before: group.gameStart,
       });
     }
@@ -852,7 +884,17 @@ function PlayerPropBoard({ rows, league, slate, calibration, game, focus, roles,
             matchup: log?.matchup,
             weather: weather || null,
             playerName: group.player,
+            position: log?.position || '',
+            defense: log?.defense || null,
+            teamPace: log?.teamPace ?? null,
             absences: league === 'nba' ? teamAbsences(injuries, group.teamName) : [],
+            teammates: league === 'nba' ? [...new Map(groups.filter((other) => (
+              other.player !== group.player && other.teamName && other.teamName === group.teamName
+            )).map((other) => [other.player, {
+              name: other.player,
+              position: logs[other.player]?.position || '',
+              recent: logs[other.player]?.context || null,
+            }])).values()] : [],
             ...matchupContext(forms, league, group.teamAbbr, group.opponentAbbr, group.gameStart),
             ...(league === 'nfl' ? (() => {
               const teamRoles = rolesForTeam(roles, group.teamName);
@@ -1266,6 +1308,7 @@ export default function PropsPage() {
           name: row.player,
           opponentAbbr: row.opponentAbbr,
           opponentName: row.opponentName,
+          teamAbbr: row.teamAbbr,
           before: row.gameStart,
         });
       }
