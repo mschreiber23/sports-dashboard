@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  loadPropEvents, loadGameProps, PROP_SPORTS, PILL_ORDER, pillLabel,
+  loadPropEvents, loadGameProps, watchPropEvents, PROP_SPORTS, PILL_ORDER, pillLabel,
   formatGameTime, formatLiquidity, compareProps,
   easternDay, shiftDay, formatDayLabel,
 } from '../api/polymarket';
@@ -1202,6 +1202,7 @@ function likelyDraft(item) {
 export default function PropsPage() {
   const { calibration } = usePropSync();
   const [events, setEvents] = useState(null);
+  const [calendarDone, setCalendarDone] = useState(false);
   const [loaded, setLoaded] = useState({});
   const [error, setError] = useState('');
   const [sport, setSport] = useState('All');
@@ -1225,11 +1226,17 @@ export default function PropsPage() {
   useEffect(() => {
     let cancel = false;
     setEvents(null);
+    setCalendarDone(false);
     setError('');
-    loadPropEvents()
-      .then((list) => { if (!cancel) setEvents(list); })
-      .catch((err) => { if (!cancel) setError(err?.message || 'Could not load props'); });
-    return () => { cancel = true; };
+    const stop = watchPropEvents(({ events: list, done }) => {
+      if (cancel || (!list.length && !done)) return;
+      setEvents(list);
+      setCalendarDone(done);
+    });
+    loadPropEvents().catch((err) => {
+      if (!cancel) setError(err?.message || 'Could not load props');
+    });
+    return () => { cancel = true; stop(); };
   }, [reloadKey]);
 
   const nflWeek = useMemo(() => nflWeekSpan(day), [day]);
@@ -1271,7 +1278,8 @@ export default function PropsPage() {
 
   const openGame = games.find((game) => game.key === gameKey) || null;
   const boardView = view === 'picks';
-  const fetchKey = games.length > 0 && (boardView || games.length <= 16)
+  const fetchKey = boardView && games.length > 0 ? games.map((game) => game.key).join('|') : '';
+  const prefetchKey = view === 'games' && !gameKey && games.length > 0 && games.length <= 16
     ? games.map((game) => game.key).join('|')
     : '';
   const logJob = useMemo(() => {
@@ -1302,7 +1310,8 @@ export default function PropsPage() {
   const teamJob = useMemo(() => {
     const seen = new Set();
     const teams = [];
-    for (const game of games) {
+    const source = boardView ? games : games.filter((game) => game.key === gameKey);
+    for (const game of source) {
       if (game.league !== 'nhl' && game.league !== 'nfl' && game.league !== 'nba') continue;
       for (const row of game.rows || []) {
         const abbrs = [
@@ -1319,18 +1328,19 @@ export default function PropsPage() {
       }
     }
     return teams;
-  }, [games]);
+  }, [games, boardView, gameKey]);
   const teamJobKey = teamJob.map((team) => team.id).join(';');
   const injuryTeams = useMemo(() => {
     const names = [];
-    for (const game of games) {
+    const source = boardView ? games : games.filter((game) => game.key === gameKey);
+    for (const game of source) {
       if (game.league !== 'nfl') continue;
       for (const row of game.rows || []) {
         if (row.teamName && !names.some((name) => sameTeam(name, row.teamName))) names.push(row.teamName);
       }
     }
     return names;
-  }, [games]);
+  }, [games, boardView, gameKey]);
   const injuryKey = injuryTeams.join('|');
   const likelyPicks = useMemo(() => (boardView ? likelyBoard(games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries) : []), [boardView, games, boardLogs, calibration, teamForms, roleReport, hurtLogs, weatherByGame, nbaInjuries]);
   const gamesLoaded = games.filter((game) => game.rows).length;
@@ -1354,6 +1364,26 @@ export default function PropsPage() {
     Promise.all(Array.from({ length: Math.min(4, slugs.length) }, worker));
     return () => { cancel = true; };
   }, [fetchKey]);
+
+  useEffect(() => {
+    const slugs = prefetchKey ? prefetchKey.split('|') : [];
+    if (!slugs.length) return undefined;
+    let cancel = false;
+    let index = 0;
+    async function step() {
+      while (!cancel && index < slugs.length) {
+        const slug = slugs[index++];
+        try {
+          const rows = await loadGameProps(slug);
+          if (!cancel) setLoaded((prev) => (prev[slug] ? prev : { ...prev, [slug]: rows }));
+        } catch {
+          if (!cancel) setLoaded((prev) => (prev[slug] ? prev : { ...prev, [slug]: [] }));
+        }
+      }
+    }
+    const timer = setTimeout(step, 500);
+    return () => { cancel = true; clearTimeout(timer); };
+  }, [prefetchKey]);
 
   useEffect(() => {
     if (!logJobKey) return undefined;
@@ -1405,9 +1435,12 @@ export default function PropsPage() {
     return () => { cancel = true; };
   }, [teamJobKey, teamJob]);
 
-  const weatherKey = games.filter((game) => game.league === 'nfl' && game.rows).map((game) => game.key).join('|');
+  const weatherKey = games
+    .filter((game) => game.league === 'nfl' && game.rows && (boardView || game.key === gameKey))
+    .map((game) => game.key)
+    .join('|');
   useEffect(() => {
-    const slate = games.filter((game) => game.league === 'nfl' && game.rows);
+    const slate = games.filter((game) => game.league === 'nfl' && game.rows && (boardView || game.key === gameKey));
     if (!slate.length) return undefined;
     let cancel = false;
     loadNflWeather(slate).then((map) => {
@@ -1516,7 +1549,7 @@ export default function PropsPage() {
         </div>
       </div>
 
-      {events == null && !error && (
+      {(events == null || (!calendarDone && games.length === 0)) && !error && (
         <div className="loading-text">Loading props…</div>
       )}
 
@@ -1527,7 +1560,7 @@ export default function PropsPage() {
         </div>
       )}
 
-      {events && !openGame && (
+      {events && (calendarDone || games.length > 0) && !openGame && (
         <>
           {view !== 'results' && <ModelTicker onOpen={() => setView('results')} />}
 

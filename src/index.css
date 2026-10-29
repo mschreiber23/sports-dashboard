@@ -7000,6 +7000,26 @@ thead .dfs-sticky-player {
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
+.nhl-cold-streak {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.nhl-cold-streak b {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.nhl-cold-streak span {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .nhl-point-why { padding: 0 12px 12px 44px; }
 .nhl-point-why p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text); }
 .nhl-point-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

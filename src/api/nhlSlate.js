@@ -108,6 +108,7 @@ async function gameOf(event) {
   return {
     id: event.id,
     start,
+    state: competition?.status?.type?.state || '',
     label: `${away.team.abbreviation} @ ${home.team.abbreviation}`,
     players,
   };
