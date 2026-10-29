@@ -12,6 +12,7 @@ import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { nflScoreSituation } from '../utils/nflScoreSituation';
 import { formatKickoff, formatScheduleLine, gameOpponent } from '../utils/upcomingGames';
 import { levelShort, normalizeMiLBGame } from '../api/milb';
+import { scoringAssists } from '../utils/nhlScoring';
 
 /** Search ESPN by player name and navigate to their player page. */
 async function goToEspnPlayer(fullName, sport, navigate) {
@@ -1185,10 +1186,7 @@ export function nhlScoringFromSummary(d, competitors) {
     .map(p => {
       const scorer  = p.participants?.find(x => x.type === 'scorer')?.athlete
                    || p.participants?.[0]?.athlete;
-      const assists = p.participants
-        ?.filter(x => x.type === 'assister' || x.type === 'firstAssist' || x.type === 'secondAssist')
-        .map(x => x.athlete?.shortName || x.athlete?.displayName || '')
-        .filter(Boolean) || [];
+      const assists = scoringAssists(p.participants, p.text);
       // Goal count: extract "(7)" from "McDavid Goal (7) Snap Shot, assists: ..."
       const goalCountMatch = p.text?.match(/Goal\s*\((\d+)\)/i);
       const goalCount = goalCountMatch?.[1] || null;
@@ -1272,7 +1270,15 @@ export function NhlScoringSummary({ goalies = [], goals = [], showGoals = true, 
                     {g.emptyNet && <span className="nhl-card-goal-en">EN</span>}
                   </span>
                   {g.assists.length > 0 && (
-                    <span className="nhl-card-goal-assists">{g.assists.join(', ')}</span>
+                    <span className="nhl-card-goal-assists">
+                      {g.assists.map((assist, index) => (
+                        <span key={`${assist.name}-${index}`}>
+                          {index > 0 ? ', ' : ''}
+                          {assist.name.replace(/ /g, '\u00A0')}
+                          {assist.count ? <span className="nhl-card-goal-count">{'\u00A0'}({assist.count})</span> : ''}
+                        </span>
+                      ))}
+                    </span>
                   )}
                 </div>
                 {g.teamLogo && <img src={g.teamLogo} alt="" className="nhl-card-team-logo" onError={e=>e.target.style.display='none'}/>}
