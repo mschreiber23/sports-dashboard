@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRecentPlayers } from '../context/RecentPlayersContext';
 
 const ESPN_SEARCH = 'https://site.api.espn.com/apis/search/v2';
-const VIEWED_KEY  = 'shribely_viewed_players';
-const MAX_VIEWED  = 20;
 
 // ESPN leagueSlug → our route sport key
 const SLUG_TO_SPORT = {
@@ -21,23 +20,6 @@ function extractAthleteId(uid = '') {
   return m ? m[1] : null;
 }
 
-/* ── Local storage helpers ──────────────────────────────────────────── */
-function loadViewed() {
-  try { return JSON.parse(localStorage.getItem(VIEWED_KEY) || '[]'); }
-  catch { return []; }
-}
-
-export function recordPlayerView(player) {
-  try {
-    let arr = loadViewed();
-    arr = arr.filter((p) => !(p.id === player.id && p.sport === player.sport));
-    arr.unshift({ ...player, viewedAt: Date.now() });
-    arr = arr.slice(0, MAX_VIEWED);
-    localStorage.setItem(VIEWED_KEY, JSON.stringify(arr));
-  } catch {}
-}
-
-/* ── Player result card ─────────────────────────────────────────────── */
 /* ── Player result card ─────────────────────────────────────────────── */
 function PlayerCard({ player, onClick }) {
   const sport = player.sport;
@@ -79,7 +61,7 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
         {players.map((p) => {
           const color = SPORT_COLORS[p.sport] || '#0092ff';
           const label = SPORT_LABELS[p.sport] || p.sport?.toUpperCase();
-          const nameParts = (p.name || '').split(' ');
+          const nameParts = (p.name || 'Player').split(' ');
           const lastName  = nameParts.slice(-1)[0] || '';
           const firstName = nameParts.slice(0, -1).join(' ') || '';
           return (
@@ -106,7 +88,7 @@ function ViewedGrid({ players, onClear, onRemoveOne }) {
                 <div className="player-viewed-last">{lastName}</div>
                 <div className="player-viewed-sub">
                   {p.position && <span>{typeof p.position === 'string' ? p.position : p.position?.abbreviation || ''}</span>}
-                  {p.jersey   && <span>{p.jersey.startsWith('#') ? p.jersey : `#${p.jersey}`}</span>}
+                  {p.jersey && <span>{String(p.jersey).startsWith('#') ? p.jersey : `#${p.jersey}`}</span>}
                 </div>
                 {p.team && <div className="player-viewed-team">{p.team}</div>}
                 <span className="player-viewed-badge" style={{ background: `${color}22`, color }}>{label}</span>
@@ -126,12 +108,13 @@ export default function PlayersPage() {
   const [results, setResults]     = useState([]);
   const [loading, setLoading]     = useState(false);
   const [sportFilter, setSportFilter] = useState('all');
-  const [viewed, setViewed]       = useState(loadViewed);
+  const { players: viewed, record, remove, clear, refresh } = useRecentPlayers();
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
 
-  // Auto-focus search on mount
+  // Auto-focus search on mount, and pick up a view saved on another device.
   useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
   // Debounced ESPN search
   const doSearch = useCallback((q) => {
@@ -178,22 +161,16 @@ export default function PlayersPage() {
   };
 
   const handlePlayerClick = (player) => {
-    recordPlayerView(player);
-    setViewed(loadViewed());
+    record(player);
     navigate(`/player/${player.sport}/${player.id}`);
   };
 
   const handleClearViewed = () => {
-    localStorage.removeItem(VIEWED_KEY);
-    setViewed([]);
+    clear();
   };
 
   const handleRemoveOneViewed = (playerId, sport) => {
-    try {
-      let arr = loadViewed().filter((p) => !(p.id === playerId && p.sport === sport));
-      localStorage.setItem(VIEWED_KEY, JSON.stringify(arr));
-      setViewed(arr);
-    } catch {}
+    remove(playerId, sport);
   };
 
   const filteredResults = sportFilter === 'all'
