@@ -8240,7 +8240,11 @@ thead .dfs-sticky-player {
 }
 .nhl-card-goal-assists {
   font-size: 10px; color: var(--text2); font-style: italic;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: normal;
+}
+.nhl-card-goal-assists .nhl-card-goal-count {
+  font-size: inherit;
+  font-style: inherit;
 }
 .nhl-card-goal-score {
   font-size: 12px; font-weight: 800; color: var(--text);
