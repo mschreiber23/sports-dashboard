@@ -58,12 +58,45 @@ CREATE INDEX IF NOT EXISTS prop_reads_user_start ON prop_reads (user_id, game_st
 
 ALTER TABLE prop_reads ENABLE ROW LEVEL SECURITY;
 
+-- The results tab is one all-time log. Any signed-in account can read every
+-- prop read. Each account still inserts, updates, and deletes only its own rows.
+-- Re-run this block in the SQL editor. Until the SELECT policy is live, a new
+-- account only receives the rows it recorded itself.
 DROP POLICY IF EXISTS "Users can manage their own prop reads" ON prop_reads;
-CREATE POLICY "Users can manage their own prop reads"
+DROP POLICY IF EXISTS "Signed-in users can read every prop read" ON prop_reads;
+DROP POLICY IF EXISTS "Users can insert their own prop reads" ON prop_reads;
+DROP POLICY IF EXISTS "Users can update their own prop reads" ON prop_reads;
+DROP POLICY IF EXISTS "Users can delete their own prop reads" ON prop_reads;
+
+CREATE POLICY "Signed-in users can read every prop read"
   ON prop_reads
-  FOR ALL
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Users can insert their own prop reads"
+  ON prop_reads
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own prop reads"
+  ON prop_reads
+  FOR UPDATE
+  TO authenticated
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own prop reads"
+  ON prop_reads
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+GRANT SELECT ON prop_reads TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON prop_reads TO authenticated;
+GRANT ALL ON prop_reads TO service_role;
+NOTIFY pgrst, 'reload schema';
 
 -- Trades the user actually took, settled against the unit they risked.
 CREATE TABLE IF NOT EXISTS prop_trades (

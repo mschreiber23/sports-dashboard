@@ -52,6 +52,15 @@ export function mergeStoredReads(local, remote) {
   return [...map.values()];
 }
 
+// The results tab is one log. Every account records the slates it sees, and
+// the scoreboard is the union of those logs. Copies of the same prop collapse
+// here, and a signup from yesterday must not replace a read an older account
+// already graded.
+export function publicReads(shared, own) {
+  if (!Array.isArray(shared)) return own || [];
+  return mergeStoredReads([], [...shared, ...(own || [])]);
+}
+
 function stamp(row) {
   return [
     row.id,

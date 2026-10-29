@@ -2,9 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useAuth } from '../context/AuthContext';
 import { runPropSync } from '../api/propSync';
 import { learnCalibration } from '../utils/propCalibration';
-import { loadReads } from '../api/propStore';
+import { loadReads, loadScoreboard } from '../api/propStore';
 import { loadTrades, loadUnit, saveTrades, saveUnit } from '../api/tradeStore';
 import { countsInScore } from '../utils/scoredProps';
+import { publicReads } from '../utils/readSync';
 import { expectedProfit, quoteForUnit, tradeId } from '../utils/propBook';
 import { mergeTradeLists } from '../utils/tradeSync';
 
@@ -156,9 +157,12 @@ export function PropSyncProvider({ children }) {
     let cancel = false;
     const pullReads = () => {
       if (document.visibilityState === 'hidden' || busy.current) return;
-      loadReads(userId).then((rows) => {
+      Promise.all([
+        loadReads(userId),
+        loadScoreboard().catch(() => null),
+      ]).then(([rows, shared]) => {
         if (cancel || busy.current) return;
-        const scored = (rows || []).filter(countsInScore);
+        const scored = publicReads(shared, rows || []).filter(countsInScore);
         setReads(scored);
         setCalibration(learnCalibration(scored));
       });
