@@ -9152,25 +9152,59 @@ thead .dfs-sticky-player {
 }
 .pick-why { padding: 0 14px 14px; }
 .pick-why h4 {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text2);
 }
-.pick-why ul {
+.pick-lead {
   margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.pick-edge {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.pick-log { margin-top: 12px; }
+.pick-log-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+}
+.pick-log-label span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.pick-log .pp-bars { justify-content: flex-start; }
+.pick-points {
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
-.pick-why li {
+.pick-points li {
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--text);
+}
+.pick-watch {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text2);
 }
 .pick-actions {
   display: flex;

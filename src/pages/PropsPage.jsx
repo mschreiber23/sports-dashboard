@@ -143,6 +143,9 @@ function likelyPick(game, sample, line, recent, extra) {
     ask: line.ask,
     kind: 'player',
     market: marketPct(yes),
+    recent: Array.isArray(recent) ? recent.slice(-10) : [],
+    color: sample.color || '',
+    stat: chartLabel(sample.type),
     ...extra,
   };
 }
@@ -1195,32 +1198,6 @@ function likelyDraft(item) {
   };
 }
 
-function LikelyRow({ item, sport, onOpen }) {
-  return (
-    <div className="props-game">
-      <button type="button" className="props-game-open" onClick={() => onOpen(item)}>
-        <div className="props-game-main">
-          <div className="props-game-title">{item.player} <span className="props-likely-line">{item.prediction === 'no' ? `No ${item.prop}` : item.prop}</span></div>
-          <div className="props-game-meta">
-            {sport === 'All' ? `${item.sport} · ` : ''}{item.game}
-            {item.gameLine ? '' : ` · ${item.hits}/${item.total}`}
-            {item.modeled ? ` · model ${item.modelPct}%` : ` · L10 ${item.rate}%`}
-            {item.market == null ? '' : ` · price ${item.market}%`}
-          </div>
-          {item.tags.length > 0 && (
-            <div className="props-game-meta props-likely-tags">{item.tags.join(' · ')}</div>
-          )}
-        </div>
-        <div className={`props-game-best ${item.edge < 0 ? 'props-edge-down' : ''}`} aria-label={`${item.edgePts} point edge`}>
-          <span>{item.edgePts > 0 ? `+${item.edgePts}` : `${item.edgePts}`}</span>
-          <span>edge</span>
-        </div>
-      </button>
-      <TradeButton draft={likelyDraft(item)} compact maxPrice={BET_PRICE_MAX} yesOnly={yesOnlyLeague(item.league) && !item.gameLine} recommend={item.edge >= NHL_EDGE_MIN ? (item.prediction === 'no' ? 'no' : 'yes') : null} />
-    </div>
-  );
-}
-
 export default function PropsPage() {
   const { calibration } = usePropSync();
   const [events, setEvents] = useState(null);
@@ -1287,7 +1264,7 @@ export default function PropsPage() {
   }, [events, day, nflWeek]);
 
   const openGame = games.find((game) => game.key === gameKey) || null;
-  const boardView = view === 'likely' || view === 'picks';
+  const boardView = view === 'picks';
   const fetchKey = games.length > 0 && (boardView || games.length <= 16)
     ? games.map((game) => game.key).join('|')
     : '';
@@ -1528,7 +1505,6 @@ export default function PropsPage() {
         <div className="props-view-nav">
           <button type="button" className={`props-view-btn ${view === 'games' ? 'props-view-on' : ''}`} onClick={() => { setGameKey(null); setPropFocus(null); setView('games'); }}>Games</button>
           <button type="button" className={`props-view-btn ${view === 'picks' ? 'props-view-on' : ''}`} onClick={() => { setGameKey(null); setPropFocus(null); setView('picks'); }}>Picks</button>
-          <button type="button" className={`props-view-btn ${view === 'likely' ? 'props-view-on' : ''}`} onClick={() => { setGameKey(null); setPropFocus(null); setView('likely'); }}>Likely</button>
           <button type="button" className={`props-view-btn ${view === 'results' ? 'props-view-on' : ''}`} onClick={() => { setGameKey(null); setPropFocus(null); setView('results'); }}>Results</button>
           <button type="button" className={`props-view-btn ${view === 'trades' ? 'props-view-on' : ''}`} onClick={() => { setGameKey(null); setPropFocus(null); setView('trades'); }}>Trades</button>
         </div>
@@ -1598,39 +1574,6 @@ export default function PropsPage() {
             />
           )}
 
-          {games.length > 0 && view === 'likely' && (
-            <>
-              {(gamesLoaded < games.length || (teamJob.length > 0 && teamDone < teamJob.length) || (logJob.length > 0 && logDone < logJob.length)) && (
-                <p className="pick-status">
-                  {[
-                    gamesLoaded < games.length ? `Loading games ${gamesLoaded}/${games.length}` : '',
-                    teamJob.length > 0 && teamDone < teamJob.length ? `Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}` : '',
-                    logJob.length > 0 && logDone < logJob.length ? `Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}` : '',
-                  ].filter(Boolean).join(' · ')}
-                </p>
-              )}
-              <details className="props-details">
-                <summary>How this list is built</summary>
-                <p className="props-likely-note">
-                  NHL, NFL, and NBA list who the read has winning and the full-game total. A game from this season counts fully, and a game from last season counts as a third. A side where winning $25 would cost more than $36 after the fee stays off, which keeps the button at 57% or under. Player props follow, sorted by the gap between our read and the price. The line closest to 50/50 stays when the read is at least 4 points from the price and that button is still inside the cap. NBA player props are Yes only. Usage and rest notes stay on the row. If the recent opportunity came while a teammate was out and that teammate is playing, the read uses the games they played together. If a quarterback, back, receiver, or tight end is out or doubtful, the next player at that position takes on that work. Questionable moves about 40% of it. Other sports stay when they hit in 70% or more of the last 10 and the yes button is inside that same cap.
-                </p>
-              </details>
-              {likelyPicks.length === 0 && gamesLoaded === games.length && logDone >= logJob.length && teamDone >= teamJob.length && (
-                <div className="empty-state"><p>No props cleared the list for this slate.</p></div>
-              )}
-              <div className="props-list props-board">
-                {likelyPicks.some((item) => item.gameLine) && <div className="props-likely-head">Game lines</div>}
-                {likelyPicks.filter((item) => item.gameLine).map((item) => (
-                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={openLikely} />
-                ))}
-                {likelyPicks.some((item) => !item.gameLine) && <div className="props-likely-head">Player props</div>}
-                {likelyPicks.filter((item) => !item.gameLine).map((item) => (
-                  <LikelyRow key={item.id} item={item} sport={sport} onOpen={openLikely} />
-                ))}
-              </div>
-            </>
-          )}
-
           {view === 'games' && (
           <div className="props-list props-board props-games">
             {games.map((game) => {
@@ -1657,7 +1600,7 @@ export default function PropsPage() {
 
       {openGame && (
         <>
-          <button type="button" className="props-back" onClick={() => { setGameKey(null); setPropFocus(null); }}>{view === 'picks' ? '‹ Picks' : view === 'likely' ? '‹ Likely' : '‹ Games'}</button>
+          <button type="button" className="props-back" onClick={() => { setGameKey(null); setPropFocus(null); }}>{view === 'picks' ? '‹ Picks' : '‹ Games'}</button>
           <div className="props-sport-head">
             <h2>{openGame.title}</h2>
             <span>{formatGameTime(openGame.gameStart)}</span>

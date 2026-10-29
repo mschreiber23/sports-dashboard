@@ -3,11 +3,60 @@ import { formatGameTime } from '../api/polymarket';
 import { NHL_EDGE_MIN } from '../utils/nhlEdge';
 import { yesOnlyLeague } from '../utils/propBook';
 import { BET_PRICE_MAX } from '../utils/scoredProps';
-import { pickReasons, pickTitle, rankPicks } from '../utils/pickSheet';
+import { pickSummary, pickTitle, rankPicks } from '../utils/pickSheet';
 import TradeButton from './TradeButton';
 
+function barColor(color) {
+  const raw = String(color || '').trim();
+  if (!raw) return '#e10600';
+  if (raw.startsWith('#') || raw.startsWith('rgb')) return raw;
+  if (/^[0-9a-f]{6}$/i.test(raw)) return `#${raw}`;
+  return raw;
+}
+
+function LastTen({ item }) {
+  const values = Array.isArray(item.recent) ? item.recent.filter((value) => typeof value === 'number').slice(-10) : [];
+  if (!values.length || item.line == null) return null;
+  const max = Math.max(1, ...values, 0);
+  const stat = item.stat || 'games';
+  const lineLabel = Number.isInteger(item.line) ? `${item.line}+` : `${item.line}+`;
+  const label = `Last ${values.length} ${stat}`;
+  const note = item.prediction === 'no'
+    ? `Filled bars stayed under ${lineLabel}`
+    : `Filled bars cleared ${lineLabel}`;
+  return (
+    <div className="pick-log">
+      <div className="pick-log-label">
+        {label}
+        <span>{note}</span>
+      </div>
+      <div className="pp-bars" aria-label={`${label}. ${note}.`}>
+        {values.map((value, index) => {
+          const want = item.prediction === 'no' ? value < item.line : value >= item.line;
+          const shown = Number.isInteger(value) ? value : Math.round(value);
+          return (
+            <div key={`${label}-${index}`} className="pp-bar-col">
+              <div className="pp-bar-track">
+                <div
+                  className="pp-bar"
+                  style={{
+                    height: `${(Math.max(0, value) / max) * 100}%`,
+                    background: barColor(item.color),
+                    opacity: want ? 1 : 0.28,
+                  }}
+                />
+              </div>
+              <span>{shown}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PickCard({ item, open, onToggle, onOpen, draftFor }) {
-  const reasons = pickReasons(item);
+  const summary = pickSummary(item);
   return (
     <article className={`pick-card${open ? ' pick-card-open' : ''}`}>
       <button type="button" className="pick-card-main" aria-expanded={open} onClick={onToggle}>
@@ -28,10 +77,18 @@ function PickCard({ item, open, onToggle, onOpen, draftFor }) {
       </button>
       {open && (
         <div className="pick-why">
-          <h4>Why</h4>
-          <ul>
-            {reasons.map((line) => <li key={line}>{line}</li>)}
-          </ul>
+          <h4>Why we like it</h4>
+          {summary.lead && <p className="pick-lead">{summary.lead}</p>}
+          {summary.edge && <p className="pick-edge">{summary.edge}</p>}
+          <LastTen item={item} />
+          {summary.why.length > 0 && (
+            <ul className="pick-points">
+              {summary.why.map((line) => <li key={line}>{line}</li>)}
+            </ul>
+          )}
+          {summary.watch.length > 0 && (
+            <p className="pick-watch">Watch: {summary.watch.join(' ')}</p>
+          )}
           <div className="pick-actions">
             <TradeButton
               draft={draftFor(item)}
@@ -50,8 +107,6 @@ function PickCard({ item, open, onToggle, onOpen, draftFor }) {
 export default function PickSheet({ picks, status, ready, onOpen, draftFor }) {
   const [open, setOpen] = useState(() => new Set());
   const ranked = rankPicks(picks);
-  const modeled = ranked.filter((item) => item.modeled);
-  const recent = ranked.filter((item) => !item.modeled);
   const toggle = (id) => {
     setOpen((current) => {
       const next = new Set(current);
@@ -67,25 +122,9 @@ export default function PickSheet({ picks, status, ready, onOpen, draftFor }) {
       {ready && ranked.length === 0 && (
         <div className="empty-state"><p>Nothing cleared the bar for this slate.</p></div>
       )}
-      {modeled.length > 0 && (
+      {ranked.length > 0 && (
         <section className="pick-list props-board">
-          <h2 className="pick-group">Model</h2>
-          {modeled.map((item) => (
-            <PickCard
-              key={item.id}
-              item={item}
-              open={open.has(item.id)}
-              onToggle={() => toggle(item.id)}
-              onOpen={onOpen}
-              draftFor={draftFor}
-            />
-          ))}
-        </section>
-      )}
-      {recent.length > 0 && (
-        <section className="pick-list props-board">
-          <h2 className="pick-group">Cleared it lately</h2>
-          {recent.map((item) => (
+          {ranked.map((item) => (
             <PickCard
               key={item.id}
               item={item}

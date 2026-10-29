@@ -152,7 +152,7 @@ export default function TradeBook() {
       </div>
       {trades && rows.length === 0 && (
         <div className="empty-state">
-          <p>No trades yet. On Likely or a player card, tap Yes or No to add that side.</p>
+          <p>No trades yet. On Picks or a player card, tap Yes or No to add that side.</p>
         </div>
       )}
       {rows.length > 0 && (
