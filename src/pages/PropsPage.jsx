@@ -25,6 +25,7 @@ import { BET_PRICE_MAX, affordablePrice } from '../utils/scoredProps';
 import { keptLikelySide, takerQuote, yesOnlyLeague } from '../utils/propBook';
 import { crossedLines, soundLines } from '../utils/quoteLadder';
 import { rememberSport } from '../utils/lastSport';
+import { gameChip, picksForGame } from '../utils/pickSheet';
 
 const TABS = ['All', ...PROP_SPORTS.map((sport) => sport.label)];
 
@@ -1204,6 +1205,7 @@ export default function PropsPage() {
   const [loaded, setLoaded] = useState({});
   const [error, setError] = useState('');
   const [sport, setSport] = useState('All');
+  const [pickGame, setPickGame] = useState('');
   const [day, setDay] = useState(() => easternDay(Date.now()));
   const [gameKey, setGameKey] = useState(null);
   const [propFocus, setPropFocus] = useState(null);
@@ -1251,6 +1253,10 @@ export default function PropsPage() {
     list.sort((a, b) => a.gameStart - b.gameStart || a.title.localeCompare(b.title));
     return list;
   }, [events, day, sport, loaded, nflWeek]);
+
+  useEffect(() => {
+    if (pickGame && !games.some((game) => game.key === pickGame)) setPickGame('');
+  }, [games, pickGame]);
 
   const counts = useMemo(() => {
     const bySport = new Map();
@@ -1529,9 +1535,9 @@ export default function PropsPage() {
           <>
           <div className="props-toolbar">
           <div className="props-day-nav">
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? -7 : -1)); setPickGame(''); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Previous week' : 'Previous day'}>‹</button>
             <span className="props-day-label">{sport === 'NFL' && nflWeek ? nflWeek.label : formatDayLabel(day)}</span>
-            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
+            <button type="button" className="props-day-btn" onClick={() => { setDay((d) => shiftDay(d, sport === 'NFL' && nflWeek ? 7 : 1)); setPickGame(''); setGameKey(null); setPropFocus(null); }} aria-label={sport === 'NFL' && nflWeek ? 'Next week' : 'Next day'}>›</button>
           </div>
 
           <div className="scores-sport-tabs">
@@ -1542,7 +1548,7 @@ export default function PropsPage() {
                   ? counts.nfl
                   : (counts.bySport.get(name) || 0);
               return (
-                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => { setSport(name); if (name !== 'All') rememberSport(name); }}>
+                <button key={name} type="button" className={`ts-tab ${sport === name ? 'ts-tab-active' : ''}`} onClick={() => { setSport(name); setPickGame(''); if (name !== 'All') rememberSport(name); }}>
                   {name}
                   <span className="props-tab-count">{count}</span>
                 </button>
@@ -1561,17 +1567,35 @@ export default function PropsPage() {
           )}
 
           {games.length > 0 && view === 'picks' && (
-            <PickSheet
-              picks={likelyPicks}
-              draftFor={likelyDraft}
-              onOpen={openLikely}
-              ready={gamesLoaded === games.length && logDone >= logJob.length && teamDone >= teamJob.length}
-              status={[
-                gamesLoaded < games.length ? `Loading games ${gamesLoaded}/${games.length}` : '',
-                teamJob.length > 0 && teamDone < teamJob.length ? `Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}` : '',
-                logJob.length > 0 && logDone < logJob.length ? `Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}` : '',
-              ].filter(Boolean).join(' · ')}
-            />
+            <>
+              <div className="scores-sport-tabs pick-game-tabs" role="tablist" aria-label="Games">
+                <button type="button" className={`ts-tab ${pickGame === '' ? 'ts-tab-active' : ''}`} onClick={() => setPickGame('')}>
+                  All games
+                  <span className="props-tab-count">{likelyPicks.length}</span>
+                </button>
+                {games.map((game) => {
+                  const count = likelyPicks.filter((pick) => pick.gameKey === game.key).length;
+                  return (
+                    <button key={game.key} type="button" className={`ts-tab ${pickGame === game.key ? 'ts-tab-active' : ''}`} onClick={() => setPickGame(game.key)}>
+                      {gameChip(game.title)}
+                      <span className="props-tab-count">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <PickSheet
+                picks={picksForGame(likelyPicks, pickGame)}
+                draftFor={likelyDraft}
+                onOpen={openLikely}
+                ready={gamesLoaded === games.length && logDone >= logJob.length && teamDone >= teamJob.length}
+                empty={pickGame ? 'Nothing cleared the bar for this game.' : 'Nothing cleared the bar for this slate.'}
+                status={[
+                  gamesLoaded < games.length ? `Loading games ${gamesLoaded}/${games.length}` : '',
+                  teamJob.length > 0 && teamDone < teamJob.length ? `Checking teams ${Math.min(teamDone, teamJob.length)}/${teamJob.length}` : '',
+                  logJob.length > 0 && logDone < logJob.length ? `Checking players ${Math.min(logDone, logJob.length)}/${logJob.length}` : '',
+                ].filter(Boolean).join(' · ')}
+              />
+            </>
           )}
 
           {view === 'games' && (

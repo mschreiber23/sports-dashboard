@@ -104,7 +104,7 @@ function PickCard({ item, open, onToggle, onOpen, draftFor }) {
   );
 }
 
-export default function PickSheet({ picks, status, ready, onOpen, draftFor }) {
+export default function PickSheet({ picks, status, ready, onOpen, draftFor, empty = 'Nothing cleared the bar for this slate.' }) {
   const [open, setOpen] = useState(() => new Set());
   const ranked = rankPicks(picks);
   const toggle = (id) => {
@@ -120,7 +120,7 @@ export default function PickSheet({ picks, status, ready, onOpen, draftFor }) {
     <div className="pick-sheet">
       {status && <p className="pick-status">{status}</p>}
       {ready && ranked.length === 0 && (
-        <div className="empty-state"><p>Nothing cleared the bar for this slate.</p></div>
+        <div className="empty-state"><p>{empty}</p></div>
       )}
       {ranked.length > 0 && (
         <section className="pick-list props-board">

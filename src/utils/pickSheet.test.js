@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { pickSummary, pickTitle, rankPicks } from './pickSheet.js';
+import { gameChip, picksForGame, pickSummary, pickTitle, rankPicks } from './pickSheet.js';
 
 test('a yes pick reads as the player and the line', () => {
   assert.equal(pickTitle({ player: 'Connor McDavid', prop: '1+ points', prediction: 'yes' }), 'Connor McDavid — 1+ points');
@@ -60,6 +60,18 @@ test('picks sort by the highest percentage', () => {
     { player: 'C', modelPct: 70, edge: 0.04, gameStart: 1, modeled: true },
   ]);
   assert.deepEqual(ranked.map((pick) => pick.player), ['A', 'C', 'B']);
+});
+
+test('a game filter keeps that game and the percentage order', () => {
+  assert.equal(gameChip('UTA Mammoth vs. PIT Penguins'), 'UTA vs PIT');
+  assert.equal(gameChip('Boston Bruins vs. St. Louis Blues'), 'Boston Bruins vs St. Louis Blues');
+  const picks = [
+    { player: 'A', gameKey: 'uta-pit', modelPct: 64 },
+    { player: 'B', gameKey: 'wpg-tbl', modelPct: 70 },
+    { player: 'C', gameKey: 'uta-pit', modelPct: 58 },
+  ];
+  assert.deepEqual(picksForGame(picks, '').map((pick) => pick.player), ['A', 'B', 'C']);
+  assert.deepEqual(rankPicks(picksForGame(picks, 'uta-pit')).map((pick) => pick.player), ['A', 'C']);
 });
 
 test('a last-10 pick says the record and the price once', () => {
