@@ -169,6 +169,22 @@ export function pickSummary(item) {
   };
 }
 
+export function gameChip(title) {
+  const parts = String(title || '').split(/\s+vs\.?\s+/i);
+  if (parts.length < 2) return String(title || '').trim();
+  const token = (text) => {
+    const trimmed = text.trim();
+    const word = (trimmed.split(/\s+/)[0] || '').replace(/[.,]/g, '');
+    return /^[A-Z]{2,4}$/.test(word) ? word : trimmed;
+  };
+  return `${token(parts[0])} vs ${token(parts[1])}`;
+}
+
+export function picksForGame(picks, gameKey) {
+  if (!gameKey) return picks || [];
+  return (picks || []).filter((pick) => pick.gameKey === gameKey);
+}
+
 export function rankPicks(picks) {
   return [...(picks || [])].sort((a, b) => (
     shownPct(b) - shownPct(a)
