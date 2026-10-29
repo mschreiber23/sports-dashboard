@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { recordPlayerView } from './PlayersPage';
+import { useRecentPlayers } from '../context/RecentPlayersContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, activeSeasonYear, nhlSeasonYear } from '../api/espn';
 import { omitCareerColumns, parseAthleteCareer } from '../utils/nhlCareer';
@@ -516,6 +516,7 @@ function EspnSeasonTable({ table, highlights = NHL_HL }) {
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
   const navigate = useNavigate();
+  const { record } = useRecentPlayers();
   const [bio, setBio] = useState(null);
   const [seasons, setSeasons] = useState([]);
   const [careerTable, setCareerTable] = useState(null);
@@ -545,6 +546,11 @@ export default function PlayerPage() {
   const careerTitle = CAREER_TITLE[sportKey] || 'Career Stats';
 
   useEffect(() => {
+    if (!playerId || !sport) return;
+    record({ id: playerId, sport });
+  }, [playerId, sport, record]);
+
+  useEffect(() => {
     const currentYear = new Date().getFullYear();
     setGamelog([]);
     setPointLog([]);
@@ -554,10 +560,9 @@ export default function PlayerPage() {
     getPlayerBio(sport, playerId)
       .then((bioData) => {
         setBio(bioData);
-        // Record this player view for the Players page recently-viewed list
         const ath = bioData?.athlete || {};
         if (ath.displayName) {
-          recordPlayerView({
+          record({
             id: playerId,
             sport,
             name: ath.displayName,

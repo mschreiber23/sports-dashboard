@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { HashRouter, Routes, Route, useLocation, matchPath, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
+import { RecentPlayersProvider } from './context/RecentPlayersContext';
 import { BottomNav, TopNav } from './components/Nav';
 import EdgeScrollbar from './components/EdgeScrollbar';
 import InstallBanner from './components/InstallBanner';
@@ -63,6 +64,7 @@ function AppShell({ userId }) {
 
   return (
     <FavoritesProvider userId={userId}>
+      <RecentPlayersProvider userId={userId}>
       <PropSyncProvider>
         <div className="app">
         <div className="app-sticky-header">
@@ -108,6 +110,7 @@ function AppShell({ userId }) {
         <EdgeScrollbar />
         </div>
       </PropSyncProvider>
+      </RecentPlayersProvider>
     </FavoritesProvider>
   );
 }
