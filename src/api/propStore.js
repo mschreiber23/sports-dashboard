@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { idbStorage } from '../lib/idbStorage';
-import { mergeStoredReads, sameReads } from '../utils/readSync';
+import { mergeStoredReads, publicReads, sameReads } from '../utils/readSync';
 
 const KEY = 'prop_reads_v1';
 let remoteOff = false;
@@ -119,6 +119,32 @@ async function remoteLoad(userId) {
     if (page.length < 1000) break;
   }
   return all;
+}
+
+const SCOREBOARD_CAP = 100000;
+
+// Every signed-in account reads the same log. A failure here returns null so
+// the caller can keep that account's own rows. This does not turn remote
+// saves off: a scoreboard miss must not stop the account from recording.
+export async function loadScoreboard() {
+  if (remoteOff) return null;
+  const all = [];
+  try {
+    for (let from = 0; from < SCOREBOARD_CAP; from += 1000) {
+      const { data, error } = await supabase
+        .from('prop_reads')
+        .select('*')
+        .order('id', { ascending: true })
+        .range(from, from + 999);
+      if (error) return null;
+      const page = (data || []).map(fromRemote);
+      all.push(...page);
+      if (page.length < 1000) break;
+    }
+  } catch {
+    return null;
+  }
+  return publicReads(all, []);
 }
 
 async function remoteSave(userId, rows) {

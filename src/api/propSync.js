@@ -4,13 +4,14 @@ import { loadTeamRoles, sameName, sameTeam } from './nflInjuries';
 import { espnAbbr, teamRecentGames } from './teamForm';
 import { loadNflWeather } from './nflWeather';
 import { loadNbaInjuries } from './nbaInjuries';
-import { loadReads, saveReads } from './propStore';
+import { loadReads, loadScoreboard, saveReads } from './propStore';
 import { loadTrades, saveTrades } from './tradeStore';
 import { finalScore, gradeMarketTrade } from './gameResult';
 import { gamesToRecord, buildReads, refreshReads, gradeRead } from '../utils/propReads';
 import { learnCalibration, priceRead } from '../utils/propCalibration';
 import { stampPrediction } from '../utils/modelCall';
 import { countsInScore } from '../utils/scoredProps';
+import { publicReads } from '../utils/readSync';
 
 async function pool(items, limit, fn) {
   const out = new Array(items.length);
@@ -51,17 +52,24 @@ async function gradeTrades(userId) {
 
 export async function runPropSync({ userId, force = false, onStatus, onUpdate, shouldStop }) {
   const stop = () => shouldStop?.();
-  const publish = (nextRows, calibration, trades) => {
+  const [stored, sharedResult] = await Promise.all([
+    loadReads(userId),
+    loadScoreboard().catch(() => null),
+  ]);
+  let rows = stored.filter(countsInScore);
+  let shared = sharedResult;
+  // Recording and grading stay on this account. The screen shows the shared log.
+  const board = () => publicReads(shared, rows).filter(countsInScore);
+  const publish = (trades) => {
+    const nextRows = board();
+    const calibration = learnCalibration(nextRows);
     onUpdate?.({ reads: nextRows, calibration, trades });
     return { reads: nextRows, calibration, trades };
   };
-  const stored = await loadReads(userId);
-  let rows = stored.filter(countsInScore);
-  let calibration = learnCalibration(rows);
   let trades = await gradeTrades(userId);
-  publish(rows, calibration, trades);
+  let snapshot = publish(trades);
   if (rows.length !== stored.length) await saveReads(userId, rows);
-  if (stop()) return { reads: rows, calibration };
+  if (stop()) return snapshot;
 
   const pending = rows.filter((row) => !row.result && row.gameStart <= Date.now());
   if (pending.length) {
@@ -72,19 +80,18 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
       if (done % 10 === 0 || done === pending.length) onStatus?.(`Grading finished games ${done}/${pending.length}…`);
       return gradeRead(row, stat);
     });
-    if (stop()) return { reads: rows, calibration: learnCalibration(rows) };
+    if (stop()) return snapshot;
     const byId = new Map(graded.map((row) => [row.id, row]));
     rows = rows.map((row) => byId.get(row.id) || row);
-    calibration = learnCalibration(rows);
-    publish(rows, calibration, trades);
+    snapshot = publish(trades);
     await saveReads(userId, rows);
   }
   const events = await loadPropEvents();
-  if (stop()) return { reads: rows, calibration };
+  if (stop()) return snapshot;
   const due = gamesToRecord(events, rows, Date.now(), force);
   if (!due.length) {
-    onStatus?.(rows.length ? '' : 'No upcoming NHL, NFL, or NBA games to record.');
-    return { reads: rows, calibration };
+    onStatus?.(board().length ? '' : 'No upcoming NHL, NFL, or NBA games to record.');
+    return snapshot;
   }
 
   let loaded = 0;
@@ -94,7 +101,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
     onStatus?.(`Recording NHL, NFL, and NBA games ${loaded}/${due.length}…`);
     return { ...game, rows: props };
   });
-  if (stop()) return { reads: rows, calibration };
+  if (stop()) return snapshot;
 
   const players = [];
   const seen = new Set();
@@ -124,7 +131,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
     checked += 1;
     if (checked % 15 === 0 || checked === players.length) onStatus?.(`Checking players ${checked}/${players.length}…`);
   });
-  if (stop()) return { reads: rows, calibration };
+  if (stop()) return snapshot;
 
   let roles = [];
   const opportunityLogs = {};
@@ -136,7 +143,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
       }
     }
     roles = await loadTeamRoles(teamNames).catch(() => []);
-    if (stop()) return { reads: rows, calibration };
+    if (stop()) return snapshot;
     const missing = [];
     const queued = new Set();
     for (const team of roles) {
@@ -160,7 +167,7 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
       const result = await recentPlayerLogs('nfl', [player]).catch(() => ({}));
       opportunityLogs[player.key] = result[player.name] ?? null;
     });
-    if (stop()) return { reads: rows, calibration };
+    if (stop()) return snapshot;
   }
 
   const forms = {};
@@ -180,17 +187,22 @@ export async function runPropSync({ userId, force = false, onStatus, onUpdate, s
   const injuries = withRows.some((game) => game.league === 'nba')
     ? await loadNbaInjuries().catch(() => [])
     : [];
-  if (stop()) return { reads: rows, calibration };
-  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs, forms, weatherByGame, injuries }).map((row) => stampPrediction(priceRead(row, calibration)));
+  if (stop()) return snapshot;
+  const fresh = buildReads({ games: withRows, logs, roles, opportunityLogs, forms, weatherByGame, injuries }).map((row) => stampPrediction(priceRead(row, snapshot.calibration)));
   rows = refreshReads(rows, fresh);
-  calibration = learnCalibration(rows);
-  publish(rows, calibration, trades);
+  try {
+    const latest = await loadScoreboard();
+    if (latest) shared = latest;
+  } catch {
+    // Keep the board loaded at the start of this pass.
+  }
+  snapshot = publish(trades);
   await saveReads(userId, rows);
   const noun = due.length === 1 ? 'game' : 'games';
   const covered = due.filter((game) => rows.some((row) => row.eventSlug === game.key)).length;
   let message = '';
   if (fresh.length) message = `Saved ${fresh.length} reads from ${due.length} ${noun}.`;
-  else if (!rows.length && !covered) message = `No modeled props were ready in ${due.length} ${noun}.`;
+  else if (!board().length && !covered) message = `No modeled props were ready in ${due.length} ${noun}.`;
   onStatus?.(message);
-  return { reads: rows, calibration };
+  return snapshot;
 }
