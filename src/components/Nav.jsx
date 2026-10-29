@@ -122,7 +122,7 @@ function PointsIcon({ active }) {
 }
 
 const MORE_ITEMS = [
-  { path: '/nhl-points', label: 'NHL Points', Icon: PointsIcon },
+  { path: '/nhl-cold', label: 'Cold streaks', Icon: PointsIcon },
   { path: '/props',      label: 'Props',      Icon: PropsIcon },
   { path: '/me',         label: 'My Profile', Icon: MeIcon },
   { path: '/leaders',    label: 'Leaders',    Icon: LeadersIcon },

@@ -305,6 +305,7 @@ function gamesFromLog(data) {
         });
         games.push({
           date: meta.gameDate,
+          season: season.displayName || '',
           opponent: meta.opponent?.abbreviation || '',
           opponentName: meta.opponent?.displayName || '',
           stats,
@@ -339,6 +340,19 @@ function take(games, type) {
     values.push(value);
   }
   return values.length ? values : null;
+}
+
+export async function nhlRegularSeasonPoints(athleteId, before = Date.now()) {
+  if (!athleteId) return [];
+  const year = espnSeasons(before)[0];
+  const games = await seasonGames('nhl', String(athleteId), year);
+  return games
+    .filter((game) => /regular season/i.test(game.season || ''))
+    .map((game) => ({
+      time: new Date(game.date).getTime(),
+      points: field(game.stats, 'points'),
+    }))
+    .filter((game) => Number.isFinite(game.time) && game.time < before && typeof game.points === 'number');
 }
 
 export async function recentPlayerLogs(league, players) {

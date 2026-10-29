@@ -771,16 +771,53 @@ async function fetchCalendarTag(tag) {
 }
 
 let calendarPromise = null;
+let calendarSnapshot = null;
+const calendarListeners = new Set();
+
+function publishCalendar(events, done) {
+  calendarSnapshot = { events, done };
+  for (const listener of calendarListeners) listener(calendarSnapshot);
+}
+
+function startCalendar() {
+  const buckets = PROP_SPORTS.map(() => []);
+  let left = PROP_SPORTS.length;
+  let failed = 0;
+  calendarPromise = new Promise((resolve, reject) => {
+    PROP_SPORTS.forEach((sport, index) => {
+      fetchCalendarTag(sport.tag).then((events) => {
+        buckets[index] = events;
+      }).catch(() => {
+        failed += 1;
+        buckets[index] = [];
+      }).finally(() => {
+        left -= 1;
+        const events = buckets.flat();
+        const done = left === 0;
+        if (done && failed === PROP_SPORTS.length) {
+          calendarPromise = null;
+          calendarSnapshot = null;
+          reject(new Error('Could not load props'));
+          return;
+        }
+        publishCalendar(events, done);
+        if (done) resolve(events);
+      });
+    });
+  });
+}
+
+// The games list can paint as each sport arrives. Callers that need the full
+// slate still await loadPropEvents().
+export function watchPropEvents(onUpdate) {
+  if (!calendarPromise) startCalendar();
+  calendarListeners.add(onUpdate);
+  if (calendarSnapshot) onUpdate(calendarSnapshot);
+  return () => calendarListeners.delete(onUpdate);
+}
 
 export function loadPropEvents() {
-  if (!calendarPromise) {
-    calendarPromise = mapPool(PROP_SPORTS, 4, (sport) => fetchCalendarTag(sport.tag).catch(() => []))
-      .then((lists) => lists.flat())
-      .catch((err) => {
-        calendarPromise = null;
-        throw err;
-      });
-  }
+  if (!calendarPromise) startCalendar();
   return calendarPromise;
 }
 
