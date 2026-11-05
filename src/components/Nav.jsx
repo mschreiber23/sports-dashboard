@@ -121,8 +121,17 @@ function PointsIcon({ active }) {
   );
 }
 
+function TodayIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.1 8.6 22 9.3 17 14.1 18.4 21 12 17.5 5.6 21 7 14.1 2 9.3 8.9 8.6"/>
+    </svg>
+  );
+}
+
 const MORE_ITEMS = [
   { path: '/nhl-cold', label: 'Cold streaks', Icon: PointsIcon },
+  { path: '/top',        label: 'Top today',  Icon: TodayIcon },
   { path: '/props',      label: 'Props',      Icon: PropsIcon },
   { path: '/me',         label: 'My Profile', Icon: MeIcon },
   { path: '/leaders',    label: 'Leaders',    Icon: LeadersIcon },
