@@ -9868,3 +9868,85 @@ thead .dfs-sticky-player {
 .ledger-hit { color: #22c55e; }
 .ledger-miss { color: #f87171; }
 .ledger-void { color: var(--text2); }
+
+/* ── Today's top performers ── */
+.day-leaders { display: flex; flex-direction: column; gap: 14px; }
+.day-leaders-head h1 { margin: 0; font-size: 22px; }
+.day-leaders-note { margin: 6px 0 0; color: var(--text2); font-size: 13px; line-height: 1.4; }
+.day-leaders-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  color: var(--live, #ef4444);
+  font-weight: 800;
+  font-size: 12px;
+}
+.day-leaders-status { color: var(--text2); font-size: 14px; padding: 12px 0; }
+.day-leaders-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg2);
+}
+.day-leaders-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+  font-variant-numeric: tabular-nums;
+}
+.day-leaders-table th,
+.day-leaders-table td {
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.day-leaders-table th {
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--text2);
+  position: sticky;
+  top: 0;
+  background: #14141a;
+  z-index: 2;
+}
+.day-leaders-table th button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.day-leaders-player,
+.day-leaders-table th.day-leaders-player {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 190px;
+  background: var(--bg2);
+}
+.day-leaders-table th.day-leaders-player { z-index: 3; background: #14141a; }
+.day-leaders-table tbody tr { cursor: pointer; }
+.day-leaders-table tbody tr:hover td { background: rgba(255,255,255,0.04); }
+.day-leaders-table tbody tr:hover td.day-leaders-player { background: #1c1c24; }
+.day-leaders-sort { color: var(--text); font-weight: 800; }
+.day-leaders-who { display: flex; align-items: center; gap: 8px; }
+.day-leaders-who img,
+.day-leaders-photo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #111;
+  flex-shrink: 0;
+}
+.day-leaders-rank { width: 16px; color: var(--text2); font-size: 11px; font-weight: 700; text-align: right; }
+.day-leaders-name, .day-leaders-meta { display: block; }
+.day-leaders-name { font-weight: 700; font-size: 13px; }
+.day-leaders-meta { font-size: 11px; color: var(--text2); font-weight: 600; }
