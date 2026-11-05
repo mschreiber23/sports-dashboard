@@ -77,19 +77,21 @@ export default function DayLeadersPage() {
     });
   }
 
+  const activeColumn = columns.find((col) => col.key === sort.key) || columns[0];
+
   return (
     <div className="day-leaders">
       <div className="day-leaders-head">
-        <h1>Top today</h1>
-        <p className="day-leaders-note">
-          {label}’s games. Points lead the list. Tap a stat to sort.
-          {board?.live && (
-            <span className="day-leaders-live">
-              <span className="ts-live-dot" />
-              Live
-            </span>
-          )}
-        </p>
+        <div>
+          <h1>Top today</h1>
+          <p className="day-leaders-note">{label}. Tap a stat to sort.</p>
+        </div>
+        {board?.live && (
+          <span className="day-leaders-live">
+            <span className="ts-live-dot" />
+            Live
+          </span>
+        )}
       </div>
 
       <div className="scores-sport-tabs">
@@ -105,6 +107,25 @@ export default function DayLeadersPage() {
         ))}
       </div>
 
+      {columns && (
+        <div className="day-leaders-sorts">
+          {columns.map((col) => {
+            const active = sort.key === col.key;
+            const mark = !active ? '' : sort.dir === 'asc' ? ' ↑' : ' ↓';
+            return (
+              <button
+                key={col.key}
+                type="button"
+                className={active ? 'on' : ''}
+                onClick={() => chooseSort(col.key)}
+              >
+                {col.label}{mark}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading && !board && <div className="day-leaders-status">Loading today’s box scores…</div>}
       {error && !board && <div className="day-leaders-status">{error}</div>}
       {board && rows.length === 0 && (
@@ -114,53 +135,38 @@ export default function DayLeadersPage() {
       )}
 
       {rows.length > 0 && (
-        <div className="day-leaders-scroll">
-          <table className="day-leaders-table">
-            <thead>
-              <tr>
-                <th className="day-leaders-player">Player</th>
-                {columns.map((col) => {
-                  const active = sort.key === col.key;
-                  const mark = !active ? '' : sort.dir === 'asc' ? ' ↑' : ' ↓';
-                  return (
-                    <th key={col.key} className={active ? 'day-leaders-sort' : ''}>
-                      <button type="button" onClick={() => chooseSort(col.key)}>
-                        {col.label}{mark}
-                      </button>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={row.id} onClick={() => navigate(`/player/${sport}/${row.id}`)}>
-                  <td className="day-leaders-player">
-                    <div className="day-leaders-who">
-                      <span className="day-leaders-rank">{index + 1}</span>
-                      {row.headshot
-                        ? <img src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                        : <span className="day-leaders-photo" />}
-                      <span>
-                        <span className="day-leaders-name">{row.name}</span>
-                        <span className="day-leaders-meta">
-                          {row.position ? `${row.position} · ` : ''}
-                          {row.team} {row.home ? 'vs' : '@'} {row.opponent}
-                          {row.live && row.clock ? ` · ${row.clock}` : ''}
-                        </span>
+        <ol className="day-leaders-list">
+          {rows.map((row, index) => (
+            <li key={row.id}>
+              <button type="button" className="day-leaders-row" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
+                <span className="day-leaders-rank">{index + 1}</span>
+                {row.headshot
+                  ? <img src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : <span className="day-leaders-photo" />}
+                <span className="day-leaders-id">
+                  <span className="day-leaders-name">{row.name}</span>
+                  <span className="day-leaders-meta">
+                    {row.position ? `${row.position} · ` : ''}
+                    {row.team} {row.home ? 'vs' : '@'} {row.opponent}
+                    {row.live && row.clock ? ` · ${row.clock}` : ''}
+                  </span>
+                  <span className="day-leaders-stats">
+                    {columns.filter((col) => col.key !== sort.key).map((col) => (
+                      <span key={col.key}>
+                        <b>{formatLeaderStat(col.key, row[col.key])}</b>
+                        {col.label}
                       </span>
-                    </div>
-                  </td>
-                  {columns.map((col) => (
-                    <td key={col.key} className={sort.key === col.key ? 'day-leaders-sort' : ''}>
-                      {formatLeaderStat(col.key, row[col.key])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    ))}
+                  </span>
+                </span>
+                <span className="day-leaders-main">
+                  <b>{formatLeaderStat(activeColumn.key, row[activeColumn.key])}</b>
+                  <span>{activeColumn.label}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );
