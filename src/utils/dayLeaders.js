@@ -1,6 +1,6 @@
-/** Today's box-score leaders. NBA and NHL only. */
+/** Today's box-score leaders for NBA, NHL, NFL, and MLB. */
 
-export const DAY_SPORTS = ['nba', 'nhl'];
+export const DAY_SPORTS = ['nba', 'nhl', 'nfl', 'mlb'];
 
 export const DAY_COLUMNS = {
   nba: [
@@ -20,6 +20,59 @@ export const DAY_COLUMNS = {
     { key: 'blocks', label: 'BLK' },
     { key: 'plusMinus', label: '+/-' },
   ],
+};
+
+/** NFL and MLB split into leader lists. Each list has its own columns. */
+export const DAY_GROUPS = {
+  nfl: {
+    passing: {
+      label: 'Passing',
+      defaultSort: 'passingYards',
+      columns: [
+        { key: 'passingYards', label: 'YDS' },
+        { key: 'passingTouchdowns', label: 'TD' },
+        { key: 'interceptions', label: 'INT' },
+      ],
+    },
+    rushing: {
+      label: 'Rushing',
+      defaultSort: 'rushingYards',
+      columns: [
+        { key: 'rushingYards', label: 'YDS' },
+        { key: 'carries', label: 'CAR' },
+        { key: 'rushingTouchdowns', label: 'TD' },
+      ],
+    },
+    receiving: {
+      label: 'Receiving',
+      defaultSort: 'receivingYards',
+      columns: [
+        { key: 'receivingYards', label: 'YDS' },
+        { key: 'receptions', label: 'REC' },
+        { key: 'receivingTouchdowns', label: 'TD' },
+      ],
+    },
+  },
+  mlb: {
+    hitting: {
+      label: 'Hitting',
+      defaultSort: 'homeRuns',
+      columns: [
+        { key: 'homeRuns', label: 'HR' },
+        { key: 'hits', label: 'H' },
+        { key: 'rbi', label: 'RBI' },
+        { key: 'steals', label: 'SB' },
+      ],
+    },
+    pitching: {
+      label: 'Pitching',
+      defaultSort: 'strikeouts',
+      columns: [
+        { key: 'strikeouts', label: 'K' },
+        { key: 'innings', label: 'IP' },
+      ],
+    },
+  },
 };
 
 const NHL_SKATER_GROUPS = new Set(['forwards', 'defenses', 'defensemen']);
@@ -129,27 +182,135 @@ function nhlPlayers(summary, game) {
   return rows;
 }
 
+function groupNamed(side, name) {
+  return (side?.statistics || []).find((group) => String(group.name || group.type || '').toLowerCase() === name);
+}
+
+function slashCount(value, index) {
+  const text = String(value || '');
+  if (!text.includes('/')) return numberStat(text) ?? 0;
+  return numberStat(text.split('/')[index]) ?? 0;
+}
+
+function nflPlayers(summary, game) {
+  const rows = [];
+  for (const side of summary?.boxscore?.players || []) {
+    const passing = groupNamed(side, 'passing');
+    const rushing = groupNamed(side, 'rushing');
+    const receiving = groupNamed(side, 'receiving');
+    for (const athlete of passing?.athletes || []) {
+      if (athlete.didNotPlay) continue;
+      const stats = statMap(passing.keys || passing.names, athlete.stats);
+      const attempts = slashCount(stats['completions/passingAttempts'], 1);
+      const yards = numberStat(stats.passingYards) ?? 0;
+      const touchdowns = numberStat(stats.passingTouchdowns) ?? 0;
+      const interceptions = numberStat(stats.interceptions) ?? 0;
+      if (!(attempts > 0 || yards !== 0 || touchdowns > 0 || interceptions > 0)) continue;
+      const who = playerIdentity(athlete, side.team, game);
+      if (!who) continue;
+      rows.push({ ...who, line: 'passing', passingYards: yards, passingTouchdowns: touchdowns, interceptions });
+    }
+    for (const athlete of rushing?.athletes || []) {
+      if (athlete.didNotPlay) continue;
+      const stats = statMap(rushing.keys || rushing.names, athlete.stats);
+      const carries = numberStat(stats.rushingAttempts) ?? 0;
+      const yards = numberStat(stats.rushingYards) ?? 0;
+      const touchdowns = numberStat(stats.rushingTouchdowns) ?? 0;
+      if (!(carries > 0 || yards !== 0 || touchdowns > 0)) continue;
+      const who = playerIdentity(athlete, side.team, game);
+      if (!who) continue;
+      rows.push({ ...who, line: 'rushing', carries, rushingYards: yards, rushingTouchdowns: touchdowns });
+    }
+    for (const athlete of receiving?.athletes || []) {
+      if (athlete.didNotPlay) continue;
+      const stats = statMap(receiving.keys || receiving.names, athlete.stats);
+      const receptions = numberStat(stats.receptions) ?? 0;
+      const yards = numberStat(stats.receivingYards) ?? 0;
+      const touchdowns = numberStat(stats.receivingTouchdowns) ?? 0;
+      if (!(receptions > 0 || yards !== 0 || touchdowns > 0)) continue;
+      const who = playerIdentity(athlete, side.team, game);
+      if (!who) continue;
+      rows.push({ ...who, line: 'receiving', receptions, receivingYards: yards, receivingTouchdowns: touchdowns });
+    }
+  }
+  return rows;
+}
+
+function stolenBasesById(summary) {
+  const map = new Map();
+  for (const side of summary?.rosters || []) {
+    for (const player of side.roster || []) {
+      const id = player.athlete?.id;
+      if (!id) continue;
+      const stat = (player.stats || []).find((item) => item.name === 'stolenBases');
+      const value = numberStat(stat?.value ?? stat?.displayValue);
+      if (value != null) map.set(String(id), value);
+    }
+  }
+  return map;
+}
+
+function mlbPlayers(summary, game) {
+  const steals = stolenBasesById(summary);
+  const rows = [];
+  for (const side of summary?.boxscore?.players || []) {
+    const batting = groupNamed(side, 'batting');
+    const pitching = groupNamed(side, 'pitching');
+    for (const athlete of batting?.athletes || []) {
+      if (athlete.didNotPlay) continue;
+      const stats = statMap(batting.keys || batting.names, athlete.stats);
+      const who = playerIdentity(athlete, side.team, game);
+      if (!who) continue;
+      const hits = numberStat(stats.hits) ?? 0;
+      const homeRuns = numberStat(stats.homeRuns) ?? 0;
+      const rbi = numberStat(stats.RBIs) ?? 0;
+      const stolen = steals.get(who.id) ?? 0;
+      const atBats = numberStat(stats.atBats) ?? 0;
+      if (!(atBats > 0 || hits > 0 || homeRuns > 0 || rbi > 0 || stolen > 0)) continue;
+      rows.push({ ...who, line: 'hitting', hits, homeRuns, rbi, steals: stolen });
+    }
+    for (const athlete of pitching?.athletes || []) {
+      if (athlete.didNotPlay) continue;
+      const stats = statMap(pitching.keys || pitching.names, athlete.stats);
+      const innings = numberStat(stats['fullInnings.partInnings']) ?? 0;
+      const strikeouts = numberStat(stats.strikeouts) ?? 0;
+      if (!(innings > 0 || strikeouts > 0)) continue;
+      const who = playerIdentity(athlete, side.team, game);
+      if (!who) continue;
+      rows.push({ ...who, line: 'pitching', innings, strikeouts });
+    }
+  }
+  return rows;
+}
+
 /** Players who have actually played in this game. Goalies and DNPs are left out. */
 export function playersFromBoxscore(sport, summary, game) {
   if (sport === 'nba') return nbaPlayers(summary, game);
   if (sport === 'nhl') return nhlPlayers(summary, game);
+  if (sport === 'nfl') return nflPlayers(summary, game);
+  if (sport === 'mlb') return mlbPlayers(summary, game);
   return [];
+}
+
+function rowKey(row) {
+  return row.line ? `${row.line}:${row.id}` : row.id;
 }
 
 /** One row per player. A second game on the same day adds the counting stats. */
 export function combinePlayers(rows) {
   const map = new Map();
   for (const row of rows) {
-    const prev = map.get(row.id);
+    const key = rowKey(row);
+    const prev = map.get(key);
     if (!prev) {
-      map.set(row.id, { ...row });
+      map.set(key, { ...row });
       continue;
     }
     const next = { ...prev, live: prev.live || row.live };
-    for (const key of Object.keys(row)) {
-      if (typeof row[key] === 'number') next[key] = (prev[key] || 0) + row[key];
+    for (const field of Object.keys(row)) {
+      if (typeof row[field] === 'number') next[field] = (prev[field] || 0) + row[field];
     }
-    map.set(row.id, next);
+    map.set(key, next);
   }
   return [...map.values()];
 }
@@ -171,5 +332,6 @@ export function sortDayLeaders(rows, key, dir = 'desc') {
 export function formatLeaderStat(key, value) {
   if (typeof value !== 'number' || Number.isNaN(value)) return '—';
   if (key === 'plusMinus' && value > 0) return `+${value}`;
+  if (key === 'innings') return value.toFixed(1);
   return String(value);
 }

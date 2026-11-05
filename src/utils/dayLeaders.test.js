@@ -158,5 +158,135 @@ describe('day leaders', () => {
     assert.equal(playedTime('0:00'), false);
     assert.equal(playedTime('5:34'), true);
     assert.equal(playedTime('18'), true);
+    assert.equal(formatLeaderStat('innings', 6.1), '6.1');
+    assert.equal(formatLeaderStat('innings', 6), '6.0');
+  });
+});
+
+function nflGame() {
+  return {
+    competitions: [{
+      status: { type: { state: 'post', shortDetail: 'Final' } },
+      competitors: [
+        { homeAway: 'away', team: { id: '3', abbreviation: 'CHI' } },
+        { homeAway: 'home', team: { id: '26', abbreviation: 'SEA' } },
+      ],
+    }],
+  };
+}
+
+function nflSummary() {
+  return {
+    boxscore: {
+      players: [{
+        team: { id: '3', abbreviation: 'CHI' },
+        statistics: [
+          {
+            name: 'passing',
+            keys: ['completions/passingAttempts', 'passingYards', 'passingTouchdowns', 'interceptions'],
+            athletes: [
+              { athlete: { id: '8', shortName: 'C. Williams', position: { abbreviation: 'QB' } }, stats: ['24/34', '247', '1', '0'] },
+              { athlete: { id: '9', shortName: 'Backup', position: { abbreviation: 'QB' } }, stats: ['0/0', '0', '0', '0'] },
+            ],
+          },
+          {
+            name: 'rushing',
+            keys: ['rushingAttempts', 'rushingYards', 'rushingTouchdowns'],
+            athletes: [
+              { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['27', '69', '3'] },
+            ],
+          },
+          {
+            name: 'receiving',
+            keys: ['receptions', 'receivingYards', 'receivingTouchdowns'],
+            athletes: [
+              { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['4', '20', '0'] },
+              { athlete: { id: '15', shortName: 'R. Odunze', position: { abbreviation: 'WR' } }, stats: ['4', '87', '0'] },
+            ],
+          },
+        ],
+      }],
+    },
+  };
+}
+
+function mlbGame() {
+  return {
+    competitions: [{
+      status: { type: { state: 'in', shortDetail: 'Top 7th' } },
+      competitors: [
+        { homeAway: 'away', team: { id: '8', abbreviation: 'MIL' } },
+        { homeAway: 'home', team: { id: '30', abbreviation: 'TB' } },
+      ],
+    }],
+  };
+}
+
+function mlbSummary() {
+  return {
+    rosters: [{
+      roster: [
+        { athlete: { id: '30' }, stats: [{ name: 'stolenBases', value: 2 }] },
+        { athlete: { id: '31' }, stats: [{ name: 'stolenBases', value: 0 }] },
+      ],
+    }],
+    boxscore: {
+      players: [{
+        team: { id: '8', abbreviation: 'MIL' },
+        statistics: [
+          {
+            name: 'batting',
+            keys: ['atBats', 'hits', 'RBIs', 'homeRuns'],
+            athletes: [
+              { athlete: { id: '30', shortName: 'J. Chourio', position: { abbreviation: 'CF' } }, stats: ['5', '4', '1', '0'] },
+              { athlete: { id: '31', shortName: 'W. Contreras', position: { abbreviation: 'C' } }, stats: ['4', '1', '3', '2'] },
+              { athlete: { id: '32', shortName: 'Sat', position: { abbreviation: 'DH' } }, stats: ['0', '0', '0', '0'] },
+            ],
+          },
+          {
+            name: 'pitching',
+            keys: ['fullInnings.partInnings', 'strikeouts'],
+            athletes: [
+              { athlete: { id: '40', shortName: 'R. Gasser', position: { abbreviation: 'P' } }, stats: ['6.0', '3'] },
+              { athlete: { id: '41', shortName: 'A. Senzatela', position: { abbreviation: 'P' } }, stats: ['2.0', '8'] },
+              { athlete: { id: '42', shortName: 'Unused', position: { abbreviation: 'P' } }, stats: ['0.0', '0'] },
+            ],
+          },
+        ],
+      }],
+    },
+  };
+}
+
+describe('football and baseball leaders', () => {
+  it('splits passing, rushing, and receiving and skips a quarterback who did not throw', () => {
+    const rows = combinePlayers(playersFromBoxscore('nfl', nflSummary(), nflGame()));
+    const passing = sortDayLeaders(rows.filter((row) => row.line === 'passing'), 'passingYards', 'desc');
+    assert.deepEqual(passing.map((row) => row.name), ['C. Williams']);
+    assert.equal(passing[0].passingYards, 247);
+    assert.equal(passing[0].passingTouchdowns, 1);
+    const rushing = rows.filter((row) => row.line === 'rushing');
+    const receiving = rows.filter((row) => row.line === 'receiving');
+    assert.equal(rushing.find((row) => row.id === '20').rushingYards, 69);
+    assert.equal(receiving.find((row) => row.id === '20').receivingYards, 20);
+    const byYards = sortDayLeaders(receiving, 'receivingYards', 'desc');
+    assert.equal(byYards[0].name, 'R. Odunze');
+    assert.equal(byYards[0].receptions, 4);
+  });
+
+  it('ranks home runs, hits, steals, and pitcher strikeouts separately', () => {
+    const rows = playersFromBoxscore('mlb', mlbSummary(), mlbGame());
+    const hitting = sortDayLeaders(rows.filter((row) => row.line === 'hitting'), 'homeRuns', 'desc');
+    assert.deepEqual(hitting.map((row) => row.name), ['W. Contreras', 'J. Chourio']);
+    assert.equal(hitting[0].homeRuns, 2);
+    assert.equal(hitting[0].rbi, 3);
+    assert.equal(hitting.find((row) => row.id === '30').steals, 2);
+    const byHits = sortDayLeaders(hitting, 'hits', 'desc');
+    assert.equal(byHits[0].name, 'J. Chourio');
+    const pitching = sortDayLeaders(rows.filter((row) => row.line === 'pitching'), 'strikeouts', 'desc');
+    assert.deepEqual(pitching.map((row) => row.name), ['A. Senzatela', 'R. Gasser']);
+    assert.equal(pitching[0].strikeouts, 8);
+    assert.equal(pitching[1].innings, 6);
+    assert.equal(pitching[0].live, true);
   });
 });

@@ -1,7 +1,12 @@
 import { playersFromBoxscore, combinePlayers } from '../utils/dayLeaders';
 
 const WEB = 'https://site.web.api.espn.com/apis/site/v2/sports';
-const LEAGUE = { nba: 'basketball/nba', nhl: 'hockey/nhl' };
+const LEAGUE = {
+  nba: 'basketball/nba',
+  nhl: 'hockey/nhl',
+  nfl: 'football/nfl',
+  mlb: 'baseball/mlb',
+};
 const LIMIT = 4;
 
 async function getJson(url) {
