@@ -4,15 +4,15 @@ import { useNavigate } from 'react-router-dom';
 /* Basketball box score. Headers stay in this order.
    FT is free throws made-attempted (4-5). TO is turnovers. */
 const COLS = [
-  { key: 'MIN', label: 'Min' },
-  { key: 'PTS', label: 'Pts' },
-  { key: 'AST', label: 'Assists' },
-  { key: 'REB', label: 'Reb' },
-  { key: 'OREB', label: 'O Reb' },
-  { key: 'DREB', label: 'D Reb' },
-  { key: 'STL', label: 'Steals' },
-  { key: 'BLK', label: 'Blocks' },
+  { key: 'MIN', label: 'MIN' },
+  { key: 'PTS', label: 'PTS' },
+  { key: 'REB', label: 'REB' },
+  { key: 'AST', label: 'AST' },
+  { key: 'STL', label: 'STL' },
+  { key: 'BLK', label: 'BLK' },
   { key: 'TO', label: 'TO' },
+  { key: 'OREB', label: 'OREB' },
+  { key: 'DREB', label: 'DREB' },
   { key: 'FG', label: 'FG' },
   { key: '3PT', label: '3PT' },
   { key: 'FT', label: 'FT' },
@@ -26,6 +26,25 @@ function reasonLabel(reason) {
   return reason.toLowerCase().replace(/(^|\s)\S/g, (ch) => ch.toUpperCase());
 }
 
+function headshotSrc(player) {
+  const shot = player?.headshot;
+  if (typeof shot === 'string') return shot;
+  return shot?.href || '';
+}
+
+function PlayerHeadshot({ player }) {
+  const src = headshotSrc(player);
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="bsp-player-headshot"
+      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+    />
+  );
+}
+
 function PlayerCells({ athlete, cols }) {
   const player = athlete.athlete || {};
   const stats = athlete.stats || [];
@@ -34,6 +53,7 @@ function PlayerCells({ athlete, cols }) {
     <>
       <td className="bsp-td bsp-td-player">
         <div className="bsp-player-cell">
+          <PlayerHeadshot player={player} />
           <span className="bsp-player-name">{player.shortName || player.displayName}</span>
           {pos && <span className="bsp-nba-pos">{pos}</span>}
           {player.jersey && <span className="bsp-nba-num">#{player.jersey}</span>}
@@ -66,8 +86,8 @@ export default function NbaBoxScore({ statGroup }) {
   const bench = played.filter((athlete) => !athlete.starter);
   const dnp = athletes.filter((athlete) => athlete.didNotPlay);
   const sections = [
-    starters.length ? ['starters', starters] : null,
-    bench.length ? ['bench', bench] : null,
+    starters.length ? ['Starters', starters] : null,
+    bench.length ? ['Bench', bench] : null,
   ].filter(Boolean);
 
   const open = (athlete) => {
@@ -130,6 +150,7 @@ export default function NbaBoxScore({ statGroup }) {
                 className="bsp-nba-dnp-row"
                 onClick={() => open(athlete)}
               >
+                <PlayerHeadshot player={player} />
                 <span className="bsp-nba-dnp-name">{player.shortName || player.displayName}</span>
                 {reason && <span className="bsp-nba-dnp-reason">{reason}</span>}
               </button>

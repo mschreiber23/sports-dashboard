@@ -7058,7 +7058,7 @@ thead .dfs-sticky-player {
   left: 0;
   background: #0f0f13;
   z-index: 1;
-  min-width: 132px;
+  min-width: 158px;
 }
 .bsp-nba thead .bsp-th-player { z-index: 2; text-transform: none; }
 .bsp-nba .bsp-nba-divider .bsp-td-player,
@@ -7086,7 +7086,7 @@ thead .dfs-sticky-player {
 }
 .bsp-nba-dnp-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   width: 100%;
   padding: 5px 0;
