@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
-import { getTeamLogo, getTeamLogoFallback } from '../api/espn';
+import { getStandings, getTeamLogo, getTeamLogoFallback, SPORTS } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { formatKickoff, formatScheduleStack, gameOpponent } from '../utils/upcomingGames';
 import {
@@ -11,6 +11,7 @@ import {
   matchupSides,
   teamForMark,
   teamLabel,
+  recordsByTeam,
   teamScoreValue,
 } from '../utils/homeTeamBoard';
 
@@ -108,39 +109,52 @@ function ScoreTile({ sport, game, accent }) {
   );
 }
 
-function UpcomingTeamRow({ sport, team, games }) {
+function recordFor(records, sport, teamId) {
+  if (!teamId) return '';
+  return records?.[`${sport}:${teamId}`] || '';
+}
+
+function UpcomingTeamRow({ sport, team, games, records }) {
   const navigate = useNavigate();
   const shown = teamForMark(team, games);
   const accent = accentFor(shown);
   const name = team?.displayName || team?.name || teamLabel(shown);
+  const record = recordFor(records, sport, team.id);
   return (
     <div className="hts-up-row" style={accent ? { borderColor: accent } : undefined}>
       <button
         type="button"
         className="hts-up-team"
-        aria-label={name}
-        title={name}
+        aria-label={record ? `${name}, ${record}` : name}
+        title={record ? `${name} ${record}` : name}
         onClick={() => navigate(`/team/${sport}/${team.id}`)}
       >
         <TeamMark team={shown} sport={sport} className="hts-logo hts-up-mark" />
+        {record && <span className="hts-record">{record}</span>}
       </button>
       <div className="hts-up-games">
         {games.map((game) => {
           const opp = gameOpponent(game, team.id);
           const when = formatScheduleStack(game.date);
+          const oppRecord = recordFor(records, sport, opp.team?.id);
+          const oppLabel = [opp.prefix === '@' ? `at ${opp.name}` : opp.name, oppRecord].filter(Boolean).join(', ');
           return (
             <button
               key={game.id}
               type="button"
               className="hts-up-chip"
-              title={opp.name || opp.abbr || undefined}
+              title={oppLabel || undefined}
+              aria-label={oppLabel || undefined}
               onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
             >
               <span className="hts-up-date">{when.date}</span>
               <span className="hts-up-time">{when.time}</span>
               <span className="hts-up-opp">
                 {opp.prefix === '@' && <span className="hts-up-at">@</span>}
-                <TeamMark team={opp.team} sport={sport} className="hts-logo hts-up-logo" />
+                <span className="hts-up-oppmark">
+                  <TeamMark team={opp.team} sport={sport} className="hts-logo hts-up-logo" />
+                  {oppRecord && <span className="hts-record">{oppRecord}</span>}
+                </span>
               </span>
             </button>
           );
@@ -199,8 +213,34 @@ function accentFor(team) {
   return adaptColorForDarkBg(raw, alt, '#0092ff');
 }
 
+function useSeasonRecords(teams) {
+  const sports = [...new Set((teams || []).map((entry) => entry.sport).filter((sport) => SPORTS[sport]))].sort().join(',');
+  const [records, setRecords] = useState({});
+  useEffect(() => {
+    if (!sports) return undefined;
+    let stop = false;
+    Promise.all(sports.split(',').map(async (sport) => {
+      try {
+        return [sport, recordsByTeam(await getStandings(sport))];
+      } catch {
+        return [sport, {}];
+      }
+    })).then((pairs) => {
+      if (stop) return;
+      const next = {};
+      for (const [sport, map] of pairs) {
+        for (const [id, record] of Object.entries(map)) next[`${sport}:${id}`] = record;
+      }
+      setRecords(next);
+    });
+    return () => { stop = true; };
+  }, [sports]);
+  return records;
+}
+
 export default function HomeTeamScores({ teams, dateStr, onHiddenChange, concealed = '' }) {
   const [status, setStatus] = useState({});
+  const records = useSeasonRecords(teams);
   const onUpdate = useCallback((key, value) => {
     setStatus((prev) => {
       if (value == null) {
@@ -265,6 +305,7 @@ export default function HomeTeamScores({ teams, dateStr, onHiddenChange, conceal
               sport={row.sport}
               team={row.team}
               games={row.games}
+              records={records}
             />
           ))}
         </div>

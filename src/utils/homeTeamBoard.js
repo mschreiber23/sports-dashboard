@@ -5,6 +5,47 @@ export function teamLabel(team) {
   return team?.shortDisplayName || team?.displayName || team?.name || team?.abbreviation || '';
 }
 
+function statNumber(stats, name) {
+  const stat = (stats || []).find((item) => item?.name === name);
+  if (stat == null || stat.displayValue == null || stat.displayValue === '') return null;
+  const value = Number(stat.displayValue);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** "4-6", "2-5-1", or the wins-losses-OT piece of "9-6-0, 18 PTS". */
+export function seasonRecord(stats) {
+  const list = stats || [];
+  const overall = list.find((stat) => stat?.name === 'overall');
+  const match = String(overall?.displayValue || '').match(/\d+-\d+(?:-\d+)?/);
+  if (match) return match[0];
+  const wins = statNumber(list, 'wins');
+  const losses = statNumber(list, 'losses');
+  if (wins == null || losses == null) return '';
+  const ot = statNumber(list, 'otLosses');
+  const ties = statNumber(list, 'ties');
+  if (ot != null) return `${wins}-${losses}-${ot}`;
+  if (ties) return `${wins}-${losses}-${ties}`;
+  return `${wins}-${losses}`;
+}
+
+export function recordsByTeam(standings) {
+  const map = {};
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    const entries = node.standings?.entries || node.entries;
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        const id = entry?.team?.id;
+        const record = seasonRecord(entry?.stats);
+        if (id && record) map[String(id)] = record;
+      }
+    }
+    for (const child of node.children || []) walk(child);
+  };
+  walk(standings);
+  return map;
+}
+
 export function teamScoreValue(row) {
   const score = row?.score;
   if (score == null || score === '') return '';
