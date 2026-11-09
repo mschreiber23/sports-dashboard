@@ -1,14 +1,48 @@
 import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-/* ESPN's basketball box score, in their column order.
+/* Basketball box score. Headers stay in this order.
    FT is free throws made-attempted (4-5). TO is turnovers. */
-const COLS = ['MIN','PTS','FG','3PT','FT','REB','AST','TO','STL','BLK','OREB','DREB','PF','+/-'];
+const COLS = [
+  { key: 'MIN', label: 'MIN' },
+  { key: 'PTS', label: 'PTS' },
+  { key: 'REB', label: 'REB' },
+  { key: 'AST', label: 'AST' },
+  { key: 'STL', label: 'STL' },
+  { key: 'BLK', label: 'BLK' },
+  { key: 'TO', label: 'TO' },
+  { key: 'OREB', label: 'OREB' },
+  { key: 'DREB', label: 'DREB' },
+  { key: 'FG', label: 'FG' },
+  { key: '3PT', label: '3PT' },
+  { key: 'FT', label: 'FT' },
+  { key: 'PF', label: 'PF' },
+  { key: '+/-', label: '+/-' },
+];
 const HIGHLIGHT = new Set(['PTS', 'REB', 'AST']);
 
 function reasonLabel(reason) {
   if (!reason) return '';
   return reason.toLowerCase().replace(/(^|\s)\S/g, (ch) => ch.toUpperCase());
+}
+
+function headshotSrc(player) {
+  const shot = player?.headshot;
+  if (typeof shot === 'string') return shot;
+  return shot?.href || '';
+}
+
+function PlayerHeadshot({ player }) {
+  const src = headshotSrc(player);
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="bsp-player-headshot"
+      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+    />
+  );
 }
 
 function PlayerCells({ athlete, cols }) {
@@ -19,6 +53,7 @@ function PlayerCells({ athlete, cols }) {
     <>
       <td className="bsp-td bsp-td-player">
         <div className="bsp-player-cell">
+          <PlayerHeadshot player={player} />
           <span className="bsp-player-name">{player.shortName || player.displayName}</span>
           {pos && <span className="bsp-nba-pos">{pos}</span>}
           {player.jersey && <span className="bsp-nba-num">#{player.jersey}</span>}
@@ -28,7 +63,7 @@ function PlayerCells({ athlete, cols }) {
         const val = stats[col.index] ?? '—';
         const isZero = val === '0' || val === '0-0';
         return (
-          <td key={col.label} className={`bsp-td${HIGHLIGHT.has(col.label) ? ' bsp-hl' : ''}${isZero ? ' bsp-zero' : ''}`}>
+          <td key={col.key} className={`bsp-td${HIGHLIGHT.has(col.key) ? ' bsp-hl' : ''}${isZero ? ' bsp-zero' : ''}`}>
             {val}
           </td>
         );
@@ -43,7 +78,7 @@ export default function NbaBoxScore({ statGroup }) {
   const athletes = statGroup?.athletes || [];
   const totals = statGroup?.totals || [];
   const cols = COLS
-    .map((label) => ({ label, index: labels.indexOf(label) }))
+    .map((col) => ({ ...col, index: labels.indexOf(col.key) }))
     .filter((col) => col.index !== -1);
 
   const played = athletes.filter((athlete) => !athlete.didNotPlay && (athlete.stats || []).length);
@@ -51,8 +86,8 @@ export default function NbaBoxScore({ statGroup }) {
   const bench = played.filter((athlete) => !athlete.starter);
   const dnp = athletes.filter((athlete) => athlete.didNotPlay);
   const sections = [
-    starters.length ? ['starters', starters] : null,
-    bench.length ? ['bench', bench] : null,
+    starters.length ? ['Starters', starters] : null,
+    bench.length ? ['Bench', bench] : null,
   ].filter(Boolean);
 
   const open = (athlete) => {
@@ -70,7 +105,7 @@ export default function NbaBoxScore({ statGroup }) {
             <thead>
               <tr>
                 <th className="bsp-th bsp-th-player">{sections[0][0]}</th>
-                {cols.map((col) => <th key={col.label} className="bsp-th">{col.label}</th>)}
+                {cols.map((col) => <th key={col.key} className="bsp-th">{col.label}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -83,7 +118,7 @@ export default function NbaBoxScore({ statGroup }) {
                 <Fragment key={label}>
                   <tr className="bsp-nba-divider">
                     <td className="bsp-td bsp-td-player">{label}</td>
-                    {cols.map((col) => <td key={col.label} className="bsp-td" />)}
+                    {cols.map((col) => <td key={col.key} className="bsp-td" />)}
                   </tr>
                   {rows.map((athlete, i) => (
                     <tr key={athlete.athlete?.id || i} className={`bsp-tr${athlete.athlete?.id ? ' bsp-tr-clickable' : ''}`} onClick={() => open(athlete)}>
@@ -95,7 +130,7 @@ export default function NbaBoxScore({ statGroup }) {
               {totals.length > 0 && (
                 <tr className="bsp-totals">
                   <td className="bsp-td bsp-td-player bsp-totals-label">team</td>
-                  {cols.map((col) => <td key={col.label} className="bsp-td">{totals[col.index] ?? ''}</td>)}
+                  {cols.map((col) => <td key={col.key} className="bsp-td">{totals[col.index] ?? ''}</td>)}
                 </tr>
               )}
             </tbody>
@@ -115,6 +150,7 @@ export default function NbaBoxScore({ statGroup }) {
                 className="bsp-nba-dnp-row"
                 onClick={() => open(athlete)}
               >
+                <PlayerHeadshot player={player} />
                 <span className="bsp-nba-dnp-name">{player.shortName || player.displayName}</span>
                 {reason && <span className="bsp-nba-dnp-reason">{reason}</span>}
               </button>

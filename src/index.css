@@ -3261,7 +3261,7 @@ body {
 .pbp-play-clock { font-size: 11px; font-weight: 700; color: var(--text2); margin-right: 4px; }
 
 /* ── Box Score Page ── */
-.bsp-page { display: flex; flex-direction: column; gap: 0; width: 100%; }
+.bsp-page { display: flex; flex-direction: column; gap: 0; width: 100%; min-width: 0; max-width: 100%; }
 
 .bsp-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -7041,16 +7041,24 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 
+/* The stat table is wider than a phone. Keep the page in the column so this wrap scrolls. */
+.bsp-tab-content,
+.bs-clean-wrap,
+.bs-team-stats,
+.bsp-nba,
+.bsp-table-wrap { min-width: 0; max-width: 100%; }
+
 /* ESPN basketball box score: starters / bench / team, name stays put while stats scroll */
 .bsp-nba .bsp-th,
 .bsp-nba .bsp-td { padding: 7px 6px; }
+.bsp-nba .bsp-th { text-transform: none; letter-spacing: 0; }
 .bsp-nba .bsp-th-player,
 .bsp-nba .bsp-td-player {
   position: sticky;
   left: 0;
   background: #0f0f13;
   z-index: 1;
-  min-width: 132px;
+  min-width: 158px;
 }
 .bsp-nba thead .bsp-th-player { z-index: 2; text-transform: none; }
 .bsp-nba .bsp-nba-divider .bsp-td-player,
@@ -7078,7 +7086,7 @@ thead .dfs-sticky-player {
 }
 .bsp-nba-dnp-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   width: 100%;
   padding: 5px 0;
