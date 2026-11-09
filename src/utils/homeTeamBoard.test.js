@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildHomeBoard, finalStatusText, keptHideFlags, liveStatusText, omittedFavorites, teamForMark, teamLabel, teamScoreValue } from './homeTeamBoard.js';
+import { buildHomeBoard, finalStatusText, keptHideFlags, liveStatusText, omittedFavorites, recordsByTeam, seasonRecord, teamForMark, teamLabel, teamScoreValue } from './homeTeamBoard.js';
 
 function game(id, state, extra = {}) {
   return {
@@ -127,6 +127,33 @@ test('a hide flag for a team that is not a favorite does not count as hidden', (
   assert.equal(omittedFavorites(teams, hidden, {})[0].team.displayName, 'Sabres');
   assert.equal(omittedFavorites(teams, {}, { '1-nba': true }).length, 1);
   assert.equal(omittedFavorites([{ sport: 'milb', team: { id: '9' } }], { 'milb-9': true }, {}).length, 0);
+});
+
+test('season records keep the win-loss line and drop the points note', () => {
+  assert.equal(seasonRecord([{ name: 'overall', displayValue: '4-6' }]), '4-6');
+  assert.equal(seasonRecord([{ name: 'overall', displayValue: '9-6-0, 18 PTS' }]), '9-6-0');
+  assert.equal(seasonRecord([{ name: 'overall', displayValue: '2-5-1' }]), '2-5-1');
+  assert.equal(seasonRecord([
+    { name: 'wins', displayValue: '4' },
+    { name: 'losses', displayValue: '6' },
+  ]), '4-6');
+  assert.equal(seasonRecord([
+    { name: 'wins', displayValue: '9' },
+    { name: 'losses', displayValue: '6' },
+    { name: 'otLosses', displayValue: '0' },
+  ]), '9-6-0');
+  assert.equal(seasonRecord([]), '');
+  const map = recordsByTeam({
+    children: [{
+      standings: {
+        entries: [
+          { team: { id: '27' }, stats: [{ name: 'overall', displayValue: '4-6' }] },
+          { team: { id: '8' }, stats: [{ name: 'wins', displayValue: '8' }] },
+        ],
+      },
+    }],
+  });
+  assert.deepEqual(map, { 27: '4-6' });
 });
 
 test('names and scores prefer the short label and a display value', () => {
