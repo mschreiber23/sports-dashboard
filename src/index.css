@@ -9980,7 +9980,7 @@ thead .dfs-sticky-player {
   min-width: 0;
   max-width: 640px;
 }
-.day-leaders-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.day-leaders-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .day-leaders-head h1 { margin: 0; font-size: 22px; }
 .day-leaders-note { margin: 4px 0 0; color: var(--text2); font-size: 13px; }
 .day-leaders-live {
@@ -10062,6 +10062,15 @@ thead .dfs-sticky-player {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.day-leaders-game {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.sp-date-btn:disabled { opacity: 0.35; cursor: default; }
 .day-leaders-stats {
   display: flex;
   flex-wrap: wrap;

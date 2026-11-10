@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDayLeaders } from '../api/dayLeaders';
-import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
-import { formatSportsDateLabel, msUntilNextSportsRollover, sportsDayDate, sportsDayStr } from '../utils/sportsDay';
+import useSportsDaySelection from '../hooks/useSportsDay';
+import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatGameLine, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
+import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const REFRESH_MS = 20000;
 
@@ -27,7 +28,8 @@ export default function DayLeadersPage() {
   const navigate = useNavigate();
   const [sport, setSport] = useState('nba');
   const [lines, setLines] = useState({ nfl: 'passing', mlb: 'hitting' });
-  const [day, setDay] = useState(() => sportsDayStr());
+  const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
+  const day = toDateStr(selectedDate);
   const [sorts, setSorts] = useState(defaultSorts);
   const [boards, setBoards] = useState({});
   const [loading, setLoading] = useState(true);
@@ -35,10 +37,13 @@ export default function DayLeadersPage() {
   const boardsRef = useRef({});
   const pullGen = useRef(0);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDay(sportsDayStr()), msUntilNextSportsRollover());
-    return () => clearTimeout(timer);
-  }, [day]);
+  const shiftDate = (n) => setSelectedDate((current) => {
+    const next = new Date(current);
+    next.setDate(next.getDate() + n);
+    const today = sportsDayDate();
+    if (toDateStr(next) > toDateStr(today)) return today;
+    return next;
+  });
 
   useEffect(() => {
     let stop = false;
@@ -53,16 +58,16 @@ export default function DayLeadersPage() {
         setBoards((prev) => ({ ...prev, [sport]: next }));
         setError('');
       } catch {
-        if (!stop && !boardsRef.current[sport]) setError('Could not load today’s performers.');
+        if (!stop && !boardsRef.current[sport]) setError('Could not load performers.');
       } finally {
         if (!stop && gen === pullGen.current) setLoading(false);
       }
     }
 
     pull(boardsRef.current[sport]?.dateStr === day);
-    const timer = setInterval(() => {
+    const timer = isToday ? setInterval(() => {
       if (document.visibilityState === 'visible') pull(true);
-    }, REFRESH_MS);
+    }, REFRESH_MS) : null;
     const onVisible = () => {
       if (document.visibilityState === 'visible') pull(true);
     };
@@ -72,7 +77,7 @@ export default function DayLeadersPage() {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [sport, day]);
+  }, [sport, day, isToday]);
 
   const board = boards[sport]?.dateStr === day ? boards[sport] : null;
   const groups = DAY_GROUPS[sport] || null;
@@ -82,8 +87,10 @@ export default function DayLeadersPage() {
   const sort = sorts[view];
   const pool = board ? (line ? board.players.filter((row) => row.line === line) : board.players) : [];
   const rows = sort ? sortDayLeaders(pool, sort.key, sort.dir) : [];
-  const today = sportsDayDate();
-  const label = formatSportsDateLabel(today, today);
+  const label = formatSportsDateLabel(selectedDate, sportsToday);
+  const emptyCopy = board?.scheduled === 0
+    ? (label === 'Today' ? 'No games on today’s slate.' : `No games on ${label}.`)
+    : (label === 'Today' ? 'No one has played yet today.' : `No one has played on ${label}.`);
 
   function chooseSort(key) {
     setSorts((prev) => {
@@ -104,14 +111,37 @@ export default function DayLeadersPage() {
       <div className="day-leaders-head">
         <div>
           <h1>Top today</h1>
-          <p className="day-leaders-note">{label}. Tap a stat to sort.</p>
+          <p className="day-leaders-note">Tap a stat to sort.</p>
+          {board?.live && isToday && (
+            <span className="day-leaders-live">
+              <span className="ts-live-dot" />
+              Live
+            </span>
+          )}
         </div>
-        {board?.live && (
-          <span className="day-leaders-live">
-            <span className="ts-live-dot" />
-            Live
-          </span>
-        )}
+        <div className="sp-date-nav" aria-label="Leaderboard date">
+          <button type="button" className="sp-date-btn" aria-label="Previous day" onClick={() => shiftDate(-1)}>‹</button>
+          <label className="sp-date-label">
+            {label}
+            <input
+              type="date"
+              className="sp-date-input"
+              aria-label="Choose a date"
+              value={toIsoDate(selectedDate)}
+              max={toIsoDate(sportsToday)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const next = new Date(`${e.target.value}T12:00:00`);
+                if (toDateStr(next) > toDateStr(sportsToday)) return;
+                setSelectedDate(next);
+              }}
+            />
+          </label>
+          <button type="button" className="sp-date-btn" aria-label="Next day" onClick={() => shiftDate(1)} disabled={isToday}>›</button>
+          {!isToday && (
+            <button type="button" className="sp-date-today" onClick={() => setSelectedDate(sportsDayDate())}>Today</button>
+          )}
+        </div>
       </div>
 
       <div className="scores-sport-tabs">
@@ -161,12 +191,10 @@ export default function DayLeadersPage() {
         </div>
       )}
 
-      {loading && !board && <div className="day-leaders-status">Loading today’s box scores…</div>}
+      {loading && !board && <div className="day-leaders-status">Loading box scores…</div>}
       {error && !board && <div className="day-leaders-status">{error}</div>}
       {board && rows.length === 0 && (
-        <div className="day-leaders-status">
-          {board.scheduled === 0 ? 'No games on today’s slate.' : 'No one has played yet today.'}
-        </div>
+        <div className="day-leaders-status">{emptyCopy}</div>
       )}
 
       {rows.length > 0 && (
@@ -183,8 +211,10 @@ export default function DayLeadersPage() {
                   <span className="day-leaders-meta">
                     {row.position ? `${row.position} · ` : ''}
                     {row.team} {row.home ? 'vs' : '@'} {row.opponent}
-                    {row.live && row.clock ? ` · ${row.clock}` : ''}
                   </span>
+                  {formatGameLine(row) && (
+                    <span className="day-leaders-game">{formatGameLine(row)}</span>
+                  )}
                   <span className="day-leaders-stats">
                     {columns.filter((col) => col.key !== sort.key).map((col) => (
                       <span key={col.key}>

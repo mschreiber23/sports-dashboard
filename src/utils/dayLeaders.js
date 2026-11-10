@@ -104,13 +104,58 @@ export function playedTime(value) {
   return Number.isFinite(n) && n > 0;
 }
 
+function ordinalPeriod(period) {
+  const n = Number(period);
+  if (n === 1) return '1st';
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  if (n === 4) return '4th';
+  if (n > 4) return `OT${n - 4}`;
+  return '';
+}
+
+/** Score, and for a live game the period and time remaining. */
+export function gameSituation(status, competitors) {
+  const type = status?.type || {};
+  const live = type.state === 'in';
+  const sides = competitors || [];
+  const away = sides.find((c) => c.homeAway === 'away') || sides[0];
+  const home = sides.find((c) => c.homeAway === 'home') || sides[1];
+  const shown = (side) => {
+    if (side?.score == null || side.score === '') return '';
+    return `${side.team?.abbreviation || ''} ${side.score}`.trim();
+  };
+  const awayScore = shown(away);
+  const homeScore = shown(home);
+  const score = awayScore && homeScore ? `${awayScore}, ${homeScore}` : '';
+  const displayClock = String(status?.displayClock || '').trim();
+  const clock = live && displayClock && displayClock !== '0:00' && displayClock !== '0.0' ? displayClock : '';
+  let period = '';
+  if (live) {
+    const detail = String(type.shortDetail || type.detail || '').trim();
+    period = detail
+      .replace(displayClock, '')
+      .replace(/\s*-\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!period) period = ordinalPeriod(status?.period);
+  }
+  return { live, score, period, clock };
+}
+
+export function formatGameLine(row) {
+  const live = row?.live ? [row.clock, row.period].filter(Boolean).join(' ') : '';
+  return [row?.score, live].filter(Boolean).join(' · ');
+}
+
 function playerIdentity(athlete, team, game) {
   const person = athlete?.athlete || {};
   if (!person.id) return null;
-  const comps = game?.competitions?.[0]?.competitors || [];
+  const comp = game?.competitions?.[0] || {};
+  const comps = comp.competitors || [];
   const mine = comps.find((c) => String(c.team?.id) === String(team?.id));
   const other = comps.find((c) => c !== mine);
-  const status = game?.competitions?.[0]?.status?.type || {};
+  const situation = gameSituation(comp.status, comps);
   const headshot = typeof person.headshot === 'string' ? person.headshot : person.headshot?.href || '';
   return {
     id: String(person.id),
@@ -120,8 +165,7 @@ function playerIdentity(athlete, team, game) {
     opponent: other?.team?.abbreviation || '',
     home: mine?.homeAway !== 'away',
     headshot,
-    live: status.state === 'in',
-    clock: status.shortDetail || '',
+    ...situation,
   };
 }
 
@@ -309,6 +353,14 @@ export function combinePlayers(rows) {
     const next = { ...prev, live: prev.live || row.live };
     for (const field of Object.keys(row)) {
       if (typeof row[field] === 'number') next[field] = (prev[field] || 0) + row[field];
+    }
+    if (row.live || !prev.live) {
+      next.score = row.score;
+      next.period = row.period;
+      next.clock = row.clock;
+      next.team = row.team;
+      next.opponent = row.opponent;
+      next.home = row.home;
     }
     map.set(key, next);
   }

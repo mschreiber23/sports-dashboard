@@ -5,16 +5,18 @@ import {
   combinePlayers,
   sortDayLeaders,
   formatLeaderStat,
+  formatGameLine,
+  gameSituation,
   playedTime,
 } from './dayLeaders.js';
 
 function nbaGame() {
   return {
     competitions: [{
-      status: { type: { state: 'in', shortDetail: 'Q3 4:12' } },
+      status: { period: 3, displayClock: '4:12', type: { state: 'in', shortDetail: '4:12 - 3rd' } },
       competitors: [
-        { homeAway: 'away', team: { id: '6', abbreviation: 'DAL' } },
-        { homeAway: 'home', team: { id: '24', abbreviation: 'SA' } },
+        { homeAway: 'away', score: '98', team: { id: '6', abbreviation: 'DAL' } },
+        { homeAway: 'home', score: '101', team: { id: '24', abbreviation: 'SA' } },
       ],
     }],
   };
@@ -114,6 +116,10 @@ describe('day leaders', () => {
     assert.equal(ranked[0].opponent, 'DAL');
     assert.equal(ranked[0].home, true);
     assert.equal(ranked[0].live, true);
+    assert.equal(ranked[0].score, 'DAL 98, SA 101');
+    assert.equal(ranked[0].clock, '4:12');
+    assert.equal(ranked[0].period, '3rd');
+    assert.equal(formatGameLine(ranked[0]), 'DAL 98, SA 101 · 4:12 3rd');
     assert.equal(ranked[0].headshot, 'https://img/wemby');
     const byBoards = sortDayLeaders(rows, 'rebounds', 'desc');
     assert.equal(byBoards[0].name, 'V. Wembanyama');
@@ -148,6 +154,35 @@ describe('day leaders', () => {
     assert.equal(combined[0].points, 28);
     assert.equal(combined[0].rebounds, 8);
     assert.equal(combined[0].live, true);
+  });
+
+  it('reads a live clock and leaves a final game without a period', () => {
+    assert.deepEqual(gameSituation(
+      { period: 4, displayClock: '0:41', type: { state: 'in', shortDetail: '0:41 - 4th' } },
+      [
+        { homeAway: 'away', score: '110', team: { abbreviation: 'WSH' } },
+        { homeAway: 'home', score: '108', team: { abbreviation: 'DET' } },
+      ],
+    ), { live: true, score: 'WSH 110, DET 108', period: '4th', clock: '0:41' });
+    assert.deepEqual(gameSituation(
+      { displayClock: '0:00', type: { state: 'post', shortDetail: 'Final' } },
+      [
+        { homeAway: 'away', score: '111', team: { abbreviation: 'WSH' } },
+        { homeAway: 'home', score: '122', team: { abbreviation: 'DET' } },
+      ],
+    ), { live: false, score: 'WSH 111, DET 122', period: '', clock: '' });
+    assert.equal(formatGameLine({ live: false, score: 'WSH 111, DET 122', period: '4th', clock: '0:41' }), 'WSH 111, DET 122');
+  });
+
+  it('keeps the live game score when a player appears twice', () => {
+    const combined = combinePlayers([
+      { id: '1', name: 'A', points: 20, live: false, score: 'BOS 100, NYK 99', period: '', clock: '' },
+      { id: '1', name: 'A', points: 8, live: true, score: 'BOS 40, MIA 38', period: '2nd', clock: '5:01', team: 'BOS', opponent: 'MIA', home: true },
+    ]);
+    assert.equal(combined[0].points, 28);
+    assert.equal(combined[0].score, 'BOS 40, MIA 38');
+    assert.equal(combined[0].period, '2nd');
+    assert.equal(combined[0].clock, '5:01');
   });
 
   it('formats plus-minus with a sign and ignores a zero minute line', () => {
@@ -215,8 +250,8 @@ function mlbGame() {
     competitions: [{
       status: { type: { state: 'in', shortDetail: 'Top 7th' } },
       competitors: [
-        { homeAway: 'away', team: { id: '8', abbreviation: 'MIL' } },
-        { homeAway: 'home', team: { id: '30', abbreviation: 'TB' } },
+        { homeAway: 'away', score: '4', team: { id: '8', abbreviation: 'MIL' } },
+        { homeAway: 'home', score: '2', team: { id: '30', abbreviation: 'TB' } },
       ],
     }],
   };
@@ -288,5 +323,8 @@ describe('football and baseball leaders', () => {
     assert.equal(pitching[0].strikeouts, 8);
     assert.equal(pitching[1].innings, 6);
     assert.equal(pitching[0].live, true);
+    assert.equal(pitching[0].score, 'MIL 4, TB 2');
+    assert.equal(pitching[0].period, 'Top 7th');
+    assert.equal(pitching[0].clock, '');
   });
 });
