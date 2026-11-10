@@ -44,7 +44,7 @@ function Scoreboard({ row }) {
   const live = row.live ? [row.clock, row.period].filter(Boolean).join(' – ') : '';
   return (
     <span className="day-card-board">
-      <span className={`day-card-side${!row.home ? ' mine' : ''}${pace(awayScore, homeScore)}`}>
+      <span className={`day-card-side away${!row.home ? ' mine' : ''}${pace(awayScore, homeScore)}`}>
         <TeamLogo side={away} className="day-card-logo" />
         <span className="day-card-abbr">{away?.abbr}</span>
         {away?.score !== '' && <span className="day-card-pts">{away.score}</span>}
@@ -52,7 +52,7 @@ function Scoreboard({ row }) {
       <span className="day-card-mid">
         {live ? <span className="day-card-live">{live}</span> : <span className="day-card-at">@</span>}
       </span>
-      <span className={`day-card-side${row.home ? ' mine' : ''}${pace(homeScore, awayScore)}`}>
+      <span className={`day-card-side home${row.home ? ' mine' : ''}${pace(homeScore, awayScore)}`}>
         {home?.score !== '' && <span className="day-card-pts">{home.score}</span>}
         <span className="day-card-abbr">{home?.abbr}</span>
         <TeamLogo side={home} className="day-card-logo" />
@@ -253,31 +253,33 @@ export default function DayLeadersPage() {
         <ol className="day-leaders-list">
           {rows.map((row, index) => (
             <li key={`${row.line || 'player'}-${row.id}`}>
-              <button type="button" className="day-leaders-row" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
-                <span className="day-leaders-rank">{index + 1}</span>
-                <span className="day-card-face">
-                  {row.headshot
-                    ? <img className="day-leaders-headshot" src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                    : <span className="day-leaders-photo" />}
-                </span>
-                <span className="day-leaders-id">
-                  <span className="day-leaders-title">
+              <button type="button" className="day-card" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
+                <span className="day-card-identity">
+                  <span className="day-card-face">
+                    {row.headshot
+                      ? <img className="day-leaders-headshot" src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      : <span className="day-leaders-photo" />}
+                  </span>
+                  <span className="day-card-who">
+                    <span className="day-card-rank">#{index + 1}</span>
                     <span className="day-leaders-name">{row.name}</span>
                     {row.position && <span className="day-leaders-pos">{row.position}</span>}
                   </span>
-                  <Scoreboard row={row} />
-                  <span className="day-leaders-stats">
-                    {columns.filter((col) => col.key !== sort.key).map((col) => (
-                      <span key={col.key}>
-                        <b>{formatLeaderStat(col.key, row[col.key])}</b>
-                        {col.label}
-                      </span>
-                    ))}
+                  <span className="day-card-hero">
+                    <b>{formatLeaderStat(activeColumn.key, row[activeColumn.key])}</b>
+                    <span>{activeColumn.label}</span>
                   </span>
                 </span>
-                <span className="day-leaders-main">
-                  <b>{formatLeaderStat(activeColumn.key, row[activeColumn.key])}</b>
-                  <span>{activeColumn.label}</span>
+                <span className="day-card-plate">
+                  <Scoreboard row={row} />
+                </span>
+                <span className="day-card-stats">
+                  {columns.filter((col) => col.key !== sort.key).map((col) => (
+                    <span key={col.key} className="day-card-stat">
+                      <b>{formatLeaderStat(col.key, row[col.key])}</b>
+                      <span>{col.label}</span>
+                    </span>
+                  ))}
                 </span>
               </button>
             </li>
