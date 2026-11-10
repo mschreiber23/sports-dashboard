@@ -261,8 +261,10 @@ export default function DayLeadersPage() {
                       : <span className="day-leaders-photo" />}
                   </span>
                   <span className="day-card-who">
-                    <span className="day-card-rank">#{index + 1}</span>
-                    <span className="day-leaders-name">{row.name}</span>
+                    <span className="day-leaders-title">
+                      <span className="day-card-rank">#{index + 1}</span>
+                      <span className="day-leaders-name">{row.name}</span>
+                    </span>
                     {row.position && <span className="day-leaders-pos">{row.position}</span>}
                   </span>
                   <span className="day-card-hero">

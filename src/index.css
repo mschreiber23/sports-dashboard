@@ -10011,7 +10011,7 @@ thead .dfs-sticky-player {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -10021,12 +10021,12 @@ thead .dfs-sticky-player {
 .day-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 14px;
+  padding: 10px 12px;
   border: 1px solid #2c2c36;
-  border-radius: 20px;
+  border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 42%),
     #16161d;
@@ -10039,73 +10039,78 @@ thead .dfs-sticky-player {
 .day-card:hover { border-color: #3c3c48; }
 .day-card-identity {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
 }
-.day-card-face { width: 64px; height: 64px; }
+.day-card-face { width: 42px; height: 42px; }
 .day-leaders-headshot,
 .day-leaders-photo {
   display: block;
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   object-fit: cover;
   object-position: top;
   background: #0c0c10;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 .day-card-who { min-width: 0; }
+.day-leaders-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
 .day-card-rank {
-  display: block;
-  margin-bottom: 2px;
+  flex-shrink: 0;
   color: var(--text2);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
 }
 .day-leaders-name {
-  display: block;
+  min-width: 0;
   font-weight: 800;
-  font-size: 18px;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  font-size: 15px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .day-leaders-pos {
   display: block;
-  margin-top: 3px;
+  margin-top: 1px;
   color: var(--text2);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 .day-card-hero { text-align: right; }
 .day-card-hero b {
   display: block;
-  font-size: 34px;
+  font-size: 22px;
   font-weight: 800;
-  line-height: 0.85;
-  letter-spacing: -0.05em;
+  line-height: 1;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 .day-card-hero span {
   display: block;
-  margin-top: 6px;
+  margin-top: 2px;
   color: var(--text2);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
 }
 .day-card-plate {
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 6px 10px;
+  border-radius: 10px;
   background: #0d0d12;
 }
 .day-card-board {
@@ -10131,13 +10136,13 @@ thead .dfs-sticky-player {
 .day-card-side.ahead { color: var(--text); }
 .day-card-side.behind { opacity: 0.5; }
 .day-card-logo {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
   flex-shrink: 0;
 }
 .day-card-abbr { letter-spacing: 0.04em; }
-.day-card-pts { font-size: 18px; font-weight: 800; letter-spacing: -0.03em; }
+.day-card-pts { font-size: 15px; font-weight: 800; letter-spacing: -0.03em; }
 .day-card-mid { text-align: center; }
 .day-card-at {
   color: var(--text2);
@@ -10164,12 +10169,12 @@ thead .dfs-sticky-player {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
-  padding-top: 8px;
+  padding-top: 6px;
 }
 .day-card-stat b {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
