@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
 import { getStandings, getTeamLogo, getTeamLogoFallback, SPORTS } from '../api/espn';
-import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { formatKickoff, formatScheduleStack, gameOpponent } from '../utils/upcomingGames';
 import {
   buildHomeBoard,
@@ -80,7 +79,7 @@ function SideRow({ row, other, state, showScore, sport }) {
   );
 }
 
-function ScoreTile({ sport, game, accent }) {
+function ScoreTile({ sport, game }) {
   const navigate = useNavigate();
   const comp = game.competitions?.[0];
   const state = comp?.status?.type?.state;
@@ -96,7 +95,6 @@ function ScoreTile({ sport, game, accent }) {
     <button
       type="button"
       className="hts-tile"
-      style={accent ? { borderColor: accent } : undefined}
       onClick={() => navigate(`/boxscore/${sport}/${game.id}`)}
     >
       <div className={`hts-status${state === 'in' ? ' hts-status-live' : ''}${showScore ? '' : ' hts-status-pre'}`}>
@@ -117,11 +115,10 @@ function recordFor(records, sport, teamId) {
 function UpcomingTeamRow({ sport, team, games, records }) {
   const navigate = useNavigate();
   const shown = teamForMark(team, games);
-  const accent = accentFor(shown);
   const name = team?.displayName || team?.name || teamLabel(shown);
   const record = recordFor(records, sport, team.id);
   return (
-    <div className="hts-up-row" style={accent ? { borderColor: accent } : undefined}>
+    <div className="hts-up-row">
       <button
         type="button"
         className="hts-up-team"
@@ -207,12 +204,6 @@ function TeamWatcher({ sport, team, dateStr, onUpdate, onHiddenChange }) {
   return null;
 }
 
-function accentFor(team) {
-  const raw = team?.color ? `#${String(team.color).replace('#', '')}` : null;
-  const alt = team?.alternateColor ? `#${String(team.alternateColor).replace('#', '')}` : null;
-  return adaptColorForDarkBg(raw, alt, '#0092ff');
-}
-
 function useSeasonRecords(teams) {
   const sports = [...new Set((teams || []).map((entry) => entry.sport).filter((sport) => SPORTS[sport]))].sort().join(',');
   const [records, setRecords] = useState({});
@@ -282,17 +273,13 @@ export default function HomeTeamScores({ teams, dateStr, onHiddenChange, conceal
 
       {scores.length > 0 && (
         <div className="hts-grid">
-          {scores.map((row) => {
-            const favorite = (teams || []).find((entry) => entry.sport === row.sport && String(entry.team.id) === String(row.favoriteId));
-            return (
-              <ScoreTile
-                key={`${row.sport}-${row.game.id}`}
-                sport={row.sport}
-                game={row.game}
-                accent={accentFor(favorite?.team)}
-              />
-            );
-          })}
+          {scores.map((row) => (
+            <ScoreTile
+              key={`${row.sport}-${row.game.id}`}
+              sport={row.sport}
+              game={row.game}
+            />
+          ))}
         </div>
       )}
 

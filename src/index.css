@@ -7210,15 +7210,15 @@ thead .dfs-sticky-player {
   min-width: 0;
   width: 100%;
   padding: 8px 10px 9px;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 12px;
-  background: #0f0f13;
+  background: #1e1e26;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.hts-tile:hover { border-color: rgba(255,255,255,0.2); }
+.hts-tile:hover { background: #26262f; }
 .hts-status {
   display: flex;
   align-items: center;
@@ -7270,8 +7270,8 @@ thead .dfs-sticky-player {
 .hts-skel {
   height: 68px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg2);
+  border: none;
+  background: #1e1e26;
 }
 .hts-upcoming {
   display: grid;
@@ -7295,9 +7295,9 @@ thead .dfs-sticky-player {
   width: 100%;
   min-width: 0;
   padding: 6px 8px 6px 6px;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 10px;
-  background: #0f0f13;
+  background: #1e1e26;
   color: inherit;
 }
 .hts-up-team {
