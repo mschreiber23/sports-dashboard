@@ -349,39 +349,153 @@ body {
 /* ── Player Cards (Trading Card Style) ── */
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 @media (min-width: 640px) {
-  .players-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .players-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-/* Landscape phones are wide enough for a full row of small cards. */
-@media (min-width: 844px) {
-  .players-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 900px) {
+  .players-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-@media (min-width: 940px) {
-  .players-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 1200px) {
+  .players-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 .sports-card {
   position: relative;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  background: var(--bg2);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  background: var(--chrome-frame, #7fd7ea);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    inset 0 -1px 0 rgba(0,0,0,0.22),
+    0 8px 18px rgba(0,0,0,0.35);
   transition: transform 0.2s, box-shadow 0.2s;
-  aspect-ratio: 2.5 / 4.2;
+  aspect-ratio: 63 / 88;
   display: flex;
   flex-direction: column;
   cursor: default;
-  container-type: inline-size;
+  container-type: size;
   min-width: 0;
+  padding: 4px 4px 4px 3px;
+  font-family: 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif;
 }
 .sports-card:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.75),
+    0 16px 28px rgba(0,0,0,0.45);
+}
+
+.chrome-face {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #101820;
+}
+.chrome-rail {
+  width: 22%;
+  min-width: 28px;
+  max-width: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 5px 0 4px;
+  background: linear-gradient(
+    90deg,
+    var(--chrome-rail, #0d4e9c) 0 70%,
+    var(--chrome-stripe, #3d8fe0) 70% 86%,
+    var(--chrome-rail, #0d4e9c) 86% 100%
+  );
+}
+.chrome-team {
+  flex: 1;
+  min-height: 0;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(10px, 12cqw, 20px);
+  letter-spacing: 0.04em;
+  line-height: 0.85;
+  color: #fff;
+  -webkit-text-stroke: 0.45px rgba(0, 16, 40, 0.55);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+.chrome-logo {
+  width: 78%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.chrome-logo-fallback { display: block; }
+.chrome-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 3px 3px 3px 0;
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--chrome-frame, #7fd7ea) 80%, white);
+  background: #101820;
+}
+.chrome-photo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(120% 80% at 50% 18%, color-mix(in srgb, var(--chrome-frame, #7fd7ea) 55%, white) 0%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--chrome-stripe, #3d8fe0) 35%, #16304a) 0%, #0c141c 100%);
+}
+.chrome-headshot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  display: block;
+}
+.chrome-headshot-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: 800;
+  font-style: italic;
+  color: rgba(255,255,255,0.35);
+}
+.chrome-plate {
+  background: var(--chrome-rail, #0d4e9c);
+  padding: 3px 5px 4px;
+}
+.chrome-name { line-height: 0.86; padding-top: 1px; }
+.chrome-first {
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(10px, 7.5cqw, 16px);
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.92);
+}
+.chrome-last {
+  font-style: italic;
+  font-weight: 800;
+  font-size: clamp(16px, 12cqw, 26px);
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.28);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Holographic shine overlay */
@@ -389,16 +503,16 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    135deg,
+    115deg,
     transparent 0%,
-    rgba(255,255,255,0.03) 25%,
-    rgba(255,255,255,0.08) 50%,
-    rgba(255,255,255,0.03) 75%,
+    rgba(255,255,255,0.05) 32%,
+    rgba(255,255,255,0.28) 48%,
+    rgba(255,255,255,0.05) 62%,
     transparent 100%
   );
   pointer-events: none;
   z-index: 10;
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
 .sports-card-remove {
@@ -418,53 +532,20 @@ body {
 }
 .sports-card-remove:hover { background: var(--danger); color: #fff; }
 
-.sports-card-photo-link {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  text-decoration: none;
-  color: inherit;
-  min-height: 0;
-}
-
-.sports-card-photo-wrap {
-  position: relative;
-  flex: 1;
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--card-color, #0092ff) 30%, #1a1a2e) 0%,
-    color-mix(in srgb, var(--card-color, #0092ff) 15%, #0d0d1a) 100%
-  );
-  overflow: hidden;
-  min-height: 0;
-}
-
-.sports-card-photo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top center;
-  display: block;
-}
-
-.sports-card-photo-placeholder {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 48px; font-weight: 900; color: rgba(255,255,255,0.3);
-}
-
 .sports-card-gp {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 4px;
+  right: 4px;
   z-index: 12;
   display: flex;
   align-items: baseline;
   gap: 2px;
-  padding: 2px 5px 1px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.62);
+  padding: 1px 4px 0;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
   line-height: 1;
   pointer-events: none;
+  font-family: Inter, system-ui, sans-serif;
 }
 .sports-card-gp-value {
   font-size: 11px;
@@ -479,65 +560,32 @@ body {
   color: rgba(255, 255, 255, 0.82);
 }
 
-.sports-card-fade {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 28%;
-  pointer-events: none;
+.sports-card-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px 4px;
+  font-family: Inter, system-ui, sans-serif;
 }
 
-.sports-card-info {
-  padding: 8px 10px 6px;
-  position: relative;
-  z-index: 5;
-}
-.sports-card-name {
-  font-size: 13px;
-  font-weight: 900;
+.sports-card-stat { text-align: center; padding: 0; min-width: 0; }
+.sports-card-stat-value {
+  font-size: 12px;
+  font-weight: 800;
   color: #fff;
-  line-height: 1.2;
-  text-shadow: 0 0px 0px rgba(0,0,0,0.5);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sports-card-meta {
-  font-size: 10px;
-  color: rgba(255,255,255,0.75);
-  font-weight: 600;
-  margin-top: 1px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sports-card-stats {
-  background: #0f0f13;
-  padding: 8px 10px;
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-
-.sports-card-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-}
-
-.sports-card-stat { text-align: center; padding: 3px 0; }
-.sports-card-stat-value {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: -0.8px;
-}
 .sports-card-stat-label {
-  font-size: 9px;
-  color: var(--text2);
+  font-size: 7px;
+  color: rgba(255,255,255,0.72);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
   font-weight: 700;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .sports-card-season {
@@ -551,37 +599,30 @@ body {
 }
 
 .sports-card-loading {
-  font-size: 11px;
-  color: var(--text2);
+  font-size: 10px;
+  color: rgba(255,255,255,0.8);
   text-align: center;
-  padding: 6px 0;
+  padding: 2px 0 3px;
+  font-family: Inter, system-ui, sans-serif;
 }
 
 /* Compact 3-column card on mobile */
 @media (max-width: 639px) {
-  .sports-card-name { font-size: 10px; }
-  .sports-card-meta { font-size: 8px; }
-  .sports-card-info { padding: 5px 7px 4px; }
-  .sports-card-stats { padding: 5px 7px; }
-  .sports-card-stat-value { font-size: 12px; }
-  .sports-card-stat-label { font-size: 8px; margin-top: 1px; }
-  .sports-card-season { font-size: 7px; margin-top: 3px; }
+  .sports-card-stat-value { font-size: 11px; }
+  .sports-card-stat-label { font-size: 6px; letter-spacing: 0; }
   .sports-card-remove { width: 18px; height: 18px; font-size: 12px; top: 5px; right: 5px; }
+  .chrome-plate { padding: 2px 4px 3px; }
 }
 
 /* A landscape row of 7–8 cards is about 110px wide. Keep the name and stats inside it. */
 @container (max-width: 140px) {
-  .sports-card { border-radius: 12px; }
-  .sports-card-shine { border-radius: 12px; }
-  .sports-card-name { font-size: 11px; }
-  .sports-card-meta { font-size: 8px; letter-spacing: 0; }
-  .sports-card-info { padding: 4px 6px 3px; }
-  .sports-card-stats { padding: 4px 4px 5px; }
-  .sports-card-stat { padding: 1px 0; }
-  .sports-card-stat-value { font-size: 12px; letter-spacing: -0.4px; }
-  .sports-card-stat-label { font-size: 7px; letter-spacing: 0; margin-top: 1px; }
-  .sports-card-gp { top: 4px; left: 4px; padding: 1px 4px 1px; border-radius: 5px; }
-  .sports-card-gp-value { font-size: 10px; }
+  .sports-card { border-radius: 9px; padding: 3px 3px 3px 2px; }
+  .sports-card-shine { border-radius: 9px; }
+  .chrome-plate { padding: 2px 3px 3px; }
+  .sports-card-stat-value { font-size: 10px; letter-spacing: -0.4px; }
+  .sports-card-stat-label { font-size: 6px; letter-spacing: 0; margin-top: 0; }
+  .sports-card-gp { top: 3px; right: 3px; padding: 1px 3px 0; }
+  .sports-card-gp-value { font-size: 9px; }
   .sports-card-gp-label { font-size: 6px; }
 }
 
