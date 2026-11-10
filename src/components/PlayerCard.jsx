@@ -4,11 +4,12 @@ import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { extractSeasonStats, gamesPlayedLine, gamesPlayedValue } from '../utils/playerCardStats';
+import { applyFinishedGames } from '../utils/freshPlayerGames';
 
 /* ── Trading Card Component ─────────────────────────── */
 export default function PlayerCard({ player, sport }) {
   const { } = useFavorites(); // remove button moved to edit mode
-  const { stats, loading, error } = usePlayerStats(sport, player.id);
+  const { stats, log, loading, error } = usePlayerStats(sport, player.id);
   const liveBio = usePlayerBio(sport, player.id);
 
   // Use live position from bio (most accurate), fall back to stored.
@@ -16,9 +17,10 @@ export default function PlayerCard({ player, sport }) {
   const rawStoredPos = player.position;
   const storedPos = typeof rawStoredPos === 'string' ? rawStoredPos : rawStoredPos?.abbreviation || player._position || '';
   const position = liveBio.position || storedPos;
-  if (stats) stats._position = position;
-  const seasonStats = extractSeasonStats(stats, sport);
-  const gamesPlayed = gamesPlayedLine(seasonStats, gamesPlayedValue(stats, sport));
+  const liveStats = applyFinishedGames(stats, log, sport, position);
+  if (liveStats) liveStats._position = position;
+  const seasonStats = extractSeasonStats(liveStats, sport);
+  const gamesPlayed = gamesPlayedLine(seasonStats, gamesPlayedValue(liveStats, sport));
 
   // Team color: live from bio > stored top-level > stored team object > accent
   const rawColor    = liveBio.teamColor    || player.teamColor    || player.team?.color;
