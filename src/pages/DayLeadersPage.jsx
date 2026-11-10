@@ -265,13 +265,15 @@ export default function DayLeadersPage() {
                   </span>
                   <Scoreboard row={row} />
                 </span>
-                <span className="day-card-stats">
-                  {columns.map((col) => (
-                    <b key={col.key}>{formatLeaderStat(col.key, row[col.key])}</b>
-                  ))}
-                </span>
-                <span className="day-card-labels">
-                  {columns.map((col) => <span key={col.key}>{col.label}</span>)}
+                <span className="day-card-line">
+                  <span className="day-card-labels">
+                    {columns.map((col) => <span key={col.key}>{col.label}</span>)}
+                  </span>
+                  <span className="day-card-stats">
+                    {columns.map((col) => (
+                      <b key={col.key}>{formatLeaderStat(col.key, row[col.key])}</b>
+                    ))}
+                  </span>
                 </span>
               </button>
             </li>

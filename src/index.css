@@ -10119,6 +10119,11 @@ thead .dfs-sticky-player {
   font-weight: 800;
   white-space: nowrap;
 }
+.day-card-line {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
 .day-card-stats,
 .day-card-labels {
   display: grid;
@@ -10126,7 +10131,6 @@ thead .dfs-sticky-player {
   grid-auto-columns: 1fr;
   text-align: center;
 }
-.day-card-stats { padding-top: 2px; }
 .day-card-stats b {
   font-size: 12px;
   font-weight: 800;
