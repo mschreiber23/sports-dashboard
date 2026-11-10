@@ -430,10 +430,7 @@ body {
 .sports-card-photo-wrap {
   position: relative;
   flex: 1;
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--card-color, #0092ff) 30%, #1a1a2e) 0%,
-    color-mix(in srgb, var(--card-color, #0092ff) 15%, #0d0d1a) 100%
-  );
+  background: #1e1e26;
   overflow: hidden;
   min-height: 0;
 }

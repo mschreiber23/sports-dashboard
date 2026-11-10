@@ -42,6 +42,25 @@ export function getTeamLogoFallback(team) {
   return team?.logo || team?.logos?.[0]?.href || null;
 }
 
+const LOGO_FOLDER = { nba: 'nba', nfl: 'nfl', mlb: 'mlb', nhl: 'nhl' };
+
+/* Same mark order as the home Upcoming Games rows: light logo, then color. */
+export function teamMarkUrls(team, sport) {
+  const urls = [];
+  const add = (url) => {
+    if (url && !urls.includes(url)) urls.push(url);
+  };
+  add(getTeamLogo(team));
+  add(getTeamLogoFallback(team));
+  const abbr = String(team?.abbreviation || '').toLowerCase();
+  const folder = LOGO_FOLDER[sport];
+  if (abbr && folder) {
+    add(`https://a.espncdn.com/i/teamlogos/${folder}/500-dark/${abbr}.png`);
+    add(`https://a.espncdn.com/i/teamlogos/${folder}/500/${abbr}.png`);
+  }
+  return urls;
+}
+
 export const SPORTS = {
   nba: { league: 'basketball/nba', label: 'NBA' },
   nfl: { league: 'football/nfl', label: 'NFL' },
