@@ -7051,7 +7051,10 @@ thead .dfs-sticky-player {
 /* ESPN basketball box score: starters / bench / team, name stays put while stats scroll */
 .bsp-nba .bsp-th,
 .bsp-nba .bsp-td { padding: 7px 6px; }
-.bsp-nba .bsp-th { text-transform: none; letter-spacing: 0; }
+.bsp-nba .bsp-th { font-size: 11px; text-transform: none; letter-spacing: 0; }
+.bsp-nba .bsp-td,
+.bsp-nba .bsp-player-name,
+.bsp-nba .bsp-th-player { font-size: 12px; }
 .bsp-nba .bsp-th-player,
 .bsp-nba .bsp-td-player {
   position: sticky;
@@ -7064,7 +7067,7 @@ thead .dfs-sticky-player {
 .bsp-nba .bsp-nba-divider .bsp-td-player,
 .bsp-nba .bsp-totals-label { text-transform: none; }
 .bsp-nba .bsp-nba-divider .bsp-td {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   padding-top: 14px;
@@ -7072,14 +7075,14 @@ thead .dfs-sticky-player {
 }
 .bsp-nba-pos,
 .bsp-nba-num {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text2);
   margin-left: 5px;
 }
 .bsp-nba-dnp { padding: 12px 8px 4px; }
 .bsp-nba-dnp-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   margin-bottom: 4px;
@@ -7095,10 +7098,10 @@ thead .dfs-sticky-player {
   text-align: left;
   cursor: pointer;
 }
-.bsp-nba-dnp-name { font-size: 12px; font-weight: 600; color: var(--text); }
-.bsp-nba-dnp-reason { font-size: 11px; color: var(--text2); }
+.bsp-nba-dnp-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.bsp-nba-dnp-reason { font-size: 12px; color: var(--text2); }
 
-/* Live NBA gamecast. Type sizes match the box score: 11px names and stats, 10px headers. */
+/* Live NBA gamecast. One step above the shared table: 12px names and stats, 11px headers. */
 .nba-gc { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 12px; min-width: 0; max-width: 100%; }
 .nba-gc-feed { display: flex; flex-direction: column; }
 .nba-gc-play {
@@ -7111,9 +7114,9 @@ thead .dfs-sticky-player {
 .nba-gc-play-logo-empty { display: block; }
 .nba-gc-play-main { flex: 1; min-width: 0; }
 .nba-gc-play-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.nba-gc-play-title { font-size: 11px; font-weight: 700; color: var(--text); }
+.nba-gc-play-title { font-size: 12px; font-weight: 700; color: var(--text); }
 .nba-gc-play-score {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -7124,24 +7127,24 @@ thead .dfs-sticky-player {
   justify-content: space-between;
   gap: 8px;
   margin-top: 1px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text2);
 }
-.nba-gc-play-text { margin: 3px 0 0; font-size: 11px; font-weight: 600; line-height: 1.35; color: var(--text); }
+.nba-gc-play-text { margin: 3px 0 0; font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--text); }
 .nba-gc-more {
   align-self: center;
   margin-top: 8px;
   background: none;
   border: none;
   color: var(--accent2);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
 .nba-gc-heading {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
