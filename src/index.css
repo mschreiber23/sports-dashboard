@@ -493,28 +493,33 @@ body {
   pointer-events: none;
 }
 
-.sports-card-info {
-  padding: 8px 10px 6px;
+.sports-card-namebar,
+.sports-card-metabar {
   position: relative;
   z-index: 5;
+  min-width: 0;
 }
+.sports-card-namebar { padding: 4px 8px 3px; }
+.sports-card-metabar { padding: 3px 8px 4px; }
 .sports-card-name {
   font-size: 13px;
   font-weight: 900;
-  color: #fff;
-  line-height: 1.2;
-  text-shadow: 0 0px 0px rgba(0,0,0,0.5);
+  color: inherit;
+  line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .sports-card-meta {
   font-size: 10px;
-  color: rgba(255,255,255,0.75);
-  font-weight: 600;
-  margin-top: 1px;
+  color: inherit;
+  font-weight: 700;
+  line-height: 1.15;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sports-card-stats {
@@ -568,7 +573,8 @@ body {
 @media (max-width: 639px) {
   .sports-card-name { font-size: 10px; }
   .sports-card-meta { font-size: 8px; }
-  .sports-card-info { padding: 5px 7px 4px; }
+  .sports-card-namebar { padding: 3px 6px 2px; }
+  .sports-card-metabar { padding: 2px 6px 3px; }
   .sports-card-stats { padding: 5px 7px; }
   .sports-card-stat-value { font-size: 12px; }
   .sports-card-stat-label { font-size: 8px; margin-top: 1px; }
@@ -582,7 +588,8 @@ body {
   .sports-card-shine { border-radius: 12px; }
   .sports-card-name { font-size: 11px; }
   .sports-card-meta { font-size: 8px; letter-spacing: 0; }
-  .sports-card-info { padding: 4px 6px 3px; }
+  .sports-card-namebar { padding: 3px 6px 2px; }
+  .sports-card-metabar { padding: 2px 6px 3px; }
   .sports-card-stats { padding: 4px 4px 5px; }
   .sports-card-stat { padding: 1px 0; }
   .sports-card-stat-value { font-size: 12px; letter-spacing: -0.4px; }
