@@ -10009,66 +10009,120 @@ thead .dfs-sticky-player {
 .day-leaders-sorts button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .day-leaders-list {
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg2);
+  border: 0;
+  background: transparent;
   min-width: 0;
 }
 .day-leaders-row {
   display: grid;
-  grid-template-columns: 18px 32px minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-columns: 16px 46px minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: center;
   width: 100%;
   min-width: 0;
-  padding: 10px;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    radial-gradient(140px 70px at 0% 0%, rgba(255, 255, 255, 0.05), transparent 70%),
+    var(--bg2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   color: var(--text);
   text-align: left;
   cursor: pointer;
   font: inherit;
 }
-.day-leaders-list li:last-child .day-leaders-row { border-bottom: 0; }
-.day-leaders-row img,
+.day-leaders-row:hover { border-color: #3a3a46; }
+.day-card-face {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+}
+.day-leaders-headshot,
 .day-leaders-photo {
-  width: 32px;
-  height: 32px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   object-fit: cover;
+  object-position: top;
   background: #111;
+  border: 2px solid #2a2a33;
+  box-sizing: border-box;
+}
+.day-card-side.mine .day-card-logo {
+  outline: 1px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 1px;
+  border-radius: 3px;
 }
 .day-leaders-rank { color: var(--text2); font-size: 12px; font-weight: 800; text-align: right; }
 .day-leaders-id { min-width: 0; }
-.day-leaders-name,
-.day-leaders-meta { display: block; }
+.day-leaders-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
 .day-leaders-name {
   font-weight: 800;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.day-leaders-meta {
-  margin-top: 2px;
-  font-size: 11px;
+.day-leaders-pos {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
   color: var(--text2);
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.day-leaders-game {
-  display: block;
-  margin-top: 1px;
+.day-card-board {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  min-width: 0;
+}
+.day-card-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text2);
   font-size: 11px;
   font-weight: 700;
-  color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+.day-card-side.ahead { color: var(--text); }
+.day-card-side.behind { opacity: 0.55; }
+.day-card-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.day-card-abbr { letter-spacing: 0.02em; }
+.day-card-pts { font-size: 13px; font-weight: 800; }
+.day-card-mid { flex: 0 0 auto; }
+.day-card-at {
+  color: var(--text2);
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.7;
+}
+.day-card-live {
+  color: var(--live);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 .sp-date-btn:disabled { opacity: 0.35; cursor: default; }
 .day-leaders-stats {

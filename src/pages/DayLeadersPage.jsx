@@ -2,12 +2,64 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDayLeaders } from '../api/dayLeaders';
 import useSportsDaySelection from '../hooks/useSportsDay';
-import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatGameLine, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
+import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
 import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const REFRESH_MS = 20000;
 
 const SPORT_LABEL = { nba: 'NBA', nhl: 'NHL', nfl: 'NFL', mlb: 'MLB' };
+
+function TeamLogo({ side, className }) {
+  const src = side?.logo || side?.logoFallback;
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      onError={(e) => {
+        const fallback = side.logoFallback;
+        if (fallback && e.currentTarget.src !== fallback) {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = fallback;
+        } else {
+          e.currentTarget.style.display = 'none';
+        }
+      }}
+    />
+  );
+}
+
+function Scoreboard({ row }) {
+  const away = row.awaySide;
+  const home = row.homeSide;
+  if (!away?.abbr && !home?.abbr) return null;
+  const awayScore = Number(away?.score);
+  const homeScore = Number(home?.score);
+  const comparable = away?.score !== '' && home?.score !== '' && Number.isFinite(awayScore) && Number.isFinite(homeScore);
+  const pace = (score, other) => {
+    if (!comparable || score === other) return '';
+    return score > other ? ' ahead' : ' behind';
+  };
+  const live = row.live ? [row.clock, row.period].filter(Boolean).join(' – ') : '';
+  return (
+    <span className="day-card-board">
+      <span className={`day-card-side${!row.home ? ' mine' : ''}${pace(awayScore, homeScore)}`}>
+        <TeamLogo side={away} className="day-card-logo" />
+        <span className="day-card-abbr">{away?.abbr}</span>
+        {away?.score !== '' && <span className="day-card-pts">{away.score}</span>}
+      </span>
+      <span className="day-card-mid">
+        {live ? <span className="day-card-live">{live}</span> : <span className="day-card-at">@</span>}
+      </span>
+      <span className={`day-card-side${row.home ? ' mine' : ''}${pace(homeScore, awayScore)}`}>
+        {home?.score !== '' && <span className="day-card-pts">{home.score}</span>}
+        <span className="day-card-abbr">{home?.abbr}</span>
+        <TeamLogo side={home} className="day-card-logo" />
+      </span>
+    </span>
+  );
+}
 
 function defaultSorts() {
   const sorts = {};
@@ -203,18 +255,17 @@ export default function DayLeadersPage() {
             <li key={`${row.line || 'player'}-${row.id}`}>
               <button type="button" className="day-leaders-row" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
                 <span className="day-leaders-rank">{index + 1}</span>
-                {row.headshot
-                  ? <img src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  : <span className="day-leaders-photo" />}
+                <span className="day-card-face">
+                  {row.headshot
+                    ? <img className="day-leaders-headshot" src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    : <span className="day-leaders-photo" />}
+                </span>
                 <span className="day-leaders-id">
-                  <span className="day-leaders-name">{row.name}</span>
-                  <span className="day-leaders-meta">
-                    {row.position ? `${row.position} · ` : ''}
-                    {row.team} {row.home ? 'vs' : '@'} {row.opponent}
+                  <span className="day-leaders-title">
+                    <span className="day-leaders-name">{row.name}</span>
+                    {row.position && <span className="day-leaders-pos">{row.position}</span>}
                   </span>
-                  {formatGameLine(row) && (
-                    <span className="day-leaders-game">{formatGameLine(row)}</span>
-                  )}
+                  <Scoreboard row={row} />
                   <span className="day-leaders-stats">
                     {columns.filter((col) => col.key !== sort.key).map((col) => (
                       <span key={col.key}>

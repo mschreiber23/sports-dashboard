@@ -1,4 +1,5 @@
 /** Today's box-score leaders for NBA, NHL, NFL, and MLB. */
+import { getTeamLogo, getTeamLogoFallback } from '../api/espn.js';
 
 export const DAY_SPORTS = ['nba', 'nhl', 'nfl', 'mlb'];
 
@@ -128,6 +129,19 @@ export function gameSituation(status, competitors) {
   const awayScore = shown(away);
   const homeScore = shown(home);
   const score = awayScore && homeScore ? `${awayScore}, ${homeScore}` : '';
+  const side = (teamSide) => {
+    const team = teamSide?.team || {};
+    const logo = String(team.logo || '').includes('/scoreboard/')
+      ? { ...team, logo: team.logo.replace('/scoreboard/', '/') }
+      : team;
+    const value = teamSide?.score == null || teamSide.score === '' ? '' : String(teamSide.score);
+    return {
+      abbr: team.abbreviation || '',
+      score: value,
+      logo: getTeamLogo(logo) || '',
+      logoFallback: getTeamLogoFallback(logo) || '',
+    };
+  };
   const displayClock = String(status?.displayClock || '').trim();
   const clock = live && displayClock && displayClock !== '0:00' && displayClock !== '0.0' ? displayClock : '';
   let period = '';
@@ -140,7 +154,7 @@ export function gameSituation(status, competitors) {
       .trim();
     if (!period) period = ordinalPeriod(status?.period);
   }
-  return { live, score, period, clock };
+  return { live, score, period, clock, awaySide: side(away), homeSide: side(home) };
 }
 
 export function formatGameLine(row) {
@@ -358,6 +372,8 @@ export function combinePlayers(rows) {
       next.score = row.score;
       next.period = row.period;
       next.clock = row.clock;
+      next.awaySide = row.awaySide;
+      next.homeSide = row.homeSide;
       next.team = row.team;
       next.opponent = row.opponent;
       next.home = row.home;

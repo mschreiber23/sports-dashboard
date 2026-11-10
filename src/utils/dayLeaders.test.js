@@ -15,8 +15,8 @@ function nbaGame() {
     competitions: [{
       status: { period: 3, displayClock: '4:12', type: { state: 'in', shortDetail: '4:12 - 3rd' } },
       competitors: [
-        { homeAway: 'away', score: '98', team: { id: '6', abbreviation: 'DAL' } },
-        { homeAway: 'home', score: '101', team: { id: '24', abbreviation: 'SA' } },
+        { homeAway: 'away', score: '98', team: { id: '6', abbreviation: 'DAL', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/dal.png' } },
+        { homeAway: 'home', score: '101', team: { id: '24', abbreviation: 'SA', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/sa.png' } },
       ],
     }],
   };
@@ -119,6 +119,12 @@ describe('day leaders', () => {
     assert.equal(ranked[0].score, 'DAL 98, SA 101');
     assert.equal(ranked[0].clock, '4:12');
     assert.equal(ranked[0].period, '3rd');
+    assert.equal(ranked[0].awaySide.abbr, 'DAL');
+    assert.equal(ranked[0].awaySide.score, '98');
+    assert.equal(ranked[0].homeSide.abbr, 'SA');
+    assert.equal(ranked[0].homeSide.score, '101');
+    assert.match(ranked[0].awaySide.logo, /500-dark\/dal\.png$/);
+    assert.match(ranked[0].homeSide.logoFallback, /500\/sa\.png$/);
     assert.equal(formatGameLine(ranked[0]), 'DAL 98, SA 101 · 4:12 3rd');
     assert.equal(ranked[0].headshot, 'https://img/wemby');
     const byBoards = sortDayLeaders(rows, 'rebounds', 'desc');
@@ -163,26 +169,41 @@ describe('day leaders', () => {
         { homeAway: 'away', score: '110', team: { abbreviation: 'WSH' } },
         { homeAway: 'home', score: '108', team: { abbreviation: 'DET' } },
       ],
-    ), { live: true, score: 'WSH 110, DET 108', period: '4th', clock: '0:41' });
+    ), {
+      live: true,
+      score: 'WSH 110, DET 108',
+      period: '4th',
+      clock: '0:41',
+      awaySide: { abbr: 'WSH', score: '110', logo: '', logoFallback: '' },
+      homeSide: { abbr: 'DET', score: '108', logo: '', logoFallback: '' },
+    });
     assert.deepEqual(gameSituation(
       { displayClock: '0:00', type: { state: 'post', shortDetail: 'Final' } },
       [
         { homeAway: 'away', score: '111', team: { abbreviation: 'WSH' } },
         { homeAway: 'home', score: '122', team: { abbreviation: 'DET' } },
       ],
-    ), { live: false, score: 'WSH 111, DET 122', period: '', clock: '' });
+    ), {
+      live: false,
+      score: 'WSH 111, DET 122',
+      period: '',
+      clock: '',
+      awaySide: { abbr: 'WSH', score: '111', logo: '', logoFallback: '' },
+      homeSide: { abbr: 'DET', score: '122', logo: '', logoFallback: '' },
+    });
     assert.equal(formatGameLine({ live: false, score: 'WSH 111, DET 122', period: '4th', clock: '0:41' }), 'WSH 111, DET 122');
   });
 
   it('keeps the live game score when a player appears twice', () => {
     const combined = combinePlayers([
       { id: '1', name: 'A', points: 20, live: false, score: 'BOS 100, NYK 99', period: '', clock: '' },
-      { id: '1', name: 'A', points: 8, live: true, score: 'BOS 40, MIA 38', period: '2nd', clock: '5:01', team: 'BOS', opponent: 'MIA', home: true },
+      { id: '1', name: 'A', points: 8, live: true, score: 'BOS 40, MIA 38', period: '2nd', clock: '5:01', team: 'BOS', opponent: 'MIA', home: true, awaySide: { abbr: 'MIA', score: '38' }, homeSide: { abbr: 'BOS', score: '40' } },
     ]);
     assert.equal(combined[0].points, 28);
     assert.equal(combined[0].score, 'BOS 40, MIA 38');
     assert.equal(combined[0].period, '2nd');
     assert.equal(combined[0].clock, '5:01');
+    assert.equal(combined[0].homeSide.abbr, 'BOS');
   });
 
   it('formats plus-minus with a sign and ignores a zero minute line', () => {
