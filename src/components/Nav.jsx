@@ -91,7 +91,7 @@ function HamburgerIcon({ active }) {
   );
 }
 
-// Nav order: Home - Standings - Scores - Players - Leaders - More
+// Nav order: Home - Cards - Scores - Players - StatHub - More
 function CardsIcon({ active }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -130,20 +130,20 @@ function TodayIcon({ active }) {
 }
 
 const MORE_ITEMS = [
-  { path: '/nhl-cold', label: 'Cold streaks', Icon: PointsIcon },
-  { path: '/top',        label: 'Top today',  Icon: TodayIcon },
-  { path: '/props',      label: 'Props',      Icon: PropsIcon },
-  { path: '/me',         label: 'My Profile', Icon: MeIcon },
-  { path: '/leaders',    label: 'Leaders',    Icon: LeadersIcon },
+  { path: '/standings',  label: 'Standings',    Icon: StandingsIcon },
+  { path: '/nhl-cold',   label: 'Cold streaks', Icon: PointsIcon },
+  { path: '/props',      label: 'Props',        Icon: PropsIcon },
+  { path: '/me',         label: 'My Profile',   Icon: MeIcon },
+  { path: '/leaders',    label: 'Leaders',      Icon: LeadersIcon },
 ];
 
 const NAV_ITEMS = [
-  { path: '/',             label: 'Home',      Icon: HomeIcon },
-  { path: '/standings',    label: 'Standings', Icon: StandingsIcon },
-  { path: '/scores',       label: 'Scores',    Icon: ScoresIcon },
-  { path: '/players',      label: 'Players',   Icon: PlayersIcon },
-  { path: '/player-cards', label: 'Cards',     Icon: CardsIcon },
-  { path: 'more',          label: 'More',      more: true },
+  { path: '/',             label: 'Home',    Icon: HomeIcon },
+  { path: '/player-cards', label: 'Cards',   Icon: CardsIcon },
+  { path: '/scores',       label: 'Scores',  Icon: ScoresIcon },
+  { path: '/players',      label: 'Players', Icon: PlayersIcon },
+  { path: '/top',          label: 'StatHub', Icon: TodayIcon },
+  { path: 'more',          label: 'More',    more: true },
 ];
 
 /* ── More dropdown ───────────────────────────────────── */
