@@ -35,9 +35,9 @@ function chromeTones(hex) {
   const hue = Math.round(hsl[0] * 360);
   const sat = Math.round(Math.max(hsl[1], 0.42) * 100);
   return {
-    frame: `hsl(${hue} ${Math.min(sat, 80)}% 54%)`,
-    rail: `hsl(${hue} ${sat}% 24%)`,
-    stripe: `hsl(${hue} ${Math.min(sat, 86)}% 40%)`,
+    frame: `hsl(${hue} ${Math.min(sat, 62)}% 70%)`,
+    rail: `hsl(${hue} ${Math.min(sat, 72)}% 26%)`,
+    stripe: `hsl(${hue} ${Math.min(sat, 85)}% 52%)`,
   };
 }
 
@@ -81,48 +81,48 @@ export default function PlayerCard({ player, sport }) {
       <div className="sports-card-shine" />
       <Link to={`/player/${sport}/${player.id}`} className="chrome-face">
         <div className="chrome-rail">
-          {teamName && <div className="chrome-team">{teamName}</div>}
-          {teamLogo ? (
-            <img src={teamLogo} alt="" className="chrome-logo" />
-          ) : (
-            <span className="chrome-logo chrome-logo-fallback" />
+          {teamName && (
+            <div className="chrome-team" aria-hidden="true">
+              {[...teamName].map((letter, index) => (
+                <span key={`${letter}-${index}`}>{letter === ' ' ? '\u00a0' : letter}</span>
+              ))}
+            </div>
           )}
         </div>
-        <div className="chrome-main">
-          <div className="chrome-photo">
-            {headshot ? (
-              <img src={headshot} alt={player.displayName} className="chrome-headshot" />
-            ) : (
-              <div className="chrome-headshot chrome-headshot-fallback">{player.displayName?.[0]}</div>
-            )}
-            {gamesPlayed != null && (
-              <div className="sports-card-gp" aria-label={`${gamesPlayed} games played`}>
-                <span className="sports-card-gp-value">{gamesPlayed}</span>
-                <span className="sports-card-gp-label">GP</span>
-              </div>
-            )}
-          </div>
-          <div className="chrome-plate">
+        <div className="chrome-window">
+          {headshot ? (
+            <img src={headshot} alt={player.displayName} className="chrome-headshot" />
+          ) : (
+            <div className="chrome-headshot chrome-headshot-fallback" aria-hidden="true">{player.displayName?.[0]}</div>
+          )}
+          <div className="chrome-serial">
             {loading && <div className="sports-card-loading">Loading…</div>}
-            {!loading && !error && seasonStats.length > 0 && (
-              <div className="sports-card-stat-grid">
-                {seasonStats.map((s) => (
-                  <div key={s.label} className="sports-card-stat">
-                    <div className="sports-card-stat-value">{s.value ?? '—'}</div>
-                    <div className="sports-card-stat-label">{s.label}</div>
-                  </div>
-                ))}
+            {!loading && !error && seasonStats.length > 0 && seasonStats.map((s) => (
+              <div key={s.label} className="chrome-serial-stat">
+                <span className="chrome-serial-value">{s.value ?? '—'}</span>
+                <span className="chrome-serial-label">{s.label}</span>
+              </div>
+            ))}
+            {!loading && gamesPlayed != null && (
+              <div className="chrome-serial-stat" aria-label={`${gamesPlayed} games played`}>
+                <span className="chrome-serial-value">{gamesPlayed}</span>
+                <span className="chrome-serial-label">GP</span>
               </div>
             )}
             {!loading && (error || seasonStats.length === 0) && (
               <div className="sports-card-loading">No stats</div>
             )}
-            <div className="chrome-name">
-              {first && <div className="chrome-first">{first}</div>}
-              <div className="chrome-last">{last}</div>
-            </div>
+          </div>
+          <div className="chrome-nameplate">
+            {first && <div className="chrome-first">{first}</div>}
+            <div className="chrome-last">{last}</div>
           </div>
         </div>
+        {teamLogo ? (
+          <img src={teamLogo} alt="" className="chrome-logo" />
+        ) : (
+          <span className="chrome-logo chrome-logo-fallback" />
+        )}
       </Link>
     </div>
   );

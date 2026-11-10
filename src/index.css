@@ -365,12 +365,15 @@ body {
 
 .sports-card {
   position: relative;
-  border-radius: 12px;
+  border-radius: 11px;
   overflow: hidden;
-  background: var(--chrome-frame, #7fd7ea);
+  background:
+    linear-gradient(155deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.18) 24%, transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--chrome-frame, #7fd7ea) 62%, white) 0%, var(--chrome-frame, #7fd7ea) 48%, color-mix(in srgb, var(--chrome-frame, #7fd7ea) 78%, #123) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.7),
-    inset 0 -1px 0 rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 0 0 1px rgba(255,255,255,0.38),
+    inset 0 -2px 0 rgba(0,0,0,0.14),
     0 8px 18px rgba(0,0,0,0.35);
   transition: transform 0.2s, box-shadow 0.2s;
   aspect-ratio: 63 / 88;
@@ -379,7 +382,7 @@ body {
   cursor: default;
   container-type: size;
   min-width: 0;
-  padding: 4px 4px 4px 3px;
+  padding: 5px 5px 6px 5px;
   font-family: 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif;
 }
 .sports-card:hover {
@@ -392,77 +395,67 @@ body {
 .chrome-face {
   flex: 1;
   min-height: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: 14% minmax(0, 1fr);
+  gap: 3px;
   text-decoration: none;
   color: inherit;
-  border-radius: 5px;
-  overflow: hidden;
-  background: #101820;
+  position: relative;
 }
 .chrome-rail {
-  width: 26px;
-  flex: 0 0 26px;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  padding: 3px 0 3px;
+  border-radius: 5px 2px 6px 5px;
   background: linear-gradient(
     90deg,
-    var(--chrome-rail, #0d4e9c) 0 70%,
-    var(--chrome-stripe, #3d8fe0) 70% 86%,
-    var(--chrome-rail, #0d4e9c) 86% 100%
+    var(--chrome-rail, #0d4e9c) 0 58%,
+    color-mix(in srgb, var(--chrome-stripe, #3d8fe0) 75%, white) 58% 68%,
+    var(--chrome-rail, #0d4e9c) 68% 76%,
+    var(--chrome-stripe, #3d8fe0) 76% 92%,
+    var(--chrome-rail, #0d4e9c) 92% 100%
   );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chrome-rail, #0d4e9c) 55%, black);
 }
 .chrome-team {
-  flex: 1 1 auto;
+  flex: 1;
   min-height: 0;
-  width: 100%;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 2px 0 25cqw;
+  overflow: hidden;
+}
+.chrome-team span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15em;
+  height: 0.78em;
+  flex: 0 0 auto;
   font-style: italic;
   font-weight: 800;
-  font-size: clamp(9px, 11cqw, 16px);
-  letter-spacing: 0.02em;
+  font-size: clamp(12px, 13cqw, 20px);
   line-height: 1;
+  transform: rotate(-90deg) scaleX(1.45);
   color: #fff;
-  -webkit-text-stroke: 0.4px rgba(0, 16, 40, 0.55);
+  -webkit-text-stroke: 0.65px rgba(0, 10, 28, 0.75);
   paint-order: stroke fill;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
-  overflow: hidden;
 }
-.chrome-logo {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-  flex: 0 0 auto;
-  background: #fff;
-  border-radius: 50%;
-  padding: 1px;
-}
-.chrome-logo-fallback { display: block; }
-.chrome-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  margin: 3px 3px 3px 0;
-  border-radius: 7px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--chrome-frame, #7fd7ea) 80%, white);
-  background: #101820;
-}
-.chrome-photo {
+.chrome-window {
   position: relative;
-  flex: 1;
+  min-width: 0;
   min-height: 0;
+  border-radius: 5px;
+  overflow: hidden;
   background:
-    radial-gradient(120% 80% at 50% 18%, color-mix(in srgb, var(--chrome-frame, #7fd7ea) 55%, white) 0%, transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--chrome-stripe, #3d8fe0) 35%, #16304a) 0%, #0c141c 100%);
+    radial-gradient(120% 80% at 70% 0%, color-mix(in srgb, var(--chrome-frame, #7fd7ea) 55%, white) 0%, transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--chrome-stripe, #3d8fe0) 35%, #1a3348) 0%, #101820 100%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--chrome-rail, #0d4e9c) 70%, black);
 }
 .chrome-headshot {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -473,34 +466,97 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
+  font-size: 36px;
   font-weight: 800;
   font-style: italic;
   color: rgba(255,255,255,0.35);
 }
-.chrome-plate {
-  background: var(--chrome-rail, #0d4e9c);
-  padding: 3px 5px 4px;
+.chrome-serial {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 5;
+  width: 58%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 4px;
+  justify-items: end;
+  pointer-events: none;
+  font-style: italic;
+  line-height: 0.95;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
 }
-.chrome-name { line-height: 0.86; padding-top: 1px; }
+.chrome-serial-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+.chrome-serial-value {
+  font-weight: 800;
+  font-size: clamp(8px, 8.4cqw, 13px);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.chrome-serial-label {
+  font-weight: 700;
+  font-size: clamp(6px, 5.6cqw, 9px);
+  letter-spacing: 0.03em;
+  color: rgba(255,255,255,0.88);
+}
+.chrome-nameplate {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 3px;
+  z-index: 5;
+  height: 20%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1px 4px 1px 12cqw;
+  border-radius: 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--chrome-stripe, #3d8fe0) 42%, var(--chrome-rail, #0d4e9c)) 0%, var(--chrome-rail, #0d4e9c) 100%);
+  line-height: 0.82;
+}
 .chrome-first {
   font-style: italic;
   font-weight: 700;
-  font-size: clamp(8px, 8cqw, 13px);
-  letter-spacing: 0.04em;
-  color: rgba(255,255,255,0.92);
+  font-size: clamp(7px, 7.4cqw, 12px);
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.78);
 }
 .chrome-last {
   font-style: italic;
   font-weight: 800;
-  font-size: clamp(11px, 12cqw, 18px);
-  letter-spacing: 0.01em;
+  font-size: clamp(12px, 12.5cqw, 20px);
+  letter-spacing: 0.02em;
   color: #fff;
   text-shadow: 0 1px 0 rgba(0,0,0,0.28);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.chrome-logo {
+  position: absolute;
+  left: 0;
+  bottom: 1px;
+  z-index: 8;
+  width: 24cqw;
+  height: 24cqw;
+  min-width: 22px;
+  min-height: 22px;
+  max-width: 40px;
+  max-height: 40px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  padding: 1px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+}
+.chrome-logo-fallback { display: block; }
 
 /* Holographic shine overlay */
 .sports-card-shine {
@@ -515,7 +571,7 @@ body {
     transparent 100%
   );
   pointer-events: none;
-  z-index: 10;
+  z-index: 2;
   border-radius: 12px;
 }
 
@@ -566,8 +622,8 @@ body {
 
 .sports-card-stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1px 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px 3px;
   font-family: Inter, system-ui, sans-serif;
 }
 
@@ -615,19 +671,16 @@ body {
   .sports-card-stat-value { font-size: 11px; }
   .sports-card-stat-label { font-size: 6px; letter-spacing: 0; }
   .sports-card-remove { width: 18px; height: 18px; font-size: 12px; top: 5px; right: 5px; }
-  .chrome-plate { padding: 2px 4px 3px; }
 }
 
 /* A landscape row of 7–8 cards is about 110px wide. Keep the name and stats inside it. */
 @container (max-width: 140px) {
-  .sports-card { border-radius: 9px; padding: 3px 3px 3px 2px; }
+  .sports-card { border-radius: 9px; padding: 4px 4px 5px 4px; }
   .sports-card-shine { border-radius: 9px; }
-  .chrome-plate { padding: 2px 3px 3px; }
-  .sports-card-stat-value { font-size: 10px; letter-spacing: -0.4px; }
-  .sports-card-stat-label { font-size: 6px; letter-spacing: 0; margin-top: 0; }
-  .sports-card-gp { top: 3px; right: 3px; padding: 1px 3px 0; }
-  .sports-card-gp-value { font-size: 9px; }
-  .sports-card-gp-label { font-size: 6px; }
+  .chrome-serial { top: 3px; right: 3px; gap: 0 2px; }
+  .chrome-serial-value { font-size: 8px; }
+  .chrome-serial-label { font-size: 5.5px; letter-spacing: 0; }
+  .chrome-nameplate { left: 2px; right: 2px; bottom: 2px; padding-left: 11cqw; }
 }
 
 .player-card {
