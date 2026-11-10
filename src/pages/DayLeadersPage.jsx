@@ -2,12 +2,36 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDayLeaders } from '../api/dayLeaders';
 import useSportsDaySelection from '../hooks/useSportsDay';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
 import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const REFRESH_MS = 20000;
 
 const SPORT_LABEL = { nba: 'NBA', nhl: 'NHL', nfl: 'NFL', mlb: 'MLB' };
+
+function teamAccent(row) {
+  const primary = row?.color ? `#${String(row.color).replace('#', '')}` : null;
+  const alt = row?.altColor ? `#${String(row.altColor).replace('#', '')}` : null;
+  return adaptColorForDarkBg(primary, alt, '#0092ff');
+}
+
+function inkOn(color) {
+  const text = String(color || '');
+  let light = 50;
+  if (text.startsWith('hsl')) {
+    light = Number(text.match(/(\d+(?:\.\d+)?)%\s*\)/)?.[1] || 50);
+  } else {
+    const hex = text.replace('#', '');
+    if (hex.length === 6) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      light = (0.299 * r + 0.587 * g + 0.114 * b) / 2.55;
+    }
+  }
+  return light >= 62 ? '#101014' : '#f5f5f7';
+}
 
 function TeamLogo({ side, className }) {
   const src = side?.logo || side?.logoFallback;
@@ -156,8 +180,6 @@ export default function DayLeadersPage() {
     setLines((prev) => ({ ...prev, [sport]: next }));
   }
 
-  const activeColumn = columns.find((col) => col.key === sort.key) || columns[0];
-
   return (
     <div className="day-leaders">
       <div className="day-leaders-head">
@@ -251,41 +273,39 @@ export default function DayLeadersPage() {
 
       {rows.length > 0 && (
         <ol className="day-leaders-list">
-          {rows.map((row, index) => (
+          {rows.map((row, index) => {
+            const accent = teamAccent(row);
+            return (
             <li key={`${row.line || 'player'}-${row.id}`}>
               <button type="button" className="day-card" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
                 <span className="day-card-identity">
+                  <span className="day-card-rank">#{index + 1}</span>
                   <span className="day-card-face">
                     {row.headshot
                       ? <img className="day-leaders-headshot" src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       : <span className="day-leaders-photo" />}
                   </span>
-                  <span className="day-card-who">
-                    <span className="day-leaders-title">
-                      <span className="day-card-rank">#{index + 1}</span>
-                      <span className="day-leaders-name">{row.name}</span>
-                      {row.position && <span className="day-leaders-pos">{row.position}</span>}
-                    </span>
+                  <span className="day-leaders-title">
+                    <span className="day-leaders-name">{row.name}</span>
+                    {row.position && <span className="day-leaders-pos">{row.position}</span>}
                   </span>
-                  <span className="day-card-hero">
-                    <b>{formatLeaderStat(activeColumn.key, row[activeColumn.key])}</b>
-                    <span>{activeColumn.label}</span>
-                  </span>
-                </span>
-                <span className="day-card-plate">
                   <Scoreboard row={row} />
                 </span>
+                <span
+                  className="day-card-labels"
+                  style={{ background: accent, color: inkOn(accent) }}
+                >
+                  {columns.map((col) => <span key={col.key}>{col.label}</span>)}
+                </span>
                 <span className="day-card-stats">
-                  {columns.filter((col) => col.key !== sort.key).map((col) => (
-                    <span key={col.key} className="day-card-stat">
-                      <b>{formatLeaderStat(col.key, row[col.key])}</b>
-                      <span>{col.label}</span>
-                    </span>
+                  {columns.map((col) => (
+                    <b key={col.key}>{formatLeaderStat(col.key, row[col.key])}</b>
                   ))}
                 </span>
               </button>
             </li>
-          ))}
+            );
+          })}
         </ol>
       )}
     </div>
