@@ -30,27 +30,40 @@ export const DAY_GROUPS = {
       label: 'Passing',
       defaultSort: 'passingYards',
       columns: [
+        { key: 'completions', label: 'COMP' },
+        { key: 'passingAttempts', label: 'ATT' },
         { key: 'passingYards', label: 'YDS' },
         { key: 'passingTouchdowns', label: 'TD' },
         { key: 'interceptions', label: 'INT' },
+        { key: 'carries', label: 'CAR' },
+        { key: 'rushingYards', label: 'YDS' },
+        { key: 'rushingTouchdowns', label: 'TD' },
+        { key: 'fumblesLost', label: 'FL' },
       ],
     },
     rushing: {
       label: 'Rushing',
       defaultSort: 'rushingYards',
       columns: [
-        { key: 'rushingYards', label: 'YDS' },
         { key: 'carries', label: 'CAR' },
+        { key: 'rushingYards', label: 'YDS' },
         { key: 'rushingTouchdowns', label: 'TD' },
+        { key: 'receptions', label: 'REC' },
+        { key: 'targets', label: 'TGT' },
+        { key: 'receivingYards', label: 'YDS' },
+        { key: 'receivingTouchdowns', label: 'TD' },
+        { key: 'fumblesLost', label: 'FL' },
       ],
     },
     receiving: {
       label: 'Receiving',
       defaultSort: 'receivingYards',
       columns: [
-        { key: 'receivingYards', label: 'YDS' },
         { key: 'receptions', label: 'REC' },
+        { key: 'targets', label: 'TGT' },
+        { key: 'receivingYards', label: 'YDS' },
         { key: 'receivingTouchdowns', label: 'TD' },
+        { key: 'fumblesLost', label: 'FL' },
       ],
     },
   },
@@ -250,23 +263,46 @@ function slashCount(value, index) {
   return numberStat(text.split('/')[index]) ?? 0;
 }
 
+function statsFor(group, id) {
+  const athlete = (group?.athletes || []).find((item) => String(item.athlete?.id) === String(id));
+  if (!athlete) return {};
+  return statMap(group.keys || group.names, athlete.stats);
+}
+
 function nflPlayers(summary, game) {
   const rows = [];
   for (const side of summary?.boxscore?.players || []) {
     const passing = groupNamed(side, 'passing');
     const rushing = groupNamed(side, 'rushing');
     const receiving = groupNamed(side, 'receiving');
+    const fumbles = groupNamed(side, 'fumbles');
+    const lostFor = (id) => numberStat(statsFor(fumbles, id).fumblesLost) ?? 0;
     for (const athlete of passing?.athletes || []) {
       if (athlete.didNotPlay) continue;
       const stats = statMap(passing.keys || passing.names, athlete.stats);
-      const attempts = slashCount(stats['completions/passingAttempts'], 1);
+      const slash = stats['completions/passingAttempts'];
+      const completions = slash != null ? slashCount(slash, 0) : (numberStat(stats.completions) ?? 0);
+      const attempts = slash != null ? slashCount(slash, 1) : (numberStat(stats.passingAttempts) ?? 0);
       const yards = numberStat(stats.passingYards) ?? 0;
       const touchdowns = numberStat(stats.passingTouchdowns) ?? 0;
       const interceptions = numberStat(stats.interceptions) ?? 0;
-      if (!(attempts > 0 || yards !== 0 || touchdowns > 0 || interceptions > 0)) continue;
+      if (!(completions > 0 || attempts > 0 || yards !== 0 || touchdowns > 0 || interceptions > 0)) continue;
       const who = playerIdentity(athlete, side.team, game);
       if (!who) continue;
-      rows.push({ ...who, line: 'passing', passingYards: yards, passingTouchdowns: touchdowns, interceptions });
+      const rush = statsFor(rushing, who.id);
+      rows.push({
+        ...who,
+        line: 'passing',
+        completions,
+        passingAttempts: attempts,
+        passingYards: yards,
+        passingTouchdowns: touchdowns,
+        interceptions,
+        carries: numberStat(rush.rushingAttempts) ?? 0,
+        rushingYards: numberStat(rush.rushingYards) ?? 0,
+        rushingTouchdowns: numberStat(rush.rushingTouchdowns) ?? 0,
+        fumblesLost: lostFor(who.id),
+      });
     }
     for (const athlete of rushing?.athletes || []) {
       if (athlete.didNotPlay) continue;
@@ -277,18 +313,39 @@ function nflPlayers(summary, game) {
       if (!(carries > 0 || yards !== 0 || touchdowns > 0)) continue;
       const who = playerIdentity(athlete, side.team, game);
       if (!who) continue;
-      rows.push({ ...who, line: 'rushing', carries, rushingYards: yards, rushingTouchdowns: touchdowns });
+      const caught = statsFor(receiving, who.id);
+      rows.push({
+        ...who,
+        line: 'rushing',
+        carries,
+        rushingYards: yards,
+        rushingTouchdowns: touchdowns,
+        receptions: numberStat(caught.receptions) ?? 0,
+        targets: numberStat(caught.receivingTargets) ?? 0,
+        receivingYards: numberStat(caught.receivingYards) ?? 0,
+        receivingTouchdowns: numberStat(caught.receivingTouchdowns) ?? 0,
+        fumblesLost: lostFor(who.id),
+      });
     }
     for (const athlete of receiving?.athletes || []) {
       if (athlete.didNotPlay) continue;
       const stats = statMap(receiving.keys || receiving.names, athlete.stats);
       const receptions = numberStat(stats.receptions) ?? 0;
+      const targets = numberStat(stats.receivingTargets) ?? 0;
       const yards = numberStat(stats.receivingYards) ?? 0;
       const touchdowns = numberStat(stats.receivingTouchdowns) ?? 0;
-      if (!(receptions > 0 || yards !== 0 || touchdowns > 0)) continue;
+      if (!(receptions > 0 || targets > 0 || yards !== 0 || touchdowns > 0)) continue;
       const who = playerIdentity(athlete, side.team, game);
       if (!who) continue;
-      rows.push({ ...who, line: 'receiving', receptions, receivingYards: yards, receivingTouchdowns: touchdowns });
+      rows.push({
+        ...who,
+        line: 'receiving',
+        receptions,
+        targets,
+        receivingYards: yards,
+        receivingTouchdowns: touchdowns,
+        fumblesLost: lostFor(who.id),
+      });
     }
   }
   return rows;

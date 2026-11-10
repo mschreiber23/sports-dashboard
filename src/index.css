@@ -10142,6 +10142,12 @@ thead .dfs-sticky-player {
   color: var(--text2);
   font-size: 8px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
+.day-card-labels span.on {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+.day-card-stats b.on { color: var(--accent); }
 .sp-date-btn:disabled { opacity: 0.35; cursor: default; }

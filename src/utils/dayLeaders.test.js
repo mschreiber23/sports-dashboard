@@ -249,15 +249,24 @@ function nflSummary() {
             name: 'rushing',
             keys: ['rushingAttempts', 'rushingYards', 'rushingTouchdowns'],
             athletes: [
+              { athlete: { id: '8', shortName: 'C. Williams', position: { abbreviation: 'QB' } }, stats: ['3', '12', '0'] },
               { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['27', '69', '3'] },
             ],
           },
           {
             name: 'receiving',
-            keys: ['receptions', 'receivingYards', 'receivingTouchdowns'],
+            keys: ['receptions', 'receivingYards', 'receivingTouchdowns', 'receivingTargets'],
             athletes: [
-              { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['4', '20', '0'] },
-              { athlete: { id: '15', shortName: 'R. Odunze', position: { abbreviation: 'WR' } }, stats: ['4', '87', '0'] },
+              { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['4', '20', '0', '5'] },
+              { athlete: { id: '15', shortName: 'R. Odunze', position: { abbreviation: 'WR' } }, stats: ['4', '87', '0', '7'] },
+            ],
+          },
+          {
+            name: 'fumbles',
+            keys: ['fumbles', 'fumblesLost'],
+            athletes: [
+              { athlete: { id: '8', shortName: 'C. Williams' }, stats: ['1', '1'] },
+              { athlete: { id: '15', shortName: 'R. Odunze' }, stats: ['1', '1'] },
             ],
           },
         ],
@@ -321,10 +330,21 @@ describe('football and baseball leaders', () => {
     assert.deepEqual(passing.map((row) => row.name), ['C. Williams']);
     assert.equal(passing[0].passingYards, 247);
     assert.equal(passing[0].passingTouchdowns, 1);
+    assert.equal(passing[0].completions, 24);
+    assert.equal(passing[0].passingAttempts, 34);
+    assert.equal(passing[0].carries, 3);
+    assert.equal(passing[0].rushingYards, 12);
+    assert.equal(passing[0].fumblesLost, 1);
     const rushing = rows.filter((row) => row.line === 'rushing');
     const receiving = rows.filter((row) => row.line === 'receiving');
-    assert.equal(rushing.find((row) => row.id === '20').rushingYards, 69);
+    const swiftRush = rushing.find((row) => row.id === '20');
+    assert.equal(swiftRush.rushingYards, 69);
+    assert.equal(swiftRush.receptions, 4);
+    assert.equal(swiftRush.targets, 5);
+    assert.equal(swiftRush.receivingYards, 20);
     assert.equal(receiving.find((row) => row.id === '20').receivingYards, 20);
+    assert.equal(receiving.find((row) => row.id === '15').targets, 7);
+    assert.equal(receiving.find((row) => row.id === '15').fumblesLost, 1);
     const byYards = sortDayLeaders(receiving, 'receivingYards', 'desc');
     assert.equal(byYards[0].name, 'R. Odunze');
     assert.equal(byYards[0].receptions, 4);

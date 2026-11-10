@@ -263,11 +263,13 @@ export default function DayLeadersPage() {
                 </span>
                 <span className="day-card-line">
                   <span className="day-card-labels">
-                    {columns.map((col) => <span key={col.key}>{col.label}</span>)}
+                    {columns.map((col) => (
+                      <span key={col.key} className={col.key === sort.key ? 'on' : ''}>{col.label}</span>
+                    ))}
                   </span>
                   <span className="day-card-stats">
                     {columns.map((col) => (
-                      <b key={col.key}>{formatLeaderStat(col.key, row[col.key])}</b>
+                      <b key={col.key} className={col.key === sort.key ? 'on' : ''}>{formatLeaderStat(col.key, row[col.key])}</b>
                     ))}
                   </span>
                 </span>
