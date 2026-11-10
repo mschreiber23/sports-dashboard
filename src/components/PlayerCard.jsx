@@ -35,9 +35,9 @@ function chromeTones(hex) {
   const hue = Math.round(hsl[0] * 360);
   const sat = Math.round(Math.max(hsl[1], 0.42) * 100);
   return {
-    frame: `hsl(${hue} ${Math.min(sat, 72)}% 64%)`,
-    rail: `hsl(${hue} ${Math.min(sat, 78)}% 22%)`,
-    stripe: `hsl(${hue} ${Math.min(sat, 84)}% 46%)`,
+    frame: `hsl(${hue} ${Math.min(sat, 62)}% 70%)`,
+    rail: `hsl(${hue} ${Math.min(sat, 72)}% 26%)`,
+    stripe: `hsl(${hue} ${Math.min(sat, 85)}% 52%)`,
   };
 }
 
@@ -95,27 +95,25 @@ export default function PlayerCard({ player, sport }) {
           ) : (
             <div className="chrome-headshot chrome-headshot-fallback" aria-hidden="true">{player.displayName?.[0]}</div>
           )}
-          {gamesPlayed != null && (
-            <div className="sports-card-gp" aria-label={`${gamesPlayed} games played`}>
-              <span className="sports-card-gp-value">{gamesPlayed}</span>
-              <span className="sports-card-gp-label">GP</span>
-            </div>
-          )}
-          <div className="chrome-nameplate">
+          <div className="chrome-serial">
             {loading && <div className="sports-card-loading">Loading…</div>}
-            {!loading && !error && seasonStats.length > 0 && (
-              <div className="sports-card-stat-grid">
-                {seasonStats.map((s) => (
-                  <div key={s.label} className="sports-card-stat">
-                    <div className="sports-card-stat-value">{s.value ?? '—'}</div>
-                    <div className="sports-card-stat-label">{s.label}</div>
-                  </div>
-                ))}
+            {!loading && !error && seasonStats.length > 0 && seasonStats.map((s) => (
+              <div key={s.label} className="chrome-serial-stat">
+                <span className="chrome-serial-value">{s.value ?? '—'}</span>
+                <span className="chrome-serial-label">{s.label}</span>
+              </div>
+            ))}
+            {!loading && gamesPlayed != null && (
+              <div className="chrome-serial-stat" aria-label={`${gamesPlayed} games played`}>
+                <span className="chrome-serial-value">{gamesPlayed}</span>
+                <span className="chrome-serial-label">GP</span>
               </div>
             )}
             {!loading && (error || seasonStats.length === 0) && (
               <div className="sports-card-loading">No stats</div>
             )}
+          </div>
+          <div className="chrome-nameplate">
             {first && <div className="chrome-first">{first}</div>}
             <div className="chrome-last">{last}</div>
           </div>
