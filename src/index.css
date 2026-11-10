@@ -479,6 +479,18 @@ body {
   color: rgba(255, 255, 255, 0.82);
 }
 
+.sports-card-logo {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 12;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+
 .sports-card-fade {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -583,6 +595,7 @@ body {
   .sports-card-gp { top: 4px; left: 4px; padding: 1px 4px 1px; border-radius: 5px; }
   .sports-card-gp-value { font-size: 10px; }
   .sports-card-gp-label { font-size: 6px; }
+  .sports-card-logo { top: 4px; right: 4px; width: 20px; height: 20px; }
 }
 
 .player-card {
