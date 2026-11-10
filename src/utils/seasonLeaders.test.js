@@ -1,11 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeSeasonAthletes, nhlHitBlock, rowsFromSeasonAthletes } from './seasonLeaders.js';
+import { formatSeasonStat, mergeSeasonAthletes, nhlHitBlock, rowsFromSeasonAthletes } from './seasonLeaders.js';
 
 const nbaSchema = [
-  { name: 'general', names: ['gamesPlayed', 'rebounds'] },
-  { name: 'offensive', names: ['avgPoints', 'points', 'assists', 'turnovers'] },
-  { name: 'defensive', names: ['steals', 'blocks'] },
+  { name: 'general', names: ['gamesPlayed', 'rebounds', 'avgRebounds'] },
+  { name: 'offensive', names: ['avgPoints', 'points', 'avgAssists', 'assists', 'avgTurnovers', 'turnovers'] },
+  { name: 'defensive', names: ['avgSteals', 'steals', 'avgBlocks', 'blocks'] },
 ];
 
 function nbaAthlete(id, name, games, totals) {
@@ -18,26 +18,36 @@ function nbaAthlete(id, name, games, totals) {
       teams: [{ abbreviation: 'LAL', logos: [{ href: 'https://a.espncdn.com/i/teamlogos/nba/500/lal.png', rel: ['full', 'default'] }] }],
     },
     categories: [
-      { name: 'general', totals: [games, totals.rebounds] },
-      { name: 'offensive', totals: [totals.avg, totals.points, totals.assists, totals.turnovers] },
-      { name: 'defensive', totals: [totals.steals, totals.blocks] },
+      { name: 'general', totals: [games, totals.rebounds, totals.avgRebounds] },
+      { name: 'offensive', totals: [totals.avgPoints, totals.points, totals.avgAssists, totals.assists, totals.avgTurnovers, totals.turnovers] },
+      { name: 'defensive', totals: [totals.avgSteals, totals.steals, totals.avgBlocks, totals.blocks] },
     ],
   };
 }
 
 describe('season leader rows', () => {
-  it('uses NBA season totals instead of per-game averages', () => {
+  it('uses NBA per-game averages instead of season totals', () => {
     const rows = rowsFromSeasonAthletes('nba', [
-      nbaAthlete('1', 'L. Doncic', '10', { rebounds: '78', avg: '39.3', points: '393', assists: '79', turnovers: '50', steals: '20', blocks: '8' }),
-      nbaAthlete('2', 'Sat Out', '0', { rebounds: '0', avg: '0', points: '0', assists: '0', turnovers: '0', steals: '0', blocks: '0' }),
+      nbaAthlete('1', 'L. Doncic', '10', {
+        rebounds: '78', avgRebounds: '7.8', avgPoints: '39.3', points: '393',
+        avgAssists: '7.9', assists: '79', avgTurnovers: '5.0', turnovers: '50',
+        avgSteals: '2.0', steals: '20', avgBlocks: '0.8', blocks: '8',
+      }),
+      nbaAthlete('2', 'Sat Out', '0', {
+        rebounds: '0', avgRebounds: '0', avgPoints: '0', points: '0',
+        avgAssists: '0', assists: '0', avgTurnovers: '0', turnovers: '0',
+        avgSteals: '0', steals: '0', avgBlocks: '0', blocks: '0',
+      }),
     ], nbaSchema);
     assert.equal(rows.length, 1);
-    assert.equal(rows[0].points, 393);
-    assert.equal(rows[0].rebounds, 78);
-    assert.equal(rows[0].assists, 79);
-    assert.equal(rows[0].steals, 20);
-    assert.equal(rows[0].blocks, 8);
-    assert.equal(rows[0].turnovers, 50);
+    assert.equal(rows[0].points, 39.3);
+    assert.equal(rows[0].rebounds, 7.8);
+    assert.equal(rows[0].assists, 7.9);
+    assert.equal(rows[0].steals, 2);
+    assert.equal(rows[0].blocks, 0.8);
+    assert.equal(rows[0].turnovers, 5);
+    assert.equal(formatSeasonStat('nba', 'points', rows[0].points), '39.3');
+    assert.equal(formatSeasonStat('nba', 'steals', rows[0].steals), '2.0');
     assert.equal(rows[0].team, 'LAL');
     assert.match(rows[0].teamLogo, /500-dark\/lal\.png$/);
   });
@@ -80,6 +90,9 @@ describe('season leader rows', () => {
     }, {
       name: 'receiving',
       names: ['receptions', 'receivingTargets', 'receivingYards', 'receivingTouchdowns', 'receivingFumblesLost'],
+    }, {
+      name: 'defensiveinterceptions',
+      names: ['interceptions'],
     }];
     const rows = rowsFromSeasonAthletes('nfl', [{
       athlete: { id: '15', shortName: 'P. Mahomes', position: { abbreviation: 'QB' } },
@@ -87,11 +100,13 @@ describe('season leader rows', () => {
         { name: 'passing', totals: ['200', '310', '2400', '18', '6'] },
         { name: 'rushing', totals: ['30', '180', '2', '1'] },
         { name: 'receiving', totals: ['0', '0', '0', '0', '0'] },
+        { name: 'defensiveinterceptions', totals: ['0'] },
       ],
     }], schema);
     const passing = rows.find((row) => row.line === 'passing');
     const rushing = rows.find((row) => row.line === 'rushing');
     assert.equal(passing.passingYards, 2400);
+    assert.equal(passing.interceptions, 6);
     assert.equal(passing.carries, 30);
     assert.equal(passing.fumblesLost, 1);
     assert.equal(rushing.rushingYards, 180);

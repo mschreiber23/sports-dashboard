@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadSeasonLeaders } from '../api/seasonLeaders';
-import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
+import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, sortDayLeaders } from '../utils/dayLeaders';
+import { formatSeasonStat } from '../utils/seasonLeaders';
 
 const SPORT_LABEL = { nba: 'NBA', nhl: 'NHL', nfl: 'NFL', mlb: 'MLB' };
 
@@ -117,7 +118,7 @@ export default function LeadersPage() {
       <div className="day-leaders-head">
         <div>
           <h1>Leaders</h1>
-          <p className="day-leaders-note">Season totals. Tap a stat to sort.</p>
+          <p className="day-leaders-note">{sport === 'nba' ? 'Per-game averages. Tap a stat to sort.' : 'Season totals. Tap a stat to sort.'}</p>
         </div>
       </div>
 
@@ -200,7 +201,7 @@ export default function LeadersPage() {
                   </span>
                   <span className="day-card-stats">
                     {columns.map((col) => (
-                      <b key={col.key} className={col.key === sort.key ? 'on' : ''}>{formatLeaderStat(col.key, row[col.key])}</b>
+                      <b key={col.key} className={col.key === sort.key ? 'on' : ''}>{formatSeasonStat(sport, col.key, row[col.key])}</b>
                     ))}
                   </span>
                 </span>

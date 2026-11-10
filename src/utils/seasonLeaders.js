@@ -1,5 +1,6 @@
-/** Season counting totals shaped like the StatHub leader rows. */
+/** Season leader rows shaped like the StatHub board. NBA values are per game. */
 import { getTeamLogo, getTeamLogoFallback } from '../api/espn.js';
+import { formatLeaderStat } from './dayLeaders.js';
 
 function parseStat(value) {
   if (value == null) return null;
@@ -29,6 +30,13 @@ function count(values, name) {
   return values[name] ?? 0;
 }
 
+function perGame(stats, avgName, totalName) {
+  if (typeof stats[avgName] === 'number') return stats[avgName];
+  const games = count(stats, 'gamesPlayed');
+  if (games > 0 && typeof stats[totalName] === 'number') return stats[totalName] / games;
+  return 0;
+}
+
 function identity(athlete) {
   const team = athlete?.teams?.[0] || {};
   const headshot = athlete?.headshot;
@@ -52,12 +60,12 @@ function nbaRows(athletes, schema) {
     if (!who.id) continue;
     rows.push({
       ...who,
-      points: count(stats, 'points'),
-      rebounds: count(stats, 'rebounds'),
-      assists: count(stats, 'assists'),
-      steals: count(stats, 'steals'),
-      blocks: count(stats, 'blocks'),
-      turnovers: count(stats, 'turnovers'),
+      points: perGame(stats, 'avgPoints', 'points'),
+      rebounds: perGame(stats, 'avgRebounds', 'rebounds'),
+      assists: perGame(stats, 'avgAssists', 'assists'),
+      steals: perGame(stats, 'avgSteals', 'steals'),
+      blocks: perGame(stats, 'avgBlocks', 'blocks'),
+      turnovers: perGame(stats, 'avgTurnovers', 'turnovers'),
     });
   }
   return rows;
@@ -113,47 +121,49 @@ function playedReceiving(stats) {
 function nflRows(athletes, schema) {
   const rows = [];
   for (const entry of athletes || []) {
-    const stats = statValues(schema, entry.categories);
+    const passing = categoryStats(schema, entry.categories, 'passing');
+    const rushing = categoryStats(schema, entry.categories, 'rushing');
+    const receiving = categoryStats(schema, entry.categories, 'receiving');
     const who = identity(entry.athlete);
     if (!who.id) continue;
-    const fumblesLost = count(stats, 'rushingFumblesLost') + count(stats, 'receivingFumblesLost');
-    if (playedPassing(stats)) {
+    const fumblesLost = count(rushing, 'rushingFumblesLost') + count(receiving, 'receivingFumblesLost');
+    if (playedPassing(passing)) {
       rows.push({
         ...who,
         line: 'passing',
-        completions: count(stats, 'completions'),
-        passingAttempts: count(stats, 'passingAttempts'),
-        passingYards: count(stats, 'passingYards'),
-        passingTouchdowns: count(stats, 'passingTouchdowns'),
-        interceptions: count(stats, 'interceptions'),
-        carries: count(stats, 'rushingAttempts'),
-        rushingYards: count(stats, 'rushingYards'),
-        rushingTouchdowns: count(stats, 'rushingTouchdowns'),
+        completions: count(passing, 'completions'),
+        passingAttempts: count(passing, 'passingAttempts'),
+        passingYards: count(passing, 'passingYards'),
+        passingTouchdowns: count(passing, 'passingTouchdowns'),
+        interceptions: count(passing, 'interceptions'),
+        carries: count(rushing, 'rushingAttempts'),
+        rushingYards: count(rushing, 'rushingYards'),
+        rushingTouchdowns: count(rushing, 'rushingTouchdowns'),
         fumblesLost,
       });
     }
-    if (playedRushing(stats)) {
+    if (playedRushing(rushing)) {
       rows.push({
         ...who,
         line: 'rushing',
-        carries: count(stats, 'rushingAttempts'),
-        rushingYards: count(stats, 'rushingYards'),
-        rushingTouchdowns: count(stats, 'rushingTouchdowns'),
-        receptions: count(stats, 'receptions'),
-        targets: count(stats, 'receivingTargets'),
-        receivingYards: count(stats, 'receivingYards'),
-        receivingTouchdowns: count(stats, 'receivingTouchdowns'),
+        carries: count(rushing, 'rushingAttempts'),
+        rushingYards: count(rushing, 'rushingYards'),
+        rushingTouchdowns: count(rushing, 'rushingTouchdowns'),
+        receptions: count(receiving, 'receptions'),
+        targets: count(receiving, 'receivingTargets'),
+        receivingYards: count(receiving, 'receivingYards'),
+        receivingTouchdowns: count(receiving, 'receivingTouchdowns'),
         fumblesLost,
       });
     }
-    if (playedReceiving(stats)) {
+    if (playedReceiving(receiving)) {
       rows.push({
         ...who,
         line: 'receiving',
-        receptions: count(stats, 'receptions'),
-        targets: count(stats, 'receivingTargets'),
-        receivingYards: count(stats, 'receivingYards'),
-        receivingTouchdowns: count(stats, 'receivingTouchdowns'),
+        receptions: count(receiving, 'receptions'),
+        targets: count(receiving, 'receivingTargets'),
+        receivingYards: count(receiving, 'receivingYards'),
+        receivingTouchdowns: count(receiving, 'receivingTouchdowns'),
         fumblesLost,
       });
     }
@@ -222,6 +232,14 @@ export function rowsFromSeasonAthletes(sport, athletes, schema, extras) {
   if (sport === 'nfl') return nflRows(athletes, schema);
   if (sport === 'mlb') return mlbRows(athletes, schema);
   return [];
+}
+
+export function formatSeasonStat(sport, key, value) {
+  if (sport === 'nba') {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '—';
+    return value.toFixed(1);
+  }
+  return formatLeaderStat(key, value);
 }
 
 export function nhlHitBlock(payload) {
