@@ -10091,32 +10091,36 @@ thead .dfs-sticky-player {
 .day-card-side {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   color: var(--text2);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .day-card-side.ahead { color: var(--text); }
 .day-card-side.behind { opacity: 0.65; }
 .day-card-logo {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   object-fit: contain;
   flex-shrink: 0;
 }
-.day-card-pts { font-size: 12px; font-weight: 800; }
+.day-card-abbr,
+.day-card-pts,
+.day-card-at,
+.day-card-live {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
 .day-card-at {
   color: var(--text2);
-  font-size: 9px;
-  font-weight: 800;
   opacity: 0.7;
 }
 .day-card-live {
   color: var(--live);
-  font-size: 9px;
-  font-weight: 800;
   white-space: nowrap;
 }
 .day-card-line {
