@@ -1,10 +1,29 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
 import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
+import { teamMarkUrls } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { extractSeasonStats, gamesPlayedLine, gamesPlayedValue } from '../utils/playerCardStats';
 import { applyFinishedGames } from '../utils/freshPlayerGames';
+
+function CardLogo({ team, sport }) {
+  const urls = teamMarkUrls(team, sport);
+  const key = urls.join('|');
+  const [index, setIndex] = useState(0);
+  useEffect(() => { setIndex(0); }, [key]);
+  const src = urls[index];
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="sports-card-logo"
+      onError={() => setIndex((current) => current + 1)}
+    />
+  );
+}
 
 /* ── Trading Card Component ─────────────────────────── */
 export default function PlayerCard({ player, sport }) {
@@ -24,16 +43,13 @@ export default function PlayerCard({ player, sport }) {
 
   // Team color: live from bio > stored top-level > stored team object > accent
   const rawColor    = liveBio.teamColor    || player.teamColor    || player.team?.color;
-  const rawAltColor = liveBio.teamAltColor || player.teamAltColor || player.team?.alternateColor;
   const primaryHex  = rawColor    ? `#${rawColor}`    : null;
-  const altHex      = rawAltColor ? `#${rawAltColor}` : null;
-  // Info strip accent: adapted so dark primaries are visible as a solid bg color
+  const altHex      = (liveBio.teamAltColor || player.teamAltColor || player.team?.alternateColor)
+    ? `#${liveBio.teamAltColor || player.teamAltColor || player.team?.alternateColor}`
+    : null;
   const teamColor = adaptColorForDarkBg(primaryHex, altHex);
-  // Photo gradient: use the secondary/alternate color directly — dark saturated colors
-  // look great as a subtle gradient tint without needing the lightness boost
-  const cardColor = altHex || primaryHex || '#0092ff';
   const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
-  const teamLogo = liveBio.teamLogo || player.teamLogo || player.team?.logo || null;
+  const logoTeam = liveBio.team || player.team || null;
 
   return (
     <div className="sports-card">
@@ -43,7 +59,7 @@ export default function PlayerCard({ player, sport }) {
 
       {/* Photo area */}
       <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">
-        <div className="sports-card-photo-wrap" style={{ '--card-color': cardColor }}>
+        <div className="sports-card-photo-wrap">
           {player.headshot ? (
             <img src={typeof player.headshot === 'object' ? player.headshot?.href : player.headshot} alt={player.displayName} className="sports-card-photo" />
           ) : (
@@ -55,11 +71,7 @@ export default function PlayerCard({ player, sport }) {
               <span className="sports-card-gp-label">GP</span>
             </div>
           )}
-          {teamLogo && (
-            <img src={teamLogo} alt="" className="sports-card-logo" />
-          )}
-          {/* Gradient fade at bottom of photo — uses secondary color for natural team feel */}
-          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${cardColor}cc 100%)` }} />
+          <CardLogo team={logoTeam} sport={sport} />
         </div>
 
         {/* Player info strip */}

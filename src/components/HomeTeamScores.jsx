@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useTeamGame from '../hooks/useTeamGame';
-import { getStandings, getTeamLogo, getTeamLogoFallback, SPORTS } from '../api/espn';
+import { getStandings, teamMarkUrls, SPORTS } from '../api/espn';
 import { formatKickoff, formatScheduleStack, gameOpponent } from '../utils/upcomingGames';
 import {
   buildHomeBoard,
@@ -17,26 +17,8 @@ import {
 // The previous full game cards still live in TeamRow. The Scores page renders
 // those. This is the compact home board, so the old boxes can be put back.
 
-const LOGO_FOLDER = { nba: 'nba', nfl: 'nfl', mlb: 'mlb', nhl: 'nhl' };
-
-function logoCandidates(team, sport) {
-  const urls = [];
-  const add = (url) => {
-    if (url && !urls.includes(url)) urls.push(url);
-  };
-  add(getTeamLogo(team));
-  add(getTeamLogoFallback(team));
-  const abbr = String(team?.abbreviation || '').toLowerCase();
-  const folder = LOGO_FOLDER[sport];
-  if (abbr && folder) {
-    add(`https://a.espncdn.com/i/teamlogos/${folder}/500-dark/${abbr}.png`);
-    add(`https://a.espncdn.com/i/teamlogos/${folder}/500/${abbr}.png`);
-  }
-  return urls;
-}
-
 function TeamMark({ team, sport, className = 'hts-logo' }) {
-  const urls = logoCandidates(team, sport);
+  const urls = teamMarkUrls(team, sport);
   const key = urls.join('|');
   const [index, setIndex] = useState(0);
   useEffect(() => { setIndex(0); }, [key]);

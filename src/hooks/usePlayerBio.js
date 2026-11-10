@@ -22,6 +22,7 @@ export default function usePlayerBio(sport, playerId) {
     position: athlete.position?.abbreviation || null,
     teamColor: athlete.team?.color || null,
     teamAltColor: athlete.team?.alternateColor || null,
+    team: athlete.team || null,
     teamLogo: athlete.team?.logos?.[0]?.href || null,
     teamName: athlete.team?.shortDisplayName || athlete.team?.displayName || null,
   };
