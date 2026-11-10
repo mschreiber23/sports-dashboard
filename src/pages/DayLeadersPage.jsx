@@ -41,22 +41,18 @@ function Scoreboard({ row }) {
     if (!comparable || score === other) return '';
     return score > other ? ' ahead' : ' behind';
   };
-  const live = row.live ? [row.clock, row.period].filter(Boolean).join(' – ') : '';
+  const live = row.live ? [row.clock, row.period].filter(Boolean).join(' ') : '';
   return (
     <span className="day-card-board">
-      <span className={`day-card-side away${!row.home ? ' mine' : ''}${pace(awayScore, homeScore)}`}>
+      <span className={`day-card-side${pace(awayScore, homeScore)}`}>
         <TeamLogo side={away} className="day-card-logo" />
-        <span className="day-card-abbr">{away?.abbr}</span>
         {away?.score !== '' && <span className="day-card-pts">{away.score}</span>}
       </span>
-      <span className="day-card-mid">
-        {live ? <span className="day-card-live">{live}</span> : <span className="day-card-at">@</span>}
-      </span>
-      <span className={`day-card-side home${row.home ? ' mine' : ''}${pace(homeScore, awayScore)}`}>
-        {home?.score !== '' && <span className="day-card-pts">{home.score}</span>}
-        <span className="day-card-abbr">{home?.abbr}</span>
+      <span className={`day-card-side${pace(homeScore, awayScore)}`}>
         <TeamLogo side={home} className="day-card-logo" />
+        {home?.score !== '' && <span className="day-card-pts">{home.score}</span>}
       </span>
+      {live && <span className="day-card-live">{live}</span>}
     </span>
   );
 }
