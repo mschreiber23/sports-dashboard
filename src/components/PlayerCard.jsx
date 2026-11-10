@@ -2,53 +2,9 @@ import { Link } from 'react-router-dom';
 import usePlayerStats from '../hooks/usePlayerStats';
 import usePlayerBio from '../hooks/usePlayerBio';
 import { useFavorites } from '../context/FavoritesContext';
+import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { extractSeasonStats, gamesPlayedLine, gamesPlayedValue } from '../utils/playerCardStats';
 import { applyFinishedGames } from '../utils/freshPlayerGames';
-
-function hexHsl(hex) {
-  const clean = String(hex || '').replace('#', '');
-  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
-  const r = parseInt(clean.slice(0, 2), 16) / 255;
-  const g = parseInt(clean.slice(2, 4), 16) / 255;
-  const b = parseInt(clean.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const light = (max + min) / 2;
-  if (max === min) return [0, 0, light];
-  const d = max - min;
-  const sat = light > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let hue;
-  switch (max) {
-    case r: hue = (g - b) / d + (g < b ? 6 : 0); break;
-    case g: hue = (b - r) / d + 2; break;
-    default: hue = (r - g) / d + 4; break;
-  }
-  return [hue / 6, sat, light];
-}
-
-/* A light chrome edge and a darker left rail, both from the team color. */
-function chromeTones(hex) {
-  const hsl = hexHsl(hex);
-  if (!hsl) {
-    return { frame: '#7fd7ea', rail: '#0d4e9c', stripe: '#3d8fe0' };
-  }
-  const hue = Math.round(hsl[0] * 360);
-  const sat = Math.round(Math.max(hsl[1], 0.42) * 100);
-  return {
-    frame: `hsl(${hue} ${Math.min(sat, 62)}% 70%)`,
-    rail: `hsl(${hue} ${Math.min(sat, 72)}% 26%)`,
-    stripe: `hsl(${hue} ${Math.min(sat, 85)}% 52%)`,
-  };
-}
-
-function splitName(displayName) {
-  const parts = String(displayName || '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return { first: '', last: (parts[0] || '').toUpperCase() };
-  return {
-    first: parts.slice(0, -1).join(' ').toUpperCase(),
-    last: parts[parts.length - 1].toUpperCase(),
-  };
-}
 
 /* ── Trading Card Component ─────────────────────────── */
 export default function PlayerCard({ player, sport }) {
@@ -56,6 +12,8 @@ export default function PlayerCard({ player, sport }) {
   const { stats, log, loading, error } = usePlayerStats(sport, player.id);
   const liveBio = usePlayerBio(sport, player.id);
 
+  // Use live position from bio (most accurate), fall back to stored.
+  // player.position may be a full ESPN position object {id,name,abbreviation,...} — extract the string safely.
   const rawStoredPos = player.position;
   const storedPos = typeof rawStoredPos === 'string' ? rawStoredPos : rawStoredPos?.abbreviation || player._position || '';
   const position = liveBio.position || storedPos;
@@ -64,66 +22,66 @@ export default function PlayerCard({ player, sport }) {
   const seasonStats = extractSeasonStats(liveStats, sport);
   const gamesPlayed = gamesPlayedLine(seasonStats, gamesPlayedValue(liveStats, sport));
 
-  const rawColor = liveBio.teamColor || player.teamColor || player.team?.color;
-  const primaryHex = rawColor ? `#${String(rawColor).replace('#', '')}` : null;
-  const tones = chromeTones(primaryHex);
-  const storedTeam = String(player.teamName || '').split('·')[0].trim();
-  const teamName = (liveBio.teamName || (storedTeam.split(/\s+/).length === 1 ? storedTeam : '')).toUpperCase();
-  const teamLogo = liveBio.teamLogo || null;
-  const headshot = typeof player.headshot === 'object' ? player.headshot?.href : player.headshot;
-  const { first, last } = splitName(player.displayName);
+  // Team color: live from bio > stored top-level > stored team object > accent
+  const rawColor    = liveBio.teamColor    || player.teamColor    || player.team?.color;
+  const rawAltColor = liveBio.teamAltColor || player.teamAltColor || player.team?.alternateColor;
+  const primaryHex  = rawColor    ? `#${rawColor}`    : null;
+  const altHex      = rawAltColor ? `#${rawAltColor}` : null;
+  // Info strip accent: adapted so dark primaries are visible as a solid bg color
+  const teamColor = adaptColorForDarkBg(primaryHex, altHex);
+  // Photo gradient: use the secondary/alternate color directly — dark saturated colors
+  // look great as a subtle gradient tint without needing the lightness boost
+  const cardColor = altHex || primaryHex || '#0092ff';
+  const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
 
   return (
-    <div
-      className="sports-card"
-      style={{ '--chrome-frame': tones.frame, '--chrome-rail': tones.rail, '--chrome-stripe': tones.stripe }}
-    >
+    <div className="sports-card">
+      {/* Shine overlay */}
       <div className="sports-card-shine" />
-      <Link to={`/player/${sport}/${player.id}`} className="chrome-face">
-        <div className="chrome-rail">
-          {teamName && (
-            <div className="chrome-team" aria-hidden="true">
-              {[...teamName].map((letter, index) => (
-                <span key={`${letter}-${index}`}>{letter === ' ' ? '\u00a0' : letter}</span>
-              ))}
+
+
+      {/* Photo area */}
+      <Link to={`/player/${sport}/${player.id}`} className="sports-card-photo-link">
+        <div className="sports-card-photo-wrap" style={{ '--card-color': cardColor }}>
+          {player.headshot ? (
+            <img src={typeof player.headshot === 'object' ? player.headshot?.href : player.headshot} alt={player.displayName} className="sports-card-photo" />
+          ) : (
+            <div className="sports-card-photo-placeholder">{player.displayName?.[0]}</div>
+          )}
+          {gamesPlayed != null && (
+            <div className="sports-card-gp" aria-label={`${gamesPlayed} games played`}>
+              <span className="sports-card-gp-value">{gamesPlayed}</span>
+              <span className="sports-card-gp-label">GP</span>
             </div>
           )}
+          {/* Gradient fade at bottom of photo — uses secondary color for natural team feel */}
+          <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${cardColor}cc 100%)` }} />
         </div>
-        <div className="chrome-window">
-          {headshot ? (
-            <img src={headshot} alt={player.displayName} className="chrome-headshot" />
-          ) : (
-            <div className="chrome-headshot chrome-headshot-fallback" aria-hidden="true">{player.displayName?.[0]}</div>
-          )}
-          <div className="chrome-serial">
-            {loading && <div className="sports-card-loading">Loading…</div>}
-            {!loading && !error && seasonStats.length > 0 && seasonStats.map((s) => (
-              <div key={s.label} className="chrome-serial-stat">
-                <span className="chrome-serial-value">{s.value ?? '—'}</span>
-                <span className="chrome-serial-label">{s.label}</span>
+
+        {/* Player info strip */}
+          <div className="sports-card-info" style={{ background: teamColor }}>
+            <div className="sports-card-name">{player.displayName}</div>
+            <div className="sports-card-meta">{position} · {teamShort}</div>
+          </div>
+      </Link>
+
+      {/* Stats section */}
+      <div className="sports-card-stats">
+        {loading && <div className="sports-card-loading">Loading…</div>}
+        {!loading && !error && seasonStats.length > 0 && (
+          <div className="sports-card-stat-grid">
+            {seasonStats.map((s) => (
+              <div key={s.label} className="sports-card-stat">
+                <div className="sports-card-stat-value">{s.value ?? '—'}</div>
+                <div className="sports-card-stat-label">{s.label}</div>
               </div>
             ))}
-            {!loading && gamesPlayed != null && (
-              <div className="chrome-serial-stat" aria-label={`${gamesPlayed} games played`}>
-                <span className="chrome-serial-value">{gamesPlayed}</span>
-                <span className="chrome-serial-label">GP</span>
-              </div>
-            )}
-            {!loading && (error || seasonStats.length === 0) && (
-              <div className="sports-card-loading">No stats</div>
-            )}
           </div>
-          <div className="chrome-nameplate">
-            {first && <div className="chrome-first">{first}</div>}
-            <div className="chrome-last">{last}</div>
-          </div>
-        </div>
-        {teamLogo ? (
-          <img src={teamLogo} alt="" className="chrome-logo" />
-        ) : (
-          <span className="chrome-logo chrome-logo-fallback" />
         )}
-      </Link>
+        {!loading && (error || seasonStats.length === 0) && (
+          <div className="sports-card-loading">No stats available</div>
+        )}
+      </div>
     </div>
   );
 }
