@@ -4024,7 +4024,9 @@ body {
 
 /* ── Navigation ── */
 
-/* App layout with bottom nav */
+/* App layout with bottom nav.
+   iPhone Duo keeps the clock and camera in one side rail. The two insets
+   are not equal, and using them is what lets the page fill up to that rail. */
 .app {
   position: fixed;
   inset: 0;
@@ -4033,6 +4035,8 @@ body {
   min-height: 0;
   max-width: 100%;
   min-width: 0;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 /* The list scrolls here. The bar sits under it, so a scroll cannot pick the bar up. */
 .app-body {
@@ -4139,8 +4143,6 @@ html.home-screen .more-dropdown {
   position: sticky;
   top: 0;
   padding-top: env(safe-area-inset-top, 0px); /* clear Dynamic Island / notch */
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
   z-index: 100;
   background: #0f0f13; /* matches Dynamic Island area color */
   max-width: 100%;
@@ -5258,7 +5260,7 @@ thead .dfs-sticky-player {
 }
 .edge-scrollbar {
   position: fixed;
-  right: 0;
+  right: env(safe-area-inset-right, 0px);
   width: 3px;
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.55);
@@ -6191,7 +6193,7 @@ thead .dfs-sticky-player {
   align-items: center;
   gap: 8px;
   flex: 1;
-  min-width: 0;
+  min-width: min-content;
 }
 .bsp-gh-away { justify-content: flex-start; }
 .bsp-gh-home { justify-content: flex-end; }
@@ -6203,7 +6205,7 @@ thead .dfs-sticky-player {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 0;
+  flex-shrink: 0;
 }
 .bsp-gh-text-right { text-align: right; align-items: flex-end; }
 
@@ -6214,7 +6216,7 @@ thead .dfs-sticky-player {
   .bsp-gh-name-full { display: block; }
   .bsp-gh-name-abbr { display: none; }
 }
-.bsp-gh-rec { font-size: 11px; color: var(--text2); font-weight: 400; }
+.bsp-gh-rec { font-size: 11px; color: var(--text2); font-weight: 400; white-space: nowrap; line-height: 1.1; }
 
 /* Score (live/final) */
 .bsp-gh-score {
@@ -6235,13 +6237,19 @@ thead .dfs-sticky-player {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  min-width: 80px;
+  min-width: 0;
   padding: 0 4px;
 }
 .bsp-gh-date { font-size: 12px; font-weight: 600; color: var(--text); text-align: center; white-space: nowrap; }
 .bsp-gh-time { font-size: 11px; color: var(--text2); text-align: center; white-space: nowrap; }
 .bsp-gh-status { font-size: 12px; font-weight: 700; color: var(--text); text-align: center; white-space: nowrap; }
 .bsp-gh-live { color: var(--live); }
+@media (max-width: 520px) {
+  .bsp-gh { padding: 12px 8px; gap: 4px; }
+  .bsp-gh-team { gap: 6px; }
+  .bsp-gh-logo { width: 34px; height: 34px; }
+  .bsp-gh-score { font-size: 24px; }
+}
 
 /* Legacy compact classes kept for any remaining references */
 .bsp-compact-header { display: none; }
