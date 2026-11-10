@@ -7160,6 +7160,7 @@ thead .dfs-sticky-player {
   text-transform: uppercase;
 }
 .nba-gc-teamhead img { width: 22px; height: 22px; object-fit: contain; }
+.nba-gc-court .bsp-table-wrap + .bsp-table-wrap { margin-top: 16px; }
 
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
@@ -7670,12 +7671,27 @@ thead .dfs-sticky-player {
 }
 .nba-stats-row { padding: 4px 0; }
 .nba-stats-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
+}
+.nba-stats-name > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.nba-stats-headshot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg3);
+  flex-shrink: 0;
 }
 .nba-stats-cell {
   text-align: right;
