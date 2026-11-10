@@ -285,7 +285,7 @@ export default function HomeTeamScores({ teams, dateStr, onHiddenChange, conceal
 
       {upcoming.length > 0 && (
         <div className="hts-upcoming">
-          <div className="hts-subhead">Upcoming</div>
+          <div className="hts-subhead section-title">Upcoming Games</div>
           {upcoming.map((row) => (
             <UpcomingTeamRow
               key={`${row.sport}-${row.team?.id}`}
