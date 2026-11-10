@@ -148,6 +148,11 @@ body {
 
 /* ── Sections ── */
 .section { display: flex; flex-direction: column; gap: 20px; }
+/* Home headers use the same space Upcoming Games leaves above its boxes.
+   The title sits on the bottom of the row so the date and Customize controls
+   do not add space under My Teams. */
+.home-section { gap: 6px; }
+.home-section .section-header { align-items: flex-end; }
 
 .section-header {
   display: flex;
@@ -7367,6 +7372,7 @@ thead .dfs-sticky-player {
 /* Landscape: two team rows side by side, then three when the screen is wider. */
 @media (min-width: 844px) {
   .hts-upcoming { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .home-section { gap: 8px; }
 }
 @media (min-width: 940px) {
   .hts-upcoming { grid-template-columns: repeat(3, minmax(0, 1fr)); }
