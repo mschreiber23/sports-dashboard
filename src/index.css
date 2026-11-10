@@ -7150,8 +7150,16 @@ thead .dfs-sticky-player {
   text-transform: uppercase;
   color: var(--text);
 }
-.nba-gc-teamhead { display: inline-flex; align-items: center; gap: 6px; }
-.nba-gc-teamhead img { width: 16px; height: 16px; object-fit: contain; }
+.nba-gc-teamhead {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.nba-gc-teamhead img { width: 22px; height: 22px; object-fit: contain; }
 
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
