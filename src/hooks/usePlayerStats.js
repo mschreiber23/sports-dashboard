@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { activeSeasonYear, getPlayerStats } from '../api/espn';
+import { activeSeasonYear, getPlayerGameLog, getPlayerStats } from '../api/espn';
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes for player stats
+const REFRESH_MS = 30 * 1000;
 
 function readStatsCache(key) {
   try {
@@ -17,22 +18,54 @@ export default function usePlayerStats(sport, playerId) {
   const year = activeSeasonYear(sport);
   const ck = `ps2_${sport}_${playerId}_${year}`;
   const [stats, setStats] = useState(() => readStatsCache(ck));
+  const [log, setLog] = useState(null);
   const [loading, setLoading] = useState(!readStatsCache(ck));
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!playerId) return;
+    if (!playerId) return undefined;
+    let cancelled = false;
+    let pending = false;
     const cached = readStatsCache(ck);
-    if (!cached) { setLoading(true); setError(null); }
+    setStats(cached);
+    setLog(null);
+    setError(null);
+    setLoading(!cached);
 
-    getPlayerStats(sport, playerId)
-      .then((data) => {
+    const load = (initial) => {
+      if (pending) return undefined;
+      pending = true;
+      return Promise.all([
+        getPlayerStats(sport, playerId),
+        getPlayerGameLog(sport, playerId).catch(() => null),
+      ]).then(([data, gameLog]) => {
+        if (cancelled) return;
         setStats(data);
-        try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data })); } catch {}
-      })
-      .catch(() => setError('Could not load player stats.'))
-      .finally(() => setLoading(false));
+        if (gameLog) setLog(gameLog);
+        setError(null);
+        try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data })); } catch { /* ignore quota */ }
+      }).catch(() => {
+        if (!cancelled && initial && !cached) setError('Could not load player stats.');
+      }).finally(() => {
+        pending = false;
+        if (!cancelled && initial) setLoading(false);
+      });
+    };
+
+    load(true);
+    const timer = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') load(false);
+    }, REFRESH_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load(false);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [sport, playerId, ck]);
 
-  return { stats, loading, error };
+  return { stats, log, loading, error };
 }
