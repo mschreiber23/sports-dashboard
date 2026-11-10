@@ -371,7 +371,6 @@ body {
   background: var(--bg2);
   border: 1px solid rgba(255,255,255,0.12);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
   aspect-ratio: 2.5 / 4.2;
   display: flex;
   flex-direction: column;
@@ -380,7 +379,6 @@ body {
   min-width: 0;
 }
 .sports-card:hover {
-  transform: translateY(-4px) scale(1.02);
   box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 

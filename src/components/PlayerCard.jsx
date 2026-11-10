@@ -8,6 +8,19 @@ import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { extractSeasonStats, gamesPlayedLine, gamesPlayedValue } from '../utils/playerCardStats';
 import { applyFinishedGames } from '../utils/freshPlayerGames';
 
+const NAME_SUFFIXES = new Set(['jr', 'jr.', 'sr', 'sr.', 'ii', 'iii', 'iv', 'v']);
+
+function shortCardName(displayName) {
+  const parts = String(displayName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || '';
+  let last = parts[parts.length - 1];
+  if (parts.length > 2 && NAME_SUFFIXES.has(last.toLowerCase())) {
+    last = `${parts[parts.length - 2]} ${last}`;
+  }
+  const initial = parts[0].replace(/\./g, '').charAt(0).toUpperCase();
+  return initial ? `${initial}. ${last}` : last;
+}
+
 function CardLogo({ team, sport }) {
   const urls = teamMarkUrls(team, sport);
   const key = urls.join('|');
@@ -76,7 +89,7 @@ export default function PlayerCard({ player, sport }) {
 
         {/* Player info strip */}
           <div className="sports-card-info" style={{ background: teamColor }}>
-            <div className="sports-card-name">{player.displayName}</div>
+            <div className="sports-card-name">{shortCardName(player.displayName)}</div>
             <div className="sports-card-meta">{position} · {teamShort}</div>
           </div>
       </Link>
