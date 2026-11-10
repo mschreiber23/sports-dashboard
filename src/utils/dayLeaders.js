@@ -179,8 +179,6 @@ function playerIdentity(athlete, team, game) {
     opponent: other?.team?.abbreviation || '',
     home: mine?.homeAway !== 'away',
     headshot,
-    color: String(mine?.team?.color || team?.color || '').replace('#', ''),
-    altColor: String(mine?.team?.alternateColor || team?.alternateColor || '').replace('#', ''),
     ...situation,
   };
 }
@@ -379,8 +377,6 @@ export function combinePlayers(rows) {
       next.team = row.team;
       next.opponent = row.opponent;
       next.home = row.home;
-      next.color = row.color;
-      next.altColor = row.altColor;
     }
     map.set(key, next);
   }

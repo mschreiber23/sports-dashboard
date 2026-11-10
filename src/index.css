@@ -10119,25 +10119,27 @@ thead .dfs-sticky-player {
   font-weight: 800;
   white-space: nowrap;
 }
-.day-card-labels,
-.day-card-stats {
+.day-card-stats,
+.day-card-labels {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   text-align: center;
 }
-.day-card-labels {
-  border-radius: 6px;
-  padding: 3px 0;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-.day-card-stats { padding-top: 4px; }
+.day-card-stats { padding-top: 2px; }
 .day-card-stats b {
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+.day-card-labels {
+  padding: 3px 0;
+  border-radius: 6px;
+  background: #1e1e26;
+  color: var(--text2);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 .sp-date-btn:disabled { opacity: 0.35; cursor: default; }

@@ -2,36 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDayLeaders } from '../api/dayLeaders';
 import useSportsDaySelection from '../hooks/useSportsDay';
-import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
 import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const REFRESH_MS = 20000;
 
 const SPORT_LABEL = { nba: 'NBA', nhl: 'NHL', nfl: 'NFL', mlb: 'MLB' };
-
-function teamAccent(row) {
-  const primary = row?.color ? `#${String(row.color).replace('#', '')}` : null;
-  const alt = row?.altColor ? `#${String(row.altColor).replace('#', '')}` : null;
-  return adaptColorForDarkBg(primary, alt, '#0092ff');
-}
-
-function inkOn(color) {
-  const text = String(color || '');
-  let light = 50;
-  if (text.startsWith('hsl')) {
-    light = Number(text.match(/(\d+(?:\.\d+)?)%\s*\)/)?.[1] || 50);
-  } else {
-    const hex = text.replace('#', '');
-    if (hex.length === 6) {
-      const r = parseInt(hex.slice(0, 2), 16);
-      const g = parseInt(hex.slice(2, 4), 16);
-      const b = parseInt(hex.slice(4, 6), 16);
-      light = (0.299 * r + 0.587 * g + 0.114 * b) / 2.55;
-    }
-  }
-  return light >= 62 ? '#101014' : '#f5f5f7';
-}
 
 function TeamLogo({ side, className }) {
   const src = side?.logo || side?.logoFallback;
@@ -273,9 +249,7 @@ export default function DayLeadersPage() {
 
       {rows.length > 0 && (
         <ol className="day-leaders-list">
-          {rows.map((row, index) => {
-            const accent = teamAccent(row);
-            return (
+          {rows.map((row, index) => (
             <li key={`${row.line || 'player'}-${row.id}`}>
               <button type="button" className="day-card" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
                 <span className="day-card-identity">
@@ -291,21 +265,17 @@ export default function DayLeadersPage() {
                   </span>
                   <Scoreboard row={row} />
                 </span>
-                <span
-                  className="day-card-labels"
-                  style={{ background: accent, color: inkOn(accent) }}
-                >
-                  {columns.map((col) => <span key={col.key}>{col.label}</span>)}
-                </span>
                 <span className="day-card-stats">
                   {columns.map((col) => (
                     <b key={col.key}>{formatLeaderStat(col.key, row[col.key])}</b>
                   ))}
                 </span>
+                <span className="day-card-labels">
+                  {columns.map((col) => <span key={col.key}>{col.label}</span>)}
+                </span>
               </button>
             </li>
-            );
-          })}
+          ))}
         </ol>
       )}
     </div>

@@ -16,7 +16,7 @@ function nbaGame() {
       status: { period: 3, displayClock: '4:12', type: { state: 'in', shortDetail: '4:12 - 3rd' } },
       competitors: [
         { homeAway: 'away', score: '98', team: { id: '6', abbreviation: 'DAL', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/dal.png' } },
-        { homeAway: 'home', score: '101', team: { id: '24', abbreviation: 'SA', color: '000000', alternateColor: 'c4ced4', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/sa.png' } },
+        { homeAway: 'home', score: '101', team: { id: '24', abbreviation: 'SA', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/sa.png' } },
       ],
     }],
   };
@@ -123,8 +123,6 @@ describe('day leaders', () => {
     assert.equal(ranked[0].awaySide.score, '98');
     assert.equal(ranked[0].homeSide.abbr, 'SA');
     assert.equal(ranked[0].homeSide.score, '101');
-    assert.equal(ranked[0].color, '000000');
-    assert.equal(ranked[0].altColor, 'c4ced4');
     assert.match(ranked[0].awaySide.logo, /500-dark\/dal\.png$/);
     assert.match(ranked[0].homeSide.logoFallback, /500\/sa\.png$/);
     assert.equal(formatGameLine(ranked[0]), 'DAL 98, SA 101 · 4:12 3rd');
@@ -199,14 +197,13 @@ describe('day leaders', () => {
   it('keeps the live game score when a player appears twice', () => {
     const combined = combinePlayers([
       { id: '1', name: 'A', points: 20, live: false, score: 'BOS 100, NYK 99', period: '', clock: '' },
-      { id: '1', name: 'A', points: 8, live: true, score: 'BOS 40, MIA 38', period: '2nd', clock: '5:01', team: 'BOS', opponent: 'MIA', home: true, color: '007a33', altColor: 'ba9653', awaySide: { abbr: 'MIA', score: '38' }, homeSide: { abbr: 'BOS', score: '40' } },
+      { id: '1', name: 'A', points: 8, live: true, score: 'BOS 40, MIA 38', period: '2nd', clock: '5:01', team: 'BOS', opponent: 'MIA', home: true, awaySide: { abbr: 'MIA', score: '38' }, homeSide: { abbr: 'BOS', score: '40' } },
     ]);
     assert.equal(combined[0].points, 28);
     assert.equal(combined[0].score, 'BOS 40, MIA 38');
     assert.equal(combined[0].period, '2nd');
     assert.equal(combined[0].clock, '5:01');
     assert.equal(combined[0].homeSide.abbr, 'BOS');
-    assert.equal(combined[0].color, '007a33');
   });
 
   it('formats plus-minus with a sign and ignores a zero minute line', () => {
