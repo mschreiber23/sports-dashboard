@@ -264,8 +264,8 @@ export default function DayLeadersPage() {
                     <span className="day-leaders-title">
                       <span className="day-card-rank">#{index + 1}</span>
                       <span className="day-leaders-name">{row.name}</span>
+                      {row.position && <span className="day-leaders-pos">{row.position}</span>}
                     </span>
-                    {row.position && <span className="day-leaders-pos">{row.position}</span>}
                   </span>
                   <span className="day-card-hero">
                     <b>{formatLeaderStat(activeColumn.key, row[activeColumn.key])}</b>
