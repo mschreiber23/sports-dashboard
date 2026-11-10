@@ -58,7 +58,12 @@ export default function NflScoreStats({ gameId, awayId, homeId, live = false }) 
                   </div>
                   {section.players.map((player) => (
                     <div className="nba-stats-row" key={player.id || player.name}>
-                      <span className="nba-stats-name">{player.name}</span>
+                      <span className="nba-stats-name">
+                        {player.headshot
+                          ? <img src={player.headshot} alt="" className="nba-stats-headshot" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                          : null}
+                        <span>{player.name}</span>
+                      </span>
                       {player.stats.map((value, index) => (
                         <span
                           className={`nba-stats-cell${value === '0' ? ' is-zero' : ''}`}

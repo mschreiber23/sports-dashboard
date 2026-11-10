@@ -1,4 +1,4 @@
-import { playedName } from './nbaScoreLine.js';
+import { playedName, playerHeadshot } from './nbaScoreLine.js';
 
 export const NFL_STAT_GROUPS = [
   {
@@ -60,6 +60,7 @@ function playedGroup(group, spec) {
       return {
         id: String(row.athlete?.id || row.athlete?.displayName || ''),
         name: playedName(row.athlete),
+        headshot: playerHeadshot(row.athlete),
         yards: Number(statNumber(read(row, 'YDS'))),
         values,
       };
@@ -73,6 +74,7 @@ function playedGroup(group, spec) {
     .map((player) => ({
       id: player.id,
       name: player.name,
+      headshot: player.headshot,
       stats: spec.columns.map((col) => player.values[col.key]),
     }));
   return players;

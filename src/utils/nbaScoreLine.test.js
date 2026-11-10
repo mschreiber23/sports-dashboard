@@ -39,7 +39,7 @@ test('each side keeps the players who actually played, away then home', () => {
           statistics: [{
             labels,
             athletes: [
-              { athlete: { id: '4', displayName: 'Michael Porter Jr.' }, stats: ['40', '27', '8-16', '6-12', '5-6', '12', '2', '3', '0', '2', '1', '11', '2', '+1'] },
+              { athlete: { id: '4', displayName: 'Michael Porter Jr.', headshot: { href: 'https://img/porter' } }, stats: ['40', '27', '8-16', '6-12', '5-6', '12', '2', '3', '0', '2', '1', '11', '2', '+1'] },
             ],
           }],
         },
@@ -49,5 +49,6 @@ test('each side keeps the players who actually played, away then home', () => {
   const sides = nbaPlayedSides(summary, '17', '2');
   assert.deepEqual(sides.map((side) => side.abbr), ['BKN', 'BOS']);
   assert.deepEqual(sides[0].players.map((player) => [player.name, ...player.stats]), [['M. Porter Jr.', '27', '12', '2', '2', '0', '3']]);
+  assert.equal(sides[0].players[0].headshot, 'https://img/porter');
   assert.deepEqual(sides[1].players.map((player) => player.name), ['J. Tatum', 'P. George']);
 });

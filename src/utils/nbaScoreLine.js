@@ -20,6 +20,12 @@ export function minutesPlayed(value) {
   return Number(match[1]) + (match[2] ? Number(match[2]) / 60 : 0);
 }
 
+export function playerHeadshot(athlete) {
+  const shot = athlete?.headshot;
+  if (typeof shot === 'string') return shot;
+  return shot?.href || '';
+}
+
 export function playedName(athlete) {
   const short = String(athlete?.shortName || '').trim();
   if (/^[A-Za-z]\. /.test(short)) return short;
@@ -48,6 +54,7 @@ export function nbaPlayedSides(summary, awayId, homeId) {
       .map((row) => ({
         id: String(row.athlete?.id || row.athlete?.displayName || ''),
         name: playedName(row.athlete),
+        headshot: playerHeadshot(row.athlete),
         points: Number(statNumber(pointIndex >= 0 ? row.stats?.[pointIndex] : 0)),
         stats: nbaStatValues(labels, row.stats),
       }))
