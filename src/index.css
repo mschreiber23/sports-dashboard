@@ -349,18 +349,18 @@ body {
 /* ── Player Cards (Trading Card Style) ── */
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 @media (min-width: 640px) {
-  .players-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .players-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 }
-@media (min-width: 900px) {
-  .players-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (min-width: 844px) {
+  .players-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 }
-@media (min-width: 1200px) {
-  .players-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (min-width: 1100px) {
+  .players-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
 .sports-card {
@@ -395,20 +395,19 @@ body {
   display: flex;
   text-decoration: none;
   color: inherit;
-  border-radius: 8px;
+  border-radius: 5px;
   overflow: hidden;
   background: #101820;
 }
 .chrome-rail {
-  width: 22%;
-  min-width: 28px;
-  max-width: 46px;
+  width: 26px;
+  flex: 0 0 26px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 3px;
-  padding: 5px 0 4px;
+  gap: 2px;
+  padding: 3px 0 3px;
   background: linear-gradient(
     90deg,
     var(--chrome-rail, #0d4e9c) 0 70%,
@@ -417,26 +416,31 @@ body {
   );
 }
 .chrome-team {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
   writing-mode: vertical-rl;
   text-orientation: mixed;
+  transform: rotate(180deg);
   font-style: italic;
   font-weight: 800;
-  font-size: clamp(10px, 12cqw, 20px);
-  letter-spacing: 0.04em;
-  line-height: 0.85;
+  font-size: clamp(9px, 11cqw, 16px);
+  letter-spacing: 0.02em;
+  line-height: 1;
   color: #fff;
-  -webkit-text-stroke: 0.45px rgba(0, 16, 40, 0.55);
+  -webkit-text-stroke: 0.4px rgba(0, 16, 40, 0.55);
   paint-order: stroke fill;
   text-shadow: 0 1px 0 rgba(0,0,0,0.25);
   overflow: hidden;
 }
 .chrome-logo {
-  width: 78%;
-  aspect-ratio: 1;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  background: #fff;
+  border-radius: 50%;
+  padding: 1px;
 }
 .chrome-logo-fallback { display: block; }
 .chrome-main {
@@ -482,14 +486,14 @@ body {
 .chrome-first {
   font-style: italic;
   font-weight: 700;
-  font-size: clamp(10px, 7.5cqw, 16px);
+  font-size: clamp(8px, 8cqw, 13px);
   letter-spacing: 0.04em;
   color: rgba(255,255,255,0.92);
 }
 .chrome-last {
   font-style: italic;
   font-weight: 800;
-  font-size: clamp(16px, 12cqw, 26px);
+  font-size: clamp(11px, 12cqw, 18px);
   letter-spacing: 0.01em;
   color: #fff;
   text-shadow: 0 1px 0 rgba(0,0,0,0.28);
