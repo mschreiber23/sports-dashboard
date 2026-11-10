@@ -5,16 +5,18 @@ import {
   combinePlayers,
   sortDayLeaders,
   formatLeaderStat,
+  formatGameLine,
+  gameSituation,
   playedTime,
 } from './dayLeaders.js';
 
 function nbaGame() {
   return {
     competitions: [{
-      status: { type: { state: 'in', shortDetail: 'Q3 4:12' } },
+      status: { period: 3, displayClock: '4:12', type: { state: 'in', shortDetail: '4:12 - 3rd' } },
       competitors: [
-        { homeAway: 'away', team: { id: '6', abbreviation: 'DAL' } },
-        { homeAway: 'home', team: { id: '24', abbreviation: 'SA' } },
+        { homeAway: 'away', score: '98', team: { id: '6', abbreviation: 'DAL', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/dal.png' } },
+        { homeAway: 'home', score: '101', team: { id: '24', abbreviation: 'SA', logo: 'https://a.espncdn.com/i/teamlogos/nba/500/sa.png' } },
       ],
     }],
   };
@@ -114,6 +116,16 @@ describe('day leaders', () => {
     assert.equal(ranked[0].opponent, 'DAL');
     assert.equal(ranked[0].home, true);
     assert.equal(ranked[0].live, true);
+    assert.equal(ranked[0].score, 'DAL 98, SA 101');
+    assert.equal(ranked[0].clock, '4:12');
+    assert.equal(ranked[0].period, '3rd');
+    assert.equal(ranked[0].awaySide.abbr, 'DAL');
+    assert.equal(ranked[0].awaySide.score, '98');
+    assert.equal(ranked[0].homeSide.abbr, 'SA');
+    assert.equal(ranked[0].homeSide.score, '101');
+    assert.match(ranked[0].awaySide.logo, /500-dark\/dal\.png$/);
+    assert.match(ranked[0].homeSide.logoFallback, /500\/sa\.png$/);
+    assert.equal(formatGameLine(ranked[0]), 'DAL 98, SA 101 · 4:12 3rd');
     assert.equal(ranked[0].headshot, 'https://img/wemby');
     const byBoards = sortDayLeaders(rows, 'rebounds', 'desc');
     assert.equal(byBoards[0].name, 'V. Wembanyama');
@@ -148,6 +160,50 @@ describe('day leaders', () => {
     assert.equal(combined[0].points, 28);
     assert.equal(combined[0].rebounds, 8);
     assert.equal(combined[0].live, true);
+  });
+
+  it('reads a live clock and leaves a final game without a period', () => {
+    assert.deepEqual(gameSituation(
+      { period: 4, displayClock: '0:41', type: { state: 'in', shortDetail: '0:41 - 4th' } },
+      [
+        { homeAway: 'away', score: '110', team: { abbreviation: 'WSH' } },
+        { homeAway: 'home', score: '108', team: { abbreviation: 'DET' } },
+      ],
+    ), {
+      live: true,
+      score: 'WSH 110, DET 108',
+      period: '4th',
+      clock: '0:41',
+      awaySide: { abbr: 'WSH', score: '110', logo: '', logoFallback: '' },
+      homeSide: { abbr: 'DET', score: '108', logo: '', logoFallback: '' },
+    });
+    assert.deepEqual(gameSituation(
+      { displayClock: '0:00', type: { state: 'post', shortDetail: 'Final' } },
+      [
+        { homeAway: 'away', score: '111', team: { abbreviation: 'WSH' } },
+        { homeAway: 'home', score: '122', team: { abbreviation: 'DET' } },
+      ],
+    ), {
+      live: false,
+      score: 'WSH 111, DET 122',
+      period: '',
+      clock: '',
+      awaySide: { abbr: 'WSH', score: '111', logo: '', logoFallback: '' },
+      homeSide: { abbr: 'DET', score: '122', logo: '', logoFallback: '' },
+    });
+    assert.equal(formatGameLine({ live: false, score: 'WSH 111, DET 122', period: '4th', clock: '0:41' }), 'WSH 111, DET 122');
+  });
+
+  it('keeps the live game score when a player appears twice', () => {
+    const combined = combinePlayers([
+      { id: '1', name: 'A', points: 20, live: false, score: 'BOS 100, NYK 99', period: '', clock: '' },
+      { id: '1', name: 'A', points: 8, live: true, score: 'BOS 40, MIA 38', period: '2nd', clock: '5:01', team: 'BOS', opponent: 'MIA', home: true, awaySide: { abbr: 'MIA', score: '38' }, homeSide: { abbr: 'BOS', score: '40' } },
+    ]);
+    assert.equal(combined[0].points, 28);
+    assert.equal(combined[0].score, 'BOS 40, MIA 38');
+    assert.equal(combined[0].period, '2nd');
+    assert.equal(combined[0].clock, '5:01');
+    assert.equal(combined[0].homeSide.abbr, 'BOS');
   });
 
   it('formats plus-minus with a sign and ignores a zero minute line', () => {
@@ -193,15 +249,24 @@ function nflSummary() {
             name: 'rushing',
             keys: ['rushingAttempts', 'rushingYards', 'rushingTouchdowns'],
             athletes: [
+              { athlete: { id: '8', shortName: 'C. Williams', position: { abbreviation: 'QB' } }, stats: ['3', '12', '0'] },
               { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['27', '69', '3'] },
             ],
           },
           {
             name: 'receiving',
-            keys: ['receptions', 'receivingYards', 'receivingTouchdowns'],
+            keys: ['receptions', 'receivingYards', 'receivingTouchdowns', 'receivingTargets'],
             athletes: [
-              { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['4', '20', '0'] },
-              { athlete: { id: '15', shortName: 'R. Odunze', position: { abbreviation: 'WR' } }, stats: ['4', '87', '0'] },
+              { athlete: { id: '20', shortName: 'D. Swift', position: { abbreviation: 'RB' } }, stats: ['4', '20', '0', '5'] },
+              { athlete: { id: '15', shortName: 'R. Odunze', position: { abbreviation: 'WR' } }, stats: ['4', '87', '0', '7'] },
+            ],
+          },
+          {
+            name: 'fumbles',
+            keys: ['fumbles', 'fumblesLost'],
+            athletes: [
+              { athlete: { id: '8', shortName: 'C. Williams' }, stats: ['1', '1'] },
+              { athlete: { id: '15', shortName: 'R. Odunze' }, stats: ['1', '1'] },
             ],
           },
         ],
@@ -215,8 +280,8 @@ function mlbGame() {
     competitions: [{
       status: { type: { state: 'in', shortDetail: 'Top 7th' } },
       competitors: [
-        { homeAway: 'away', team: { id: '8', abbreviation: 'MIL' } },
-        { homeAway: 'home', team: { id: '30', abbreviation: 'TB' } },
+        { homeAway: 'away', score: '4', team: { id: '8', abbreviation: 'MIL' } },
+        { homeAway: 'home', score: '2', team: { id: '30', abbreviation: 'TB' } },
       ],
     }],
   };
@@ -265,10 +330,21 @@ describe('football and baseball leaders', () => {
     assert.deepEqual(passing.map((row) => row.name), ['C. Williams']);
     assert.equal(passing[0].passingYards, 247);
     assert.equal(passing[0].passingTouchdowns, 1);
+    assert.equal(passing[0].completions, 24);
+    assert.equal(passing[0].passingAttempts, 34);
+    assert.equal(passing[0].carries, 3);
+    assert.equal(passing[0].rushingYards, 12);
+    assert.equal(passing[0].fumblesLost, 1);
     const rushing = rows.filter((row) => row.line === 'rushing');
     const receiving = rows.filter((row) => row.line === 'receiving');
-    assert.equal(rushing.find((row) => row.id === '20').rushingYards, 69);
+    const swiftRush = rushing.find((row) => row.id === '20');
+    assert.equal(swiftRush.rushingYards, 69);
+    assert.equal(swiftRush.receptions, 4);
+    assert.equal(swiftRush.targets, 5);
+    assert.equal(swiftRush.receivingYards, 20);
     assert.equal(receiving.find((row) => row.id === '20').receivingYards, 20);
+    assert.equal(receiving.find((row) => row.id === '15').targets, 7);
+    assert.equal(receiving.find((row) => row.id === '15').fumblesLost, 1);
     const byYards = sortDayLeaders(receiving, 'receivingYards', 'desc');
     assert.equal(byYards[0].name, 'R. Odunze');
     assert.equal(byYards[0].receptions, 4);
@@ -288,5 +364,8 @@ describe('football and baseball leaders', () => {
     assert.equal(pitching[0].strikeouts, 8);
     assert.equal(pitching[1].innings, 6);
     assert.equal(pitching[0].live, true);
+    assert.equal(pitching[0].score, 'MIL 4, TB 2');
+    assert.equal(pitching[0].period, 'Top 7th');
+    assert.equal(pitching[0].clock, '');
   });
 });

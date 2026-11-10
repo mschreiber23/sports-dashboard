@@ -1,12 +1,61 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loadDayLeaders } from '../api/dayLeaders';
+import useSportsDaySelection from '../hooks/useSportsDay';
 import { DAY_COLUMNS, DAY_GROUPS, DAY_SPORTS, formatLeaderStat, sortDayLeaders } from '../utils/dayLeaders';
-import { formatSportsDateLabel, msUntilNextSportsRollover, sportsDayDate, sportsDayStr } from '../utils/sportsDay';
+import { formatSportsDateLabel, sportsDayDate, toDateStr, toIsoDate } from '../utils/sportsDay';
 
 const REFRESH_MS = 20000;
 
 const SPORT_LABEL = { nba: 'NBA', nhl: 'NHL', nfl: 'NFL', mlb: 'MLB' };
+
+function TeamLogo({ side, className }) {
+  const src = side?.logo || side?.logoFallback;
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className={className}
+      onError={(e) => {
+        const fallback = side.logoFallback;
+        if (fallback && e.currentTarget.src !== fallback) {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = fallback;
+        } else {
+          e.currentTarget.style.display = 'none';
+        }
+      }}
+    />
+  );
+}
+
+function Scoreboard({ row }) {
+  const away = row.awaySide;
+  const home = row.homeSide;
+  if (!away?.abbr && !home?.abbr) return null;
+  const awayScore = Number(away?.score);
+  const homeScore = Number(home?.score);
+  const comparable = away?.score !== '' && home?.score !== '' && Number.isFinite(awayScore) && Number.isFinite(homeScore);
+  const pace = (score, other) => {
+    if (!comparable || score === other) return '';
+    return score > other ? ' ahead' : ' behind';
+  };
+  const live = row.live ? [row.clock, row.period].filter(Boolean).join(' ') : '';
+  return (
+    <span className="day-card-board">
+      <span className={`day-card-side${pace(awayScore, homeScore)}`}>
+        <TeamLogo side={away} className="day-card-logo" />
+        {away?.score !== '' && <span className="day-card-pts">{away.score}</span>}
+      </span>
+      <span className={`day-card-side${pace(homeScore, awayScore)}`}>
+        <TeamLogo side={home} className="day-card-logo" />
+        {home?.score !== '' && <span className="day-card-pts">{home.score}</span>}
+      </span>
+      {live && <span className="day-card-live">{live}</span>}
+    </span>
+  );
+}
 
 function defaultSorts() {
   const sorts = {};
@@ -27,7 +76,8 @@ export default function DayLeadersPage() {
   const navigate = useNavigate();
   const [sport, setSport] = useState('nba');
   const [lines, setLines] = useState({ nfl: 'passing', mlb: 'hitting' });
-  const [day, setDay] = useState(() => sportsDayStr());
+  const { selectedDate, setSelectedDate, sportsToday, isToday } = useSportsDaySelection();
+  const day = toDateStr(selectedDate);
   const [sorts, setSorts] = useState(defaultSorts);
   const [boards, setBoards] = useState({});
   const [loading, setLoading] = useState(true);
@@ -35,10 +85,13 @@ export default function DayLeadersPage() {
   const boardsRef = useRef({});
   const pullGen = useRef(0);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDay(sportsDayStr()), msUntilNextSportsRollover());
-    return () => clearTimeout(timer);
-  }, [day]);
+  const shiftDate = (n) => setSelectedDate((current) => {
+    const next = new Date(current);
+    next.setDate(next.getDate() + n);
+    const today = sportsDayDate();
+    if (toDateStr(next) > toDateStr(today)) return today;
+    return next;
+  });
 
   useEffect(() => {
     let stop = false;
@@ -53,16 +106,16 @@ export default function DayLeadersPage() {
         setBoards((prev) => ({ ...prev, [sport]: next }));
         setError('');
       } catch {
-        if (!stop && !boardsRef.current[sport]) setError('Could not load today’s performers.');
+        if (!stop && !boardsRef.current[sport]) setError('Could not load performers.');
       } finally {
         if (!stop && gen === pullGen.current) setLoading(false);
       }
     }
 
     pull(boardsRef.current[sport]?.dateStr === day);
-    const timer = setInterval(() => {
+    const timer = isToday ? setInterval(() => {
       if (document.visibilityState === 'visible') pull(true);
-    }, REFRESH_MS);
+    }, REFRESH_MS) : null;
     const onVisible = () => {
       if (document.visibilityState === 'visible') pull(true);
     };
@@ -72,7 +125,7 @@ export default function DayLeadersPage() {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [sport, day]);
+  }, [sport, day, isToday]);
 
   const board = boards[sport]?.dateStr === day ? boards[sport] : null;
   const groups = DAY_GROUPS[sport] || null;
@@ -82,8 +135,10 @@ export default function DayLeadersPage() {
   const sort = sorts[view];
   const pool = board ? (line ? board.players.filter((row) => row.line === line) : board.players) : [];
   const rows = sort ? sortDayLeaders(pool, sort.key, sort.dir) : [];
-  const today = sportsDayDate();
-  const label = formatSportsDateLabel(today, today);
+  const label = formatSportsDateLabel(selectedDate, sportsToday);
+  const emptyCopy = board?.scheduled === 0
+    ? (label === 'Today' ? 'No games on today’s slate.' : `No games on ${label}.`)
+    : (label === 'Today' ? 'No one has played yet today.' : `No one has played on ${label}.`);
 
   function chooseSort(key) {
     setSorts((prev) => {
@@ -97,21 +152,42 @@ export default function DayLeadersPage() {
     setLines((prev) => ({ ...prev, [sport]: next }));
   }
 
-  const activeColumn = columns.find((col) => col.key === sort.key) || columns[0];
-
   return (
     <div className="day-leaders">
       <div className="day-leaders-head">
         <div>
           <h1>Top today</h1>
-          <p className="day-leaders-note">{label}. Tap a stat to sort.</p>
+          <p className="day-leaders-note">Tap a stat to sort.</p>
+          {board?.live && isToday && (
+            <span className="day-leaders-live">
+              <span className="ts-live-dot" />
+              Live
+            </span>
+          )}
         </div>
-        {board?.live && (
-          <span className="day-leaders-live">
-            <span className="ts-live-dot" />
-            Live
-          </span>
-        )}
+        <div className="sp-date-nav" aria-label="Leaderboard date">
+          <button type="button" className="sp-date-btn" aria-label="Previous day" onClick={() => shiftDate(-1)}>‹</button>
+          <label className="sp-date-label">
+            {label}
+            <input
+              type="date"
+              className="sp-date-input"
+              aria-label="Choose a date"
+              value={toIsoDate(selectedDate)}
+              max={toIsoDate(sportsToday)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const next = new Date(`${e.target.value}T12:00:00`);
+                if (toDateStr(next) > toDateStr(sportsToday)) return;
+                setSelectedDate(next);
+              }}
+            />
+          </label>
+          <button type="button" className="sp-date-btn" aria-label="Next day" onClick={() => shiftDate(1)} disabled={isToday}>›</button>
+          {!isToday && (
+            <button type="button" className="sp-date-today" onClick={() => setSelectedDate(sportsDayDate())}>Today</button>
+          )}
+        </div>
       </div>
 
       <div className="scores-sport-tabs">
@@ -161,42 +237,41 @@ export default function DayLeadersPage() {
         </div>
       )}
 
-      {loading && !board && <div className="day-leaders-status">Loading today’s box scores…</div>}
+      {loading && !board && <div className="day-leaders-status">Loading box scores…</div>}
       {error && !board && <div className="day-leaders-status">{error}</div>}
       {board && rows.length === 0 && (
-        <div className="day-leaders-status">
-          {board.scheduled === 0 ? 'No games on today’s slate.' : 'No one has played yet today.'}
-        </div>
+        <div className="day-leaders-status">{emptyCopy}</div>
       )}
 
       {rows.length > 0 && (
         <ol className="day-leaders-list">
           {rows.map((row, index) => (
             <li key={`${row.line || 'player'}-${row.id}`}>
-              <button type="button" className="day-leaders-row" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
-                <span className="day-leaders-rank">{index + 1}</span>
-                {row.headshot
-                  ? <img src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  : <span className="day-leaders-photo" />}
-                <span className="day-leaders-id">
-                  <span className="day-leaders-name">{row.name}</span>
-                  <span className="day-leaders-meta">
-                    {row.position ? `${row.position} · ` : ''}
-                    {row.team} {row.home ? 'vs' : '@'} {row.opponent}
-                    {row.live && row.clock ? ` · ${row.clock}` : ''}
+              <button type="button" className="day-card" onClick={() => navigate(`/player/${sport}/${row.id}`)}>
+                <span className="day-card-identity">
+                  <span className="day-card-rank">#{index + 1}</span>
+                  <span className="day-card-face">
+                    {row.headshot
+                      ? <img className="day-leaders-headshot" src={row.headshot} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      : <span className="day-leaders-photo" />}
                   </span>
-                  <span className="day-leaders-stats">
-                    {columns.filter((col) => col.key !== sort.key).map((col) => (
-                      <span key={col.key}>
-                        <b>{formatLeaderStat(col.key, row[col.key])}</b>
-                        {col.label}
-                      </span>
+                  <span className="day-leaders-title">
+                    <span className="day-leaders-name">{row.name}</span>
+                    {row.position && <span className="day-leaders-pos">{row.position}</span>}
+                  </span>
+                  <Scoreboard row={row} />
+                </span>
+                <span className="day-card-line">
+                  <span className="day-card-labels">
+                    {columns.map((col) => (
+                      <span key={col.key} className={col.key === sort.key ? 'on' : ''}>{col.label}</span>
                     ))}
                   </span>
-                </span>
-                <span className="day-leaders-main">
-                  <b>{formatLeaderStat(activeColumn.key, row[activeColumn.key])}</b>
-                  <span>{activeColumn.label}</span>
+                  <span className="day-card-stats">
+                    {columns.map((col) => (
+                      <b key={col.key} className={col.key === sort.key ? 'on' : ''}>{formatLeaderStat(col.key, row[col.key])}</b>
+                    ))}
+                  </span>
                 </span>
               </button>
             </li>
