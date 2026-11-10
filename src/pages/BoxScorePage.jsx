@@ -7,6 +7,7 @@ import NhlGamecast, { NhlPbpTab } from './NhlGamecast';
 import { buildMiLBComp, levelShort } from '../api/milb';
 import { finalStatusLabel } from '../components/TeamRow';
 import NbaBoxScore from '../components/NbaBoxScore';
+import NbaGamecast from '../components/NbaGamecast';
 
 /* ─── Pitch metadata ─────────────────────────────────── */
 const PITCH_NAMES = {
@@ -3273,6 +3274,8 @@ export default function BoxScorePage() {
                 ? <NhlGamecast data={data} comp={comp} competitors={comps} status={status} />
                 : sport === 'nfl'
                 ? <NflGamecast data={data} situation={situation} competitors={comps} status={status} />
+                : sport === 'nba' && status?.type?.state === 'in'
+                ? <NbaGamecast data={data} competitors={comps} onShowAll={() => setActiveTab('Play-by-Play')} />
                 : <GenericGamecast data={data} situation={situation} competitors={comps} status={status} sport={sport} />
             )}
 

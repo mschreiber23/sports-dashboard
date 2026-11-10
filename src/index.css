@@ -7098,6 +7098,115 @@ thead .dfs-sticky-player {
 .bsp-nba-dnp-name { font-size: 12px; font-weight: 600; color: var(--text); }
 .bsp-nba-dnp-reason { font-size: 11px; color: var(--text2); }
 
+/* Live NBA gamecast: play feed, then who is on the floor */
+.nba-gc { display: flex; flex-direction: column; gap: 18px; padding: 4px 2px 12px; }
+.nba-gc-feed { display: flex; flex-direction: column; }
+.nba-gc-play {
+  display: flex;
+  gap: 10px;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.nba-gc-play-logo { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; margin-top: 1px; }
+.nba-gc-play-logo-empty { display: block; }
+.nba-gc-play-main { flex: 1; min-width: 0; }
+.nba-gc-play-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.nba-gc-play-title { font-size: 15px; font-weight: 800; color: var(--text); }
+.nba-gc-play-score {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.nba-gc-play-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text2);
+}
+.nba-gc-play-text { margin: 6px 0 0; font-size: 14px; line-height: 1.35; color: var(--text); }
+.nba-gc-more {
+  align-self: center;
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: var(--accent2);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nba-gc-heading {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.nba-gc-side { margin-top: 8px; }
+.nba-gc-side-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  font-size: 16px;
+  font-weight: 700;
+}
+.nba-gc-side-logo { width: 28px; height: 28px; object-fit: contain; }
+.nba-gc-cols,
+.nba-gc-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px 42px 32px 32px 28px;
+  align-items: center;
+  column-gap: 4px;
+}
+.nba-gc-cols {
+  padding: 8px 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text2);
+  text-transform: uppercase;
+}
+.nba-gc-cols span:not(:first-child),
+.nba-gc-stat { text-align: right; font-variant-numeric: tabular-nums; }
+.nba-gc-player {
+  width: 100%;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.nba-gc-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.nba-gc-head {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.nba-gc-head-empty { display: block; }
+.nba-gc-id { display: flex; flex-direction: column; min-width: 0; }
+.nba-gc-name {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nba-gc-meta { font-size: 12px; color: var(--text2); }
+.nba-gc-stat { font-size: 14px; font-weight: 600; color: var(--text); }
+
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
 
