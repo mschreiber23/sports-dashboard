@@ -33,6 +33,7 @@ export default function PlayerCard({ player, sport }) {
   // look great as a subtle gradient tint without needing the lightness boost
   const cardColor = altHex || primaryHex || '#0092ff';
   const teamShort = liveBio.teamName || player.teamName?.split(' ').pop() || '';
+  const teamLogo = liveBio.teamLogo || player.teamLogo || player.team?.logo || null;
 
   return (
     <div className="sports-card">
@@ -53,6 +54,9 @@ export default function PlayerCard({ player, sport }) {
               <span className="sports-card-gp-value">{gamesPlayed}</span>
               <span className="sports-card-gp-label">GP</span>
             </div>
+          )}
+          {teamLogo && (
+            <img src={teamLogo} alt="" className="sports-card-logo" />
           )}
           {/* Gradient fade at bottom of photo — uses secondary color for natural team feel */}
           <div className="sports-card-fade" style={{ background: `linear-gradient(to bottom, transparent 0%, ${cardColor}cc 100%)` }} />
