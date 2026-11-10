@@ -4117,12 +4117,12 @@ html.home-screen .app {
   background: #0f0f13;
 }
 /* The status cluster sits on the side, so a forced top and bottom inset
-   only leaves empty bands. Keep the header and the bar flush with the glass. */
+   only leaves empty bands. Keep the header flush, with a hair of space under the bar. */
 html.home-screen .app-sticky-header {
   padding-top: 0;
 }
 html.home-screen .bottom-nav {
-  padding-bottom: 0;
+  padding-bottom: 2px;
 }
 html.home-screen .more-dropdown {
   position: absolute;
