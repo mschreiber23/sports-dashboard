@@ -1,24 +1,10 @@
 import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { NBA_BOX_COLUMNS } from '../utils/nbaGamecast';
 
 /* Basketball box score. Headers stay in this order.
    FT is free throws made-attempted (4-5). TO is turnovers. */
-const COLS = [
-  { key: 'MIN', label: 'MIN' },
-  { key: 'PTS', label: 'PTS' },
-  { key: 'REB', label: 'REB' },
-  { key: 'AST', label: 'AST' },
-  { key: 'STL', label: 'STL' },
-  { key: 'BLK', label: 'BLK' },
-  { key: 'TO', label: 'TO' },
-  { key: 'OREB', label: 'OREB' },
-  { key: 'DREB', label: 'DREB' },
-  { key: 'FG', label: 'FG' },
-  { key: '3PT', label: '3PT' },
-  { key: 'FT', label: 'FT' },
-  { key: 'PF', label: 'PF' },
-  { key: '+/-', label: '+/-' },
-];
+const COLS = NBA_BOX_COLUMNS;
 const HIGHLIGHT = new Set(['PTS', 'REB', 'AST']);
 
 function reasonLabel(reason) {

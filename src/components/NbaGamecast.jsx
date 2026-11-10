@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { getTeamLogo } from '../api/espn';
 import {
+  NBA_BOX_COLUMNS,
   nbaPlayTitle,
   nbaPlayClock,
   nbaNotablePlays,
@@ -9,13 +10,7 @@ import {
 } from '../utils/nbaGamecast';
 
 const FEED_LIMIT = 8;
-const STATS = [
-  ['pts', 'PTS'],
-  ['fg', 'FG'],
-  ['reb', 'REB'],
-  ['ast', 'AST'],
-  ['pf', 'PF'],
-];
+const HIGHLIGHT = new Set(['PTS', 'REB', 'AST']);
 
 function teamLogo(team) {
   return getTeamLogo(team) || team?.logo || '';
@@ -65,43 +60,56 @@ function PlayFeed({ plays, winById, away, home, onShowAll }) {
 }
 
 function CourtPlayer({ player, onOpen }) {
-  const meta = [player.jersey ? `#${player.jersey}` : '', player.pos].filter(Boolean).join(' · ');
   return (
-    <button type="button" className="nba-gc-player" onClick={() => player.id && onOpen(player.id)}>
-      <span className="nba-gc-who">
-        {player.headshot
-          ? <img src={player.headshot} alt="" className="nba-gc-head" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
-          : <span className="nba-gc-head nba-gc-head-empty" />}
-        <span className="nba-gc-id">
-          <span className="nba-gc-name">{player.name}</span>
-          {meta && <span className="nba-gc-meta">{meta}</span>}
-        </span>
-      </span>
-      {STATS.map(([key]) => (
-        <span key={key} className="nba-gc-stat">{player[key]}</span>
-      ))}
-    </button>
+    <tr className={player.id ? 'bsp-tr bsp-tr-clickable' : 'bsp-tr'} onClick={() => player.id && onOpen(player.id)}>
+      <td className="bsp-td bsp-td-player">
+        <div className="bsp-player-cell">
+          {player.headshot
+            ? <img src={player.headshot} alt="" className="bsp-player-headshot" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+            : null}
+          <span className="bsp-player-name">{player.name}</span>
+          {player.pos && <span className="bsp-nba-pos">{player.pos}</span>}
+          {player.jersey && <span className="bsp-nba-num">#{player.jersey}</span>}
+        </div>
+      </td>
+      {NBA_BOX_COLUMNS.map((col, index) => {
+        const val = player.line[index] ?? '—';
+        const isZero = val === '0' || val === '0-0';
+        return (
+          <td key={col.key} className={`bsp-td${HIGHLIGHT.has(col.key) ? ' bsp-hl' : ''}${isZero ? ' bsp-zero' : ''}`}>
+            {val}
+          </td>
+        );
+      })}
+    </tr>
   );
 }
 
 function OnCourt({ sides, onOpen }) {
   if (!sides.length) return null;
   return (
-    <section className="nba-gc-court">
+    <section className="nba-gc-court bsp-nba">
       <h2 className="nba-gc-heading">On the Court</h2>
       {sides.map((side) => (
-        <div key={side.id || side.name} className="nba-gc-side">
-          <div className="nba-gc-side-name">
-            {teamLogo(side.team) && <img src={teamLogo(side.team)} alt="" className="nba-gc-side-logo" />}
-            <span>{side.name}</span>
-          </div>
-          <div className="nba-gc-cols" aria-hidden="true">
-            <span>Player</span>
-            {STATS.map(([, label]) => <span key={label}>{label}</span>)}
-          </div>
-          {side.players.map((player) => (
-            <CourtPlayer key={player.id || player.name} player={player} onOpen={onOpen} />
-          ))}
+        <div key={side.id || side.name} className="bsp-table-wrap">
+          <table className="bsp-table">
+            <thead>
+              <tr>
+                <th className="bsp-th bsp-th-player">
+                  <span className="nba-gc-teamhead">
+                    {teamLogo(side.team) && <img src={teamLogo(side.team)} alt="" />}
+                    {side.name}
+                  </span>
+                </th>
+                {NBA_BOX_COLUMNS.map((col) => <th key={col.key} className="bsp-th">{col.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {side.players.map((player) => (
+                <CourtPlayer key={player.id || player.name} player={player} onOpen={onOpen} />
+              ))}
+            </tbody>
+          </table>
         </div>
       ))}
     </section>

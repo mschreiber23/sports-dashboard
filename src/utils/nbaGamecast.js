@@ -1,3 +1,21 @@
+/* Same headers, same order, as the NBA box score. */
+export const NBA_BOX_COLUMNS = [
+  { key: 'MIN', label: 'MIN' },
+  { key: 'PTS', label: 'PTS' },
+  { key: 'REB', label: 'REB' },
+  { key: 'AST', label: 'AST' },
+  { key: 'STL', label: 'STL' },
+  { key: 'BLK', label: 'BLK' },
+  { key: 'TO', label: 'TO' },
+  { key: 'OREB', label: 'OREB' },
+  { key: 'DREB', label: 'DREB' },
+  { key: 'FG', label: 'FG' },
+  { key: '3PT', label: '3PT' },
+  { key: 'FT', label: 'FT' },
+  { key: 'PF', label: 'PF' },
+  { key: '+/-', label: '+/-' },
+];
+
 const ORDINALS = { 1: '1st', 2: '2nd', 3: '3rd' };
 
 export function nbaPeriodLabel(period) {
@@ -72,11 +90,7 @@ export function nbaOnCourt(statGroup) {
         headshot: typeof shot === 'string' ? shot : shot?.href || '',
         jersey: player.jersey || '',
         pos: athlete.position?.abbreviation || player.position?.abbreviation || '',
-        pts: statAt(athlete.stats, labels, 'PTS'),
-        fg: statAt(athlete.stats, labels, 'FG'),
-        reb: statAt(athlete.stats, labels, 'REB'),
-        ast: statAt(athlete.stats, labels, 'AST'),
-        pf: statAt(athlete.stats, labels, 'PF'),
+        line: NBA_BOX_COLUMNS.map((col) => statAt(athlete.stats, labels, col.key)),
       };
     });
 }

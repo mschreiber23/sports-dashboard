@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  NBA_BOX_COLUMNS,
   nbaPeriodLabel,
   nbaPlayClock,
   nbaPlayTitle,
@@ -77,7 +78,10 @@ test('on the court is the active five, with the gamecast stat line', () => {
   const [player] = nbaOnCourt(group);
   assert.equal(player.name, 'A. Davis');
   assert.equal(player.headshot, 'https://img/davis');
-  assert.deepEqual([player.pts, player.fg, player.reb, player.ast, player.pf], ['5', '2-2', '3', '0', '0']);
+  assert.deepEqual(NBA_BOX_COLUMNS.map((col) => col.label), [
+    'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'OREB', 'DREB', 'FG', '3PT', 'FT', 'PF', '+/-',
+  ]);
+  assert.deepEqual(player.line, ['5', '5', '3', '0', '0', '0', '1', '1', '2', '2-2', '1-1', '0-0', '0', '-7']);
   assert.equal(player.jersey, '23');
   assert.equal(player.pos, 'F');
 });
@@ -94,5 +98,5 @@ test('court sides follow away then home', () => {
     { homeAway: 'home', team: { id: '8', name: 'Pistons', displayName: 'Detroit Pistons' } },
   ]);
   assert.deepEqual(sides.map((side) => side.name), ['Wizards', 'Pistons']);
-  assert.equal(sides[0].players[0].pts, '5');
+  assert.equal(sides[0].players[0].line[1], '5');
 });
