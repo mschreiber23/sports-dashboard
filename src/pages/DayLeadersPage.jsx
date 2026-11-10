@@ -156,7 +156,7 @@ export default function DayLeadersPage() {
     <div className="day-leaders">
       <div className="day-leaders-head">
         <div>
-          <h1>Top today</h1>
+          <h1>StatHub</h1>
           <p className="day-leaders-note">Tap a stat to sort.</p>
           {board?.live && isToday && (
             <span className="day-leaders-live">
