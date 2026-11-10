@@ -73,7 +73,7 @@ export default function PlayerRoster({ editMode = false, setEditMode }) {
   };
 
   return (
-    <section className="section">
+    <section className="section home-section">
       <div className="section-header">
         <h2 className="section-title">My Players</h2>
         <div className="header-actions">

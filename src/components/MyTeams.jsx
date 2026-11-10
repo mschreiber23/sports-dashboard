@@ -130,7 +130,7 @@ export default function MyTeams({ editMode = false, setEditMode }) {
   };
 
   return (
-    <section className="section">
+    <section className="section home-section">
       <div className="section-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <h2 className="section-title">My Teams</h2>
