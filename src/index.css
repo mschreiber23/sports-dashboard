@@ -7172,6 +7172,13 @@ thead .dfs-sticky-player {
   font-weight: 700;
   cursor: pointer;
 }
+.nba-gc-quarter {
+  margin: 14px 6px 2px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+.nba-gc-feed:first-child .nba-gc-quarter { margin-top: 2px; }
 .nba-gc-heading {
   margin: 0 0 6px;
   font-size: 12px;

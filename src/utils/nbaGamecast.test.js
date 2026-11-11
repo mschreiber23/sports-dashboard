@@ -6,6 +6,9 @@ import {
   nbaPlayClock,
   nbaPlayTitle,
   nbaNotablePlays,
+  nbaFeedTitle,
+  nbaQuarterHeading,
+  nbaPlaysByQuarter,
   nbaWinLabel,
   nbaOnCourt,
   nbaCourtSides,
@@ -55,6 +58,36 @@ test('notable plays are newest first and drop misses', () => {
     { id: '4', type: { text: 'Full Timeout' }, shortDescription: 'Timeout', text: 'Wizards Full timeout' },
   ];
   assert.deepEqual(nbaNotablePlays(plays).map((play) => play.id), ['4', '3', '2']);
+});
+
+test('the full feed titles every play and keeps the gamecast labels', () => {
+  assert.equal(nbaFeedTitle({ scoringPlay: true, scoreValue: 2, shortDescription: '+2 Points' }), '+2 Points');
+  assert.equal(nbaFeedTitle({ type: { text: 'Full Timeout' }, shortDescription: 'Timeout' }), 'Timeout');
+  assert.equal(nbaFeedTitle({
+    type: { text: 'Bad Pass Turnover' },
+    shortDescription: 'Turnover',
+    text: 'AJ Dybantsa bad pass turnover (Daniss Jenkins steals)',
+  }), 'Steal');
+  assert.equal(nbaFeedTitle({
+    type: { text: 'Jump Shot' },
+    shortDescription: 'Missed 3PT',
+    text: 'Trae Young misses 7-foot floating jump shot',
+  }), 'Missed 3PT');
+  assert.equal(nbaQuarterHeading('4th'), '4th Quarter');
+  assert.equal(nbaQuarterHeading('OT'), 'OT');
+});
+
+test('plays run newest first inside each quarter', () => {
+  const groups = nbaPlaysByQuarter([
+    { id: '1', text: 'Start of the 1st Quarter', period: { number: 1 } },
+    { id: '2', text: 'first make', period: { number: 1 }, shortDescription: '+2 Points', scoringPlay: true, scoreValue: 2 },
+    { id: '3', text: 'miss', period: { number: 1 }, shortDescription: 'Missed FG' },
+    { id: '4', text: 'Start of the 2nd Quarter', period: { number: 2 } },
+    { id: '5', text: 'second make', period: { number: 2 }, shortDescription: '+3 Points', scoringPlay: true, scoreValue: 3 },
+  ]);
+  assert.deepEqual(groups.map((group) => group.heading), ['2nd Quarter', '1st Quarter']);
+  assert.deepEqual(groups[0].plays.map((play) => play.id), ['5']);
+  assert.deepEqual(groups[1].plays.map((play) => play.id), ['3', '2']);
 });
 
 test('win percent names the leader', () => {
