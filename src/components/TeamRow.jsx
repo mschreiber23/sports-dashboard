@@ -1100,7 +1100,7 @@ function GenericTeamRows({ away, home, sport, showScore, finalLabel, liveLabel, 
           {finalLabel ? <span className="mlbc-final-label">{finalLabel}</span>
           : liveLabel  ? liveLabel
           : <span className="mlbc-rhe-spacer" />}
-          <span style={{width:40,textAlign:'right',fontSize:11,color:'var(--text2)'}}>PTS</span>
+          <span style={{width:40,textAlign:'right',fontSize:13,color:'var(--text2)'}}>PTS</span>
         </div>
       )}
       {[away, home].filter(Boolean).map((c) => (
@@ -1309,7 +1309,7 @@ function NhlTeamRows({ away, home, showScore, finalLabel, liveLabel, awayScoreOv
           {finalLabel ? <span className="mlbc-final-label">{finalLabel}</span>
           : liveLabel  ? liveLabel
           : <span className="mlbc-rhe-spacer" />}
-          <span style={{width:40,textAlign:'right',fontSize:11,color:'var(--text2)'}}>PTS</span>
+          <span style={{width:40,textAlign:'right',fontSize:13,color:'var(--text2)'}}>PTS</span>
         </div>
       )}
       {[away, home].filter(Boolean).map((c) => {
