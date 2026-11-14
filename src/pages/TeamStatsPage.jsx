@@ -4,7 +4,7 @@ import { getTeamLogo } from '../api/espn';
 import { loadNbaTeamBoard, loadNbaTeams } from '../api/nbaTeamBoard';
 import { loadNhlTeamBoard, loadNhlTeams } from '../api/nhlTeamBoard';
 import { chartMax, formatAverage, NBA_CATEGORIES, sortPlayers } from '../utils/nbaTeamPlayers';
-import { sortSkaters } from '../utils/nhlTeamSkaters';
+import { NHL_CATEGORIES, sortSkaters } from '../utils/nhlTeamSkaters';
 
 const SPORTS = {
   nba: {
@@ -27,15 +27,9 @@ const SPORTS = {
     remembered: 'nhl_team_stats_id',
     empty: 'No skaters on this roster.',
     loading: 'Loading skaters…',
-    note: 'Season points, goals, and assists. Tap a column to sort.',
+    note: 'Season points, goals, and assists. Tap a column to sort. The charts follow the category you pick.',
   },
 };
-
-const NHL_COLUMNS = [
-  { key: 'points', label: 'PTS' },
-  { key: 'goals', label: 'G' },
-  { key: 'assists', label: 'A' },
-];
 
 const SPORT_KEY = 'team_stats_sport';
 
@@ -182,12 +176,11 @@ export default function TeamStatsPage() {
     [sourceRows, sort, sport],
   );
   const color = team?.color ? `#${String(team.color).replace('#', '')}` : '#3aabff';
-  const selected = NBA_CATEGORIES.find((item) => item.key === category) || NBA_CATEGORIES[0];
+  const categories = sport === 'nhl' ? NHL_CATEGORIES : NBA_CATEGORIES;
+  const selected = categories.find((item) => item.key === category) || categories[0];
   const opponent = visibleBoard?.opponent;
   const versusName = opponent?.abbreviation || opponent?.name || 'opponent';
-  const versusLabel = sport === 'nba'
-    ? `Last 10 ${selected.word} vs ${versusName}`
-    : `Last 10 vs ${versusName}`;
+  const versusLabel = `Last 10 ${selected.word} vs ${versusName}`;
 
   function chooseSport(next) {
     if (next === sport) return;
@@ -204,7 +197,7 @@ export default function TeamStatsPage() {
   }
 
   function columns() {
-    const list = sport === 'nhl' ? NHL_COLUMNS : NBA_CATEGORIES;
+    const list = categories;
     return list.map((column) => {
       const active = sort.key === column.key;
       const mark = !active ? '' : sort.dir === 'asc' ? '↑' : '↓';
@@ -260,9 +253,9 @@ export default function TeamStatsPage() {
 
       {opponent && <p className="nts-next">{gameLabel(opponent)}</p>}
 
-      {sport === 'nba' && (
+      {(sport === 'nba' || sport === 'nhl') && (
         <div className="nts-cats" role="group" aria-label="Chart category">
-          {NBA_CATEGORIES.map((item) => (
+          {categories.map((item) => (
             <button
               key={item.key}
               type="button"
@@ -303,16 +296,18 @@ export default function TeamStatsPage() {
             );
           })}
           {sport === 'nhl' && rows.map((row) => {
-            const max = chartMax([row.last10, row.versus]);
+            const last10 = row.last10?.[selected.key] || [];
+            const versus = row.versus?.[selected.key] || [];
+            const max = chartMax([last10, versus]);
             return (
               <article key={row.id} className="nts-row">
                 <PlayerButton sport="nhl" row={row} onOpen={navigate} />
-                <span className="nts-stat">{row.points}</span>
-                <span className="nts-stat">{row.goals}</span>
-                <span className="nts-stat">{row.assists}</span>
+                {NHL_CATEGORIES.map((column) => (
+                  <span key={column.key} className="nts-stat">{row[column.key]}</span>
+                ))}
                 <div className="nts-charts">
-                  <Bars values={row.last10} label="Last 10" max={max} color={color} />
-                  <Bars values={row.versus} label={versusLabel} max={max} color={color} />
+                  <Bars values={last10} label={`Last 10 ${selected.word}`} max={max} color={color} />
+                  <Bars values={versus} label={versusLabel} max={max} color={color} />
                 </div>
               </article>
             );

@@ -5,9 +5,10 @@ import {
   gamesFromNhlLog,
   mergeGames,
   nextOpponent,
-  pointSeries,
+  NHL_CATEGORIES,
   seasonTotals,
   skatersFromRoster,
+  statSeries,
 } from '../utils/nhlTeamSkaters.js';
 
 const logCache = new Map();
@@ -68,11 +69,17 @@ export async function loadNhlTeamBoard(teamId, onProgress, now = new Date()) {
     const [current, ...earlier] = logs[index];
     const games = mergeGames([current, ...earlier]);
     const versus = games.filter((game) => facesOpponent(game, opponent));
+    const last10 = {};
+    const against = {};
+    for (const category of NHL_CATEGORIES) {
+      last10[category.key] = statSeries(games, category.key, 10);
+      against[category.key] = statSeries(versus, category.key, 10);
+    }
     return {
       ...skater,
       ...seasonTotals(current),
-      last10: pointSeries(games, 10),
-      versus: pointSeries(versus, 10),
+      last10,
+      versus: against,
     };
   });
   return { season: year, opponent, skaters: rows };
