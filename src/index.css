@@ -10197,4 +10197,18 @@ thead .dfs-sticky-player {
   background: rgba(255, 255, 255, 0.16);
   border-radius: 4px;
 }
+.stathub .day-leaders-note { font-size: 14px; }
+.stathub .day-leaders-live { font-size: 14px; }
+.stathub .day-leaders-status { font-size: 15px; }
+.stathub .sp-date-label { font-size: 14px; }
+.stathub .ts-tab { font-size: 13px; }
+.stathub .day-leaders-sorts button { font-size: 14px; }
+.stathub .day-card-rank { font-size: 12px; }
+.stathub .day-leaders-name { font-size: 15px; }
+.stathub .day-leaders-pos { font-size: 12px; }
+.stathub .day-card-side,
+.stathub .day-card-pts,
+.stathub .day-card-live { font-size: 14px; }
+.stathub .day-card-stats b { font-size: 14px; }
+.stathub .day-card-labels { font-size: 10px; }
 .sp-date-btn:disabled { opacity: 0.35; cursor: default; }
