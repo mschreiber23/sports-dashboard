@@ -146,8 +146,7 @@ function moreItemActive(pathname, path) {
 
 const MORE_ITEMS = [
   { path: '/standings',  label: 'Standings',    Icon: StandingsIcon },
-  { path: '/nhl-teams',  label: 'NHL Teams',    Icon: TeamIcon },
-  { path: '/nba-teams',  label: 'NBA Teams',    Icon: TeamIcon },
+  { path: '/team-stats', label: 'Team Stats',   Icon: TeamIcon },
   { path: '/nhl-cold',   label: 'Cold streaks', Icon: PointsIcon },
   { path: '/props',      label: 'Props',        Icon: PropsIcon },
   { path: '/me',         label: 'My Profile',   Icon: MeIcon },
