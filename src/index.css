@@ -3318,7 +3318,7 @@ body {
 .bsp-ls-td { padding: 9px 8px; text-align: center; color: #ffffff; font-variant-numeric: tabular-nums; }
 .bsp-ls-team-col.bsp-ls-td { text-align: left; padding-left: 14px; display: flex; align-items: center; gap: 7px; }
 .bsp-ls-logo { width: 18px; height: 18px; object-fit: contain; }
-.bsp-ls-abbr { font-weight: 700; font-size: 12px; color: var(--text); }
+.bsp-ls-abbr { font-weight: 700; font-size: 13px; color: var(--text); }
 .bsp-ls-rhe.bsp-ls-td { border-left: 1px solid var(--border); }
 .bsp-ls-bold { font-weight: 800; color: var(--text); }
 
@@ -6845,9 +6845,9 @@ thead .dfs-sticky-player {
   border-radius: 0;
   overflow: hidden;
 }
-.bsp-linescore { font-size: 12px; }
-.bsp-ls-th { padding: 7px 6px; font-size: 10px; background: #0f0f13; }
-.bsp-ls-td { padding: 7px 6px; font-size: 12px; color: #ffffff; }
+.bsp-linescore { font-size: 13px; }
+.bsp-ls-th { padding: 7px 6px; font-size: 13px; background: #0f0f13; }
+.bsp-ls-td { padding: 7px 6px; font-size: 13px; color: #ffffff; }
 
 /* Game notes — inline pills */
 .bsp-mlb-notes { padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
@@ -7080,24 +7080,25 @@ thead .dfs-sticky-player {
 
 /* ESPN basketball box score: starters / bench / team, name stays put while stats scroll */
 .bsp-nba .bsp-th,
-.bsp-nba .bsp-td { padding: 7px 6px; }
-.bsp-nba .bsp-th { font-size: 11px; text-transform: none; letter-spacing: 0; }
+.bsp-nba .bsp-td { padding: 9px 7px; }
+.bsp-nba .bsp-th { font-size: 13px; text-transform: none; letter-spacing: 0; }
 .bsp-nba .bsp-td,
 .bsp-nba .bsp-player-name,
-.bsp-nba .bsp-th-player { font-size: 12px; }
+.bsp-nba .bsp-th-player { font-size: 13px; }
+.bsp-nba .bsp-player-headshot { width: 28px; height: 28px; }
 .bsp-nba .bsp-th-player,
 .bsp-nba .bsp-td-player {
   position: sticky;
   left: 0;
   background: #0f0f13;
   z-index: 1;
-  min-width: 158px;
+  min-width: 188px;
 }
 .bsp-nba thead .bsp-th-player { z-index: 2; text-transform: none; }
 .bsp-nba .bsp-nba-divider .bsp-td-player,
 .bsp-nba .bsp-totals-label { text-transform: none; }
 .bsp-nba .bsp-nba-divider .bsp-td {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
   padding-top: 14px;
@@ -7105,14 +7106,14 @@ thead .dfs-sticky-player {
 }
 .bsp-nba-pos,
 .bsp-nba-num {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text2);
   margin-left: 5px;
 }
 .bsp-nba-dnp { padding: 12px 8px 4px; }
 .bsp-nba-dnp-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
   margin-bottom: 4px;
@@ -7129,9 +7130,9 @@ thead .dfs-sticky-player {
   cursor: pointer;
 }
 .bsp-nba-dnp-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.bsp-nba-dnp-reason { font-size: 12px; color: var(--text2); }
+.bsp-nba-dnp-reason { font-size: 13px; color: var(--text2); }
 
-/* Live NBA gamecast. One step above the shared table: 12px names and stats, 11px headers. */
+/* Live NBA gamecast. Names, stats, play text, and labels are 13px. */
 .nba-gc { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 12px; min-width: 0; max-width: 100%; }
 .nba-gc-feed { display: flex; flex-direction: column; }
 .nba-gc-play {
@@ -7140,13 +7141,13 @@ thead .dfs-sticky-player {
   padding: 7px 6px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.nba-gc-play-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; margin-top: 1px; }
+.nba-gc-play-logo { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; margin-top: 1px; }
 .nba-gc-play-logo-empty { display: block; }
 .nba-gc-play-main { flex: 1; min-width: 0; }
 .nba-gc-play-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.nba-gc-play-title { font-size: 12px; font-weight: 700; color: var(--text); }
+.nba-gc-play-title { font-size: 13px; font-weight: 700; color: var(--text); }
 .nba-gc-play-score {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -7157,18 +7158,18 @@ thead .dfs-sticky-player {
   justify-content: space-between;
   gap: 8px;
   margin-top: 1px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text2);
 }
-.nba-gc-play-text { margin: 3px 0 0; font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--text); }
+.nba-gc-play-text { margin: 3px 0 0; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--text); }
 .nba-gc-more {
   align-self: center;
   margin-top: 8px;
   background: none;
   border: none;
   color: var(--accent2);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -7191,13 +7192,27 @@ thead .dfs-sticky-player {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .nba-gc-teamhead img { width: 22px; height: 22px; object-fit: contain; }
 .nba-gc-court .bsp-table-wrap + .bsp-table-wrap { margin-top: 16px; }
+.nba-gc-court .nba-gc-heading { font-size: 13px; margin-bottom: 8px; }
+.nba-gc-court .nba-gc-teamhead { font-size: 13px; }
+.nba-gc-court .nba-gc-teamhead img { width: 28px; height: 28px; }
+.nba-gc-court .bsp-th,
+.nba-gc-court .bsp-td { padding: 9px 7px; }
+.nba-gc-court .bsp-th { font-size: 13px; }
+.nba-gc-court .bsp-td,
+.nba-gc-court .bsp-player-name,
+.nba-gc-court .bsp-th-player { font-size: 13px; }
+.nba-gc-court .bsp-nba-pos,
+.nba-gc-court .bsp-nba-num { font-size: 13px; }
+.nba-gc-court .bsp-player-headshot { width: 28px; height: 28px; }
+.nba-gc-court .bsp-th-player,
+.nba-gc-court .bsp-td-player { min-width: 188px; }
 
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }
@@ -7436,9 +7451,9 @@ thead .dfs-sticky-player {
 }
 .mlbc-live-header { padding: 8px 14px 6px; }
 .mlbc-time { font-size: 13px; font-weight: 700; color: var(--text); }
-.mlbc-broadcast { font-size: 10px; color: var(--text2); }
-.mlbc-final-label { font-size: 11px; font-weight: 800; letter-spacing: normal; text-transform: uppercase; color: #f1f1f3; }
-.mlbc-inning { font-size: 12px; font-weight: 700; color: var(--text); }
+.mlbc-broadcast { font-size: 13px; color: var(--text2); }
+.mlbc-final-label { font-size: 13px; font-weight: 800; letter-spacing: normal; text-transform: uppercase; color: #f1f1f3; }
+.mlbc-inning { font-size: 13px; font-weight: 700; color: var(--text); }
 
 /* Team rows */
 .mlbc-teams { padding: 6px 14px 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -7450,7 +7465,7 @@ thead .dfs-sticky-player {
 .mlbc-rhe-spacer { flex: 1; }
 /* .mlbc-final-label inside the rhe-header takes the spacer role */
 .mlbc-rhe-header .mlbc-final-label { flex: 1; }
-.mlbc-rhe-header > span { font-size: 11px; font-weight: 600; color: #ffffff; text-align: left; width: 30px; }
+.mlbc-rhe-header > span { font-size: 13px; font-weight: 600; color: #ffffff; text-align: left; width: 30px; }
 .mlbc-rhe-header > span:not(.mlbc-rhe-spacer):not(.mlbc-final-label) { width: 30px; text-align: right; color: grey; }
 .mlbc-team-row {
   display: flex;
@@ -7464,9 +7479,9 @@ thead .dfs-sticky-player {
 .mlbc-team-row:hover { background: rgba(255,255,255,0.04); }
 .mlbc-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
 .mlbc-team-info { flex: 1; display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; padding: 0 6px; }
-.mlbc-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mlbc-rec  { font-size: 11px; color: var(--text2); white-space: nowrap; flex-shrink: 0; }
-.mlbc-stat { font-size: 14px; font-weight: 600; color: var(--text); text-align: right; width: 30px; flex-shrink: 0; }
+.mlbc-name { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mlbc-rec  { font-size: 13px; color: var(--text2); white-space: nowrap; flex-shrink: 0; }
+.mlbc-stat { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; width: 30px; flex-shrink: 0; }
 .mlbc-dim   { color: var(--text2); font-weight: 400; }
 .mlbc-winner { font-weight: 800; }
 
@@ -7690,14 +7705,14 @@ thead .dfs-sticky-player {
   border-bottom: 1px solid var(--border);
 }
 .nba-stats-team {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.06em;
   color: var(--text);
 }
 .nba-stats-col {
   text-align: right;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text2);
@@ -7734,10 +7749,10 @@ thead .dfs-sticky-player {
   font-variant-numeric: tabular-nums;
 }
 .nba-stats-cell.is-zero { color: #5c5c6c; font-weight: 600; }
-.nba-stats-empty { margin: 0; font-size: 12px; color: var(--text2); }
+.nba-stats-empty { margin: 0; font-size: 13px; color: var(--text2); }
 .nfl-stats-group + .nfl-stats-group { margin-top: 12px; }
 .nfl-stats-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--text2);
@@ -7776,7 +7791,7 @@ thead .dfs-sticky-player {
   overflow: hidden;
 }
 .mlbc-inning-live {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--live);
   white-space: nowrap;
@@ -8304,7 +8319,7 @@ thead .dfs-sticky-player {
 }
 .nhl-card-goalie-row {
   flex: 1; display: flex; align-items: center; gap: 6px;
-  font-size: 12px; padding: 0 10px; min-width: 0;
+  font-size: 13px; padding: 0 10px; min-width: 0;
   border-right: 1px solid var(--border);
 }
 .nhl-card-goalie-row:last-child { border-right: none; }
@@ -8319,7 +8334,7 @@ thead .dfs-sticky-player {
   line-height: 1.15;
 }
 .nhl-card-goalie-stats {
-  font-size: 10px; color: var(--text2); font-style: italic;
+  font-size: 13px; color: var(--text2); font-style: italic;
   font-variant-numeric: tabular-nums; line-height: 1.2;
 }
 
@@ -8347,14 +8362,14 @@ thead .dfs-sticky-player {
 }
 .nhl-card-goal-row {
   display: flex; align-items: center; gap: 7px;
-  padding: 5px 12px; font-size: 12px;
+  padding: 5px 12px; font-size: 13px;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
 .nhl-card-goal-row:last-child { border-bottom: none; }
 .nhl-card-goal-row:hover { background: var(--bg3); }
 .nhl-card-goal-period {
-  font-size: 10px; font-weight: 700; color: var(--text2);
+  font-size: 13px; font-weight: 700; color: var(--text2);
   white-space: nowrap; min-width: 54px; flex-shrink: 0;
 }
 .nhl-card-goal-info {
@@ -8365,7 +8380,7 @@ thead .dfs-sticky-player {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .nhl-card-goal-count {
-  font-weight: 400; color: var(--text2); font-size: 11px;
+  font-weight: 400; color: var(--text2); font-size: 13px;
 }
 .nhl-card-goal-pp {
   display: inline-block;
@@ -8394,7 +8409,7 @@ thead .dfs-sticky-player {
   vertical-align: 1px;
 }
 .nhl-card-goal-assists {
-  font-size: 10px; color: var(--text2); font-style: italic;
+  font-size: 13px; color: var(--text2); font-style: italic;
   white-space: normal;
 }
 .nhl-card-goal-assists .nhl-card-goal-count {
@@ -8402,13 +8417,13 @@ thead .dfs-sticky-player {
   font-style: inherit;
 }
 .nhl-card-goal-score {
-  font-size: 12px; font-weight: 800; color: var(--text);
+  font-size: 13px; font-weight: 800; color: var(--text);
   flex-shrink: 0; font-variant-numeric: tabular-nums;
 }
 
 .sport-sit-line {
   padding: 7px 14px;
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text2);
   font-weight: 600;
 }
@@ -8438,13 +8453,13 @@ thead .dfs-sticky-player {
   align-items: baseline;
   gap: 4px 8px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .nfl-sit-team { color: var(--text); }
 .nfl-sit-spot { color: var(--text2); font-weight: 600; }
 .nfl-sit-play {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--text2);
@@ -8471,9 +8486,9 @@ thead .dfs-sticky-player {
   background: var(--bg3);
   flex-shrink: 0;
 }
-.sport-leader-cat  { font-size: 9px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.4; }
-.sport-leader-name { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sport-leader-val  { font-size: 10px; color: var(--text2); line-height: 1.3; }
+.sport-leader-cat  { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.4; }
+.sport-leader-name { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sport-leader-val  { font-size: 13px; color: var(--text2); line-height: 1.3; }
 
 /* No-game card */
 .sport-nogame-card { cursor: pointer; }
