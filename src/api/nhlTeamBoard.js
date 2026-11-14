@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { activeSeasonYear, getTeamRoster, getTeamSchedule, searchTeams } from './espn.js';
+import { chartSeasons } from '../utils/chartSeasons.js';
 import {
   facesOpponent,
   gamesFromNhlLog,
@@ -60,7 +61,12 @@ export async function loadNhlTeamBoard(teamId, onProgress, now = new Date()) {
   const opponent = nextOpponent(events, teamId, now.getTime());
   let done = 0;
   const logs = await mapPool(skaters, 6, async (skater) => {
-    const seasons = await Promise.all([0, 1, 2].map((back) => gamelog(skater.id, year - back)));
+    const seasons = await chartSeasons(
+      (season) => gamelog(skater.id, season),
+      year,
+      opponent,
+      facesOpponent,
+    );
     done += 1;
     onProgress?.(done, skaters.length);
     return seasons;
