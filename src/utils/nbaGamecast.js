@@ -59,6 +59,41 @@ export function nbaNotablePlays(plays) {
   return (plays || []).filter((play) => nbaPlayTitle(play)).slice().reverse();
 }
 
+/** Title for every play, matching the gamecast card when that card has one. */
+export function nbaFeedTitle(play) {
+  const titled = nbaPlayTitle(play);
+  if (titled) return titled;
+  const short = String(play?.shortDescription || '').trim();
+  if (short) return short;
+  return String(play?.type?.text || '').trim() || 'Play';
+}
+
+export function nbaQuarterHeading(label) {
+  if (/^\d+(st|nd|rd|th)$/i.test(label || '')) return `${label} Quarter`;
+  return label || '';
+}
+
+function isPeriodMarker(play) {
+  const text = String(play?.text || '').trim();
+  if (!text) return true;
+  if (/^(start|end) of /i.test(text)) return true;
+  const kind = String(play?.type?.type || '').toLowerCase();
+  return kind === 'start-period' || kind === 'end-period';
+}
+
+/** Every real play, newest first, split so the current quarter stays on top. */
+export function nbaPlaysByQuarter(plays) {
+  const groups = [];
+  for (const play of (plays || []).slice().reverse()) {
+    if (isPeriodMarker(play)) continue;
+    const heading = nbaQuarterHeading(nbaPeriodLabel(play.period)) || 'Period';
+    const last = groups[groups.length - 1];
+    if (!last || last.heading !== heading) groups.push({ heading, plays: [play] });
+    else last.plays.push(play);
+  }
+  return groups;
+}
+
 export function nbaWinLabel(homeWin, awayAbbr, homeAbbr) {
   if (homeWin == null || homeWin === '') return '';
   const pct = Number(homeWin);

@@ -2,9 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { getTeamLogo } from '../api/espn';
 import {
   NBA_BOX_COLUMNS,
-  nbaPlayTitle,
+  nbaFeedTitle,
   nbaPlayClock,
   nbaNotablePlays,
+  nbaPlaysByQuarter,
   nbaWinLabel,
   nbaCourtSides,
 } from '../utils/nbaGamecast';
@@ -16,46 +17,85 @@ function teamLogo(team) {
   return getTeamLogo(team) || team?.logo || '';
 }
 
+function logoFor(teamId, away, home) {
+  const id = String(teamId || '');
+  if (id && id === String(away?.team?.id)) return teamLogo(away.team);
+  if (id && id === String(home?.team?.id)) return teamLogo(home.team);
+  return '';
+}
+
+function PlayArticle({ play, logo, win }) {
+  return (
+    <article className="nba-gc-play">
+      {logo
+        ? <img src={logo} alt="" className="nba-gc-play-logo" />
+        : <span className="nba-gc-play-logo nba-gc-play-logo-empty" />}
+      <div className="nba-gc-play-main">
+        <div className="nba-gc-play-top">
+          <span className="nba-gc-play-title">{nbaFeedTitle(play)}</span>
+          <span className="nba-gc-play-score">{play.awayScore} {play.homeScore}</span>
+        </div>
+        <div className="nba-gc-play-meta">
+          <span>{nbaPlayClock(play)}</span>
+          {win && <span>{win}</span>}
+        </div>
+        {play.text && <p className="nba-gc-play-text">{play.text}</p>}
+      </div>
+    </article>
+  );
+}
+
 function PlayFeed({ plays, winById, away, home, onShowAll }) {
   const notable = nbaNotablePlays(plays).slice(0, FEED_LIMIT);
   if (!notable.length) return null;
   const awayAbbr = away?.team?.abbreviation || '';
   const homeAbbr = home?.team?.abbreviation || '';
-  const logoFor = (teamId) => {
-    const id = String(teamId || '');
-    if (id && id === String(away?.team?.id)) return teamLogo(away.team);
-    if (id && id === String(home?.team?.id)) return teamLogo(home.team);
-    return '';
-  };
 
   return (
     <section className="nba-gc-feed">
-      {notable.map((play, index) => {
-        const logo = logoFor(play.team?.id);
-        const win = index === 0 ? nbaWinLabel(winById.get(String(play.id)), awayAbbr, homeAbbr) : '';
-        return (
-          <article key={play.id || index} className="nba-gc-play">
-            {logo
-              ? <img src={logo} alt="" className="nba-gc-play-logo" />
-              : <span className="nba-gc-play-logo nba-gc-play-logo-empty" />}
-            <div className="nba-gc-play-main">
-              <div className="nba-gc-play-top">
-                <span className="nba-gc-play-title">{nbaPlayTitle(play)}</span>
-                <span className="nba-gc-play-score">{play.awayScore} {play.homeScore}</span>
-              </div>
-              <div className="nba-gc-play-meta">
-                <span>{nbaPlayClock(play)}</span>
-                {win && <span>{win}</span>}
-              </div>
-              {play.text && <p className="nba-gc-play-text">{play.text}</p>}
-            </div>
-          </article>
-        );
-      })}
+      {notable.map((play, index) => (
+        <PlayArticle
+          key={play.id || index}
+          play={play}
+          logo={logoFor(play.team?.id, away, home)}
+          win={index === 0 ? nbaWinLabel(winById.get(String(play.id)), awayAbbr, homeAbbr) : ''}
+        />
+      ))}
       {onShowAll && (
         <button type="button" className="nba-gc-more" onClick={onShowAll}>Full Play-By-Play</button>
       )}
     </section>
+  );
+}
+
+export function NbaPlayByPlay({ data, competitors }) {
+  const comps = competitors || [];
+  const away = comps.find((comp) => comp.homeAway === 'away') || comps[0];
+  const home = comps.find((comp) => comp.homeAway === 'home') || comps[1];
+  const groups = nbaPlaysByQuarter(data?.plays);
+  const winById = new Map((data?.winprobability || []).map((row) => [String(row.playId), row.homeWinPercentage]));
+  const newestId = groups[0]?.plays[0]?.id;
+  const awayAbbr = away?.team?.abbreviation || '';
+  const homeAbbr = home?.team?.abbreviation || '';
+
+  if (!groups.length) return <div className="tp-loading">Play-by-play not available.</div>;
+
+  return (
+    <div className="nba-gc">
+      {groups.map((group) => (
+        <section key={group.heading} className="nba-gc-feed">
+          <h2 className="nba-gc-quarter">{group.heading}</h2>
+          {group.plays.map((play, index) => (
+            <PlayArticle
+              key={play.id || `${group.heading}-${index}`}
+              play={play}
+              logo={logoFor(play.team?.id, away, home)}
+              win={play.id && play.id === newestId ? nbaWinLabel(winById.get(String(play.id)), awayAbbr, homeAbbr) : ''}
+            />
+          ))}
+        </section>
+      ))}
+    </div>
   );
 }
 
