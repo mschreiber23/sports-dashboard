@@ -7198,6 +7198,20 @@ thead .dfs-sticky-player {
 }
 .nba-gc-teamhead img { width: 22px; height: 22px; object-fit: contain; }
 .nba-gc-court .bsp-table-wrap + .bsp-table-wrap { margin-top: 16px; }
+.nba-gc-court .nba-gc-heading { font-size: 16px; margin-bottom: 8px; }
+.nba-gc-court .nba-gc-teamhead { font-size: 18px; }
+.nba-gc-court .nba-gc-teamhead img { width: 28px; height: 28px; }
+.nba-gc-court .bsp-th,
+.nba-gc-court .bsp-td { padding: 9px 7px; }
+.nba-gc-court .bsp-th { font-size: 13px; }
+.nba-gc-court .bsp-td,
+.nba-gc-court .bsp-player-name,
+.nba-gc-court .bsp-th-player { font-size: 15px; }
+.nba-gc-court .bsp-nba-pos,
+.nba-gc-court .bsp-nba-num { font-size: 13px; }
+.nba-gc-court .bsp-player-headshot { width: 28px; height: 28px; }
+.nba-gc-court .bsp-th-player,
+.nba-gc-court .bsp-td-player { min-width: 188px; }
 
 /* bs-stat-section: minimal spacing */
 .bs-stat-section { margin: 0; }

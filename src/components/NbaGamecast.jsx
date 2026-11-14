@@ -167,8 +167,8 @@ export default function NbaGamecast({ data, competitors, onShowAll }) {
 
   return (
     <div className="nba-gc">
-      <PlayFeed plays={data?.plays} winById={winById} away={away} home={home} onShowAll={onShowAll} />
       <OnCourt sides={sides} onOpen={open} />
+      <PlayFeed plays={data?.plays} winById={winById} away={away} home={home} onShowAll={onShowAll} />
     </div>
   );
 }
