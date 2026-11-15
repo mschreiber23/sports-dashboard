@@ -3,6 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { getTeamLogo } from '../api/espn';
 import { loadNbaTeamBoard, loadNbaTeams } from '../api/nbaTeamBoard';
 import { loadNhlTeamBoard, loadNhlTeams } from '../api/nhlTeamBoard';
+import { readLocal, rememberLocal } from '../utils/localStore';
 import { chartMax, formatAverage, NBA_CATEGORIES, sortPlayers } from '../utils/nbaTeamPlayers';
 import { NHL_CATEGORIES, sortSkaters } from '../utils/nhlTeamSkaters';
 
@@ -115,14 +116,14 @@ export default function TeamStatsPage() {
 
   useEffect(() => {
     if (sport) return;
-    const remembered = localStorage.getItem(SPORT_KEY);
+    const remembered = readLocal(SPORT_KEY);
     const next = SPORTS[remembered] ? remembered : 'nba';
     navigate(`/team-stats/${next}`, { replace: true });
   }, [sport, navigate]);
 
   useEffect(() => {
     if (!sport) return;
-    localStorage.setItem(SPORT_KEY, sport);
+    rememberLocal(SPORT_KEY, sport);
     setSort({ key: 'points', dir: 'desc' });
     setCategory('points');
     let cancel = false;
@@ -139,14 +140,14 @@ export default function TeamStatsPage() {
 
   useEffect(() => {
     if (!sport || teamId || teamSport !== sport || teams.length === 0) return;
-    const remembered = localStorage.getItem(spec.remembered);
+    const remembered = readLocal(spec.remembered);
     const pick = teams.find((team) => String(team.id) === remembered) || teams[0];
     if (pick?.id) navigate(`/team-stats/${sport}/${pick.id}`, { replace: true });
   }, [sport, teamId, teams, teamSport, navigate, spec.remembered]);
 
   useEffect(() => {
     if (!sport || !teamId) return;
-    localStorage.setItem(spec.remembered, String(teamId));
+    rememberLocal(spec.remembered, String(teamId));
     let cancel = false;
     setLoading(true);
     setError('');
@@ -184,7 +185,7 @@ export default function TeamStatsPage() {
 
   function chooseSport(next) {
     if (next === sport) return;
-    const remembered = localStorage.getItem(SPORTS[next].remembered);
+    const remembered = readLocal(SPORTS[next].remembered);
     navigate(remembered ? `/team-stats/${next}/${remembered}` : `/team-stats/${next}`);
   }
 

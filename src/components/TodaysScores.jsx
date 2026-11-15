@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getScoreboard, SPORTS, getTeamLogo, getTeamLogoFallback } from '../api/espn';
 import { readLastSport, rememberSport } from '../utils/lastSport';
+import { rememberLocal } from '../utils/localStore';
 import { useFavorites } from '../context/FavoritesContext';
 import { normNhlAbb } from '../hooks/useNhlLiveFeed';
 import { getNflWeekGames, getNflWeekInfo, getNflWeekLabel } from '../api/nfl';
@@ -464,7 +465,7 @@ export default function TodaysScores({ compact = false, onCollapse }) {
       return fetcher
         .then((evts) => {
           setRawGames(evts);
-          try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data: evts })); } catch {}
+          rememberLocal(ck, JSON.stringify({ ts: Date.now(), data: evts }));
           if (!isNfl) {
             refreshMlbScores.current(evts);
             refreshNhlScores.current(evts);

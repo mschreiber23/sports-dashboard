@@ -32,6 +32,7 @@ import DayLeadersPage from './pages/DayLeadersPage';
 import TeamStatsPage, { LegacyTeamStats } from './pages/TeamStatsPage';
 import MiLBPlayerPage from './pages/MiLBPlayerPage';
 import { PropSyncProvider } from './components/PropSync';
+import { readLocal, rememberLocal } from './utils/localStore';
 import './index.css';
 
 /* ── Home Dashboard ─────────────────────────────────── */
@@ -57,12 +58,12 @@ function AppShell({ userId }) {
 
   // Ticker visibility — persisted across sessions
   const [tickerVisible, setTickerVisible] = useState(() =>
-    localStorage.getItem('tickerVisible') !== 'false'
+    readLocal('tickerVisible') !== 'false'
   );
   const toggleTicker = () => {
     const next = !tickerVisible;
     setTickerVisible(next);
-    localStorage.setItem('tickerVisible', String(next));
+    rememberLocal('tickerVisible', String(next));
   };
 
   return (
