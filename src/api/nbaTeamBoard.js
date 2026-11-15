@@ -84,6 +84,7 @@ export async function loadNbaTeamBoard(teamId, onProgress, now = new Date()) {
     return {
       ...player,
       averages: seasonAverages(current),
+      games: (current || []).length,
       last10,
       versus: against,
     };

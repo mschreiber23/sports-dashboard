@@ -72,23 +72,24 @@ function Bars({ values, label, max, color }) {
   );
 }
 
+function GamesPill({ games }) {
+  if (!Number.isFinite(games)) return null;
+  return <span className="nts-gp">{games} GP</span>;
+}
+
 function PlayerButton({ sport, row, onOpen }) {
   return (
     <button type="button" className="nts-player" onClick={() => onOpen(`/player/${sport}/${row.id}`)}>
       {row.headshot
         ? <img src={row.headshot} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
         : <span className="nts-photo" />}
-      {sport === 'nba' ? (
-        <span className="nts-id">
-          <span className="nts-name">{row.name}</span>
+      <span className="nts-id">
+        <span className="nts-name">{row.name}</span>
+        <span className="nts-meta">
           {row.position && <span className="nts-pos">{row.position}</span>}
+          <GamesPill games={row.games} />
         </span>
-      ) : (
-        <>
-          <span className="nts-name">{row.name}</span>
-          {row.position && <span className="nts-pos">{row.position}</span>}
-        </>
-      )}
+      </span>
     </button>
   );
 }
