@@ -1121,7 +1121,7 @@ body {
 .tp-page {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 14px;
   width: 100%;
 }
 
@@ -1214,12 +1214,10 @@ body {
 
 /* Content */
 .tp-content {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 14px 14px;
-  min-height: 300px;
-  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  min-height: 0;
+  padding: 0;
 }
 
 .tp-loading {
@@ -1378,15 +1376,15 @@ body {
 .tp-news-card {
   display: flex;
   gap: 12px;
-  padding: 10px 12px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s;
 }
-.tp-news-card:hover { border-color: rgba(255,255,255,0.25); }
+.tp-news-card:hover .tp-news-headline { color: var(--accent); }
 
 .tp-news-img {
   width: 80px;
@@ -10420,9 +10418,9 @@ thead .dfs-sticky-player {
 .tp-upcoming { display: flex; flex-direction: column; gap: 6px; }
 .tp-next {
   width: 100%;
-  padding: 8px 4px;
-  border-radius: 10px;
-  background: #1e1e26;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .tp-months { overflow-x: auto; flex-wrap: nowrap; }
 .tp-months button { flex: 0 0 auto; }

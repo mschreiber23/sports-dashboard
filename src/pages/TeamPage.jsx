@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   getPlayerSeasonStats,
@@ -184,7 +184,6 @@ function UpcomingFive({ sport, teamId, events, records }) {
 function MonthSchedule({ sport, teamId, events }) {
   const months = useMemo(() => scheduleMonths(events), [events]);
   const [month, setMonth] = useState('');
-  const listRef = useRef(null);
 
   useEffect(() => {
     setMonth(defaultScheduleMonth(months));
@@ -192,12 +191,6 @@ function MonthSchedule({ sport, teamId, events }) {
 
   const shown = months.find((item) => item.key === month)?.events || [];
   const focus = focusScheduleEvent(shown);
-
-  useEffect(() => {
-    if (!focus?.id || !listRef.current) return;
-    const node = listRef.current.querySelector(`[data-game="${focus.id}"]`);
-    node?.scrollIntoView({ block: 'center' });
-  }, [focus?.id, month]);
 
   if (!months.length) return <div className="tp-loading">No schedule available.</div>;
 
@@ -216,7 +209,7 @@ function MonthSchedule({ sport, teamId, events }) {
           </button>
         ))}
       </div>
-      <div ref={listRef}>
+      <div>
         {shown.map((event) => (
           <ScheduleRow
             key={event.id}
