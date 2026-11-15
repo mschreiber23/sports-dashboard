@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { getPlayerBio } from '../api/espn';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
@@ -232,7 +232,6 @@ function StatTable({ title, subtitle, cols, rows }) {
 /* ── Main Page ───────────────────────────────────────────────────────── */
 export default function StatcastPage() {
   const { playerId } = useParams();
-  const navigate = useNavigate();
   const [bio, setBio]           = useState(null);
   const [mlbId, setMlbId]       = useState(null);
   const [percs, setPercs]       = useState(null);   // percentile row
@@ -389,8 +388,6 @@ export default function StatcastPage() {
 
   return (
     <div className="sc-page" style={{ '--accent': teamColor, '--accent2': teamColor }}>
-      <button className="tp-back" onClick={() => navigate(-1)}>← Back</button>
-
       {/* ── Header ───────────────────────────────────────────────────── */}
       {athlete.displayName && (
         <div className="sc-header" style={{ borderTop: `4px solid ${teamColor}` }}>

@@ -1,16 +1,18 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation } from 'react-router-dom';
 
 const PHONE = '(hover: none) and (pointer: coarse)';
 
-/* The page scroller is .app-body. iOS draws its indicator inset from the
-   glass, on top of the cards. This thumb is fixed to the screen edge. */
+/* The page scroller is the visible .app-page. iOS draws its indicator inset
+   from the glass, on top of the cards. This thumb is fixed to the screen edge. */
 export default function EdgeScrollbar() {
   const ref = useRef(null);
+  const { key } = useLocation();
 
   useEffect(() => {
     const el = ref.current;
-    const scroller = document.querySelector('.app-body');
+    const scroller = document.querySelector('.app-page:not([hidden])');
     if (!el || !scroller) return undefined;
 
     const mq = window.matchMedia(PHONE);
@@ -55,7 +57,7 @@ export default function EdgeScrollbar() {
       window.clearTimeout(timer);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [key]);
 
   return createPortal(
     <div ref={ref} className="edge-scrollbar" aria-hidden="true" />,
