@@ -844,6 +844,15 @@ function LogoImg({ team, url, className, style }) {
       alt="" className={className} style={style} />
   );
 }
+
+function TeamLink({ sport, team, className, children }) {
+  if (!sport || !team?.id) return <span className={className}>{children}</span>;
+  return (
+    <Link to={`/team/${sport}/${team.id}`} className={`game-team-link${className ? ` ${className}` : ''}`}>
+      {children}
+    </Link>
+  );
+}
 function getScore(c) {
   const s = c?.score;
   if (s == null) return null;
@@ -1256,7 +1265,7 @@ function SportPreviewSections({ data, away, home, sport }) {
               const recent = events.slice(0, 5);
               return (
                 <div key={ti} className="nfl-last5-row">
-                  <span className="nfl-last5-abbr">{abbr}</span>
+                  <TeamLink sport={sport} team={teamObj.team} className="nfl-last5-abbr">{abbr}</TeamLink>
                   <div className="nfl-last5-games">
                     {recent.map((ev, ei) => (
                       <span key={ei} className={`nfl-last5-result nfl-last5-${(ev.gameResult||'').toLowerCase()}`}>
@@ -1282,7 +1291,7 @@ function SportPreviewSections({ data, away, home, sport }) {
             if (!injList.length) return null;
             return (
               <div key={ti} style={{marginBottom: ti === 0 && injuries.length > 1 ? 10 : 0}}>
-                <div className="nfl-inj-team-header">{teamAbbr}</div>
+                <TeamLink sport={sport} team={teamObj.team} className="nfl-inj-team-header">{teamAbbr}</TeamLink>
                 {injList.slice(0, 8).map((inj, ii) => {
                   const ath = inj.athlete || {};
                   const pos = ath.position?.abbreviation || '';
@@ -1411,9 +1420,9 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
           <div className="preview-leaders-cat-label">Matchup Predictor</div>
           {/* [abbr][%][logo][donut][logo][abbr][%] */}
           <div className="preview-prob-circle-wrap">
-            <span className="preview-prob-abbr">{away?.team?.abbreviation}</span>
+            <TeamLink sport={sport} team={away?.team} className="preview-prob-abbr">{away?.team?.abbreviation}</TeamLink>
             <span className="preview-prob-pct">{awayPct}%</span>
-            <LogoImg team={away?.team} className="preview-team-logo" />
+            <TeamLink sport={sport} team={away?.team}><LogoImg team={away?.team} className="preview-team-logo" /></TeamLink>
             <svg width="52" height="52" viewBox="0 0 52 52" className="preview-prob-donut">
               <circle cx="26" cy="26" r="20" fill="none" stroke="var(--bg3)" strokeWidth="7" />
               <circle cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" strokeWidth="7"
@@ -1424,9 +1433,9 @@ function PreviewTab({ data, competitors, status, sport, lineups, lineupLoading, 
                 strokeDashoffset={`${-(awayPct * 1.257) + 31.4}`}
                 strokeLinecap="butt" transform="rotate(-90 26 26)" />
             </svg>
-            <LogoImg team={home?.team} className="preview-team-logo" />
+            <TeamLink sport={sport} team={home?.team}><LogoImg team={home?.team} className="preview-team-logo" /></TeamLink>
             <span className="preview-prob-pct">{homePct}%</span>
-            <span className="preview-prob-abbr">{home?.team?.abbreviation}</span>
+            <TeamLink sport={sport} team={home?.team} className="preview-prob-abbr">{home?.team?.abbreviation}</TeamLink>
           </div>
         </div>
       )}
@@ -1989,7 +1998,9 @@ function NflCurrentDriveView({ drive, lastPlay, away, home, winProbEntry, boxsco
       {/* Header: team logo + "CURRENT DRIVE" + drive description */}
       <div className="nfl-cd-header">
         <div className="nfl-cd-header-left">
-          <LogoImg team={drivingComp?.team} className="nfl-cd-logo" />
+          <TeamLink sport="nfl" team={drivingComp?.team}>
+            <LogoImg team={drivingComp?.team} className="nfl-cd-logo" />
+          </TeamLink>
           <div>
             <div className="nfl-cd-title">CURRENT DRIVE</div>
             {driveDesc && <div className="nfl-cd-desc">{driveDesc}</div>}
@@ -2217,14 +2228,14 @@ function NflGamecast({ data, situation, competitors, status }) {
         <div className="nfl-gc-section">
           <div className="nfl-gc-section-title">Game Leaders</div>
           <div className="nfl-leaders-header">
-            <div className="nfl-leaders-team">
+            <TeamLink sport="nfl" team={away?.team} className="nfl-leaders-team">
               <LogoImg team={away?.team} className="nfl-leaders-logo" />
               <span>{away?.team?.abbreviation}</span>
-            </div>
-            <div className="nfl-leaders-team nfl-leaders-team-right">
+            </TeamLink>
+            <TeamLink sport="nfl" team={home?.team} className="nfl-leaders-team nfl-leaders-team-right">
               <span>{home?.team?.abbreviation}</span>
               <LogoImg team={home?.team} className="nfl-leaders-logo" />
-            </div>
+            </TeamLink>
           </div>
           {LEADER_ROWS.map(({ key, label, sub }) => {
             const awayLdr = leaders[key]?.[String(away?.team?.id)];
@@ -2275,14 +2286,14 @@ function NflGamecast({ data, situation, competitors, status }) {
         <div className="nfl-gc-section">
           <div className="nfl-gc-section-title">Team Stats</div>
           <div className="nfl-teamstats-header">
-            <div className="nfl-teamstats-team">
+            <TeamLink sport="nfl" team={away?.team} className="nfl-teamstats-team">
               <LogoImg team={away?.team} className="nfl-leaders-logo" />
               <span>{away?.team?.abbreviation}</span>
-            </div>
-            <div className="nfl-teamstats-team nfl-teamstats-team-right">
+            </TeamLink>
+            <TeamLink sport="nfl" team={home?.team} className="nfl-teamstats-team nfl-teamstats-team-right">
               <span>{home?.team?.abbreviation}</span>
               <LogoImg team={home?.team} className="nfl-leaders-logo" />
-            </div>
+            </TeamLink>
           </div>
           {TEAM_STAT_ROWS.map(({ key, label }) => {
             const av = awayStats[key], hv = homeStats[key];
@@ -2428,8 +2439,11 @@ function NflPlayByPlay({ data, competitors }) {
         return (
           <div key={drive.id || di} className="pbp-group">
             <div className="pbp-group-header">
-              <LogoImg team={teamComp?.team} className="pbp-team-logo" />
-              <span className="pbp-group-label">{drive.team?.abbreviation} · {drive.description}</span>
+              <TeamLink sport="nfl" team={teamComp?.team || drive.team} className="pbp-team-link">
+                <LogoImg team={teamComp?.team || drive.team} className="pbp-team-logo" />
+                <span>{drive.team?.abbreviation}</span>
+              </TeamLink>
+              <span className="pbp-group-label">{drive.description}</span>
               {lastPlay && <span className="pbp-score">{away?.team?.abbreviation} {lastPlay.awayScore} · {home?.team?.abbreviation} {lastPlay.homeScore}</span>}
             </div>
             {plays.map((p, pi) => (
@@ -2968,8 +2982,10 @@ function LineScore({ competitors, sport, mlbInnings, mlbTotals }) {
             return (
               <tr key={c.team?.id}>
                 <td className="bsp-ls-td bsp-ls-team-col">
-                  <LogoImg team={c.team} className="bsp-ls-logo" />
-                  <span className="bsp-ls-abbr">{c.team?.abbreviation}</span>
+                  <TeamLink sport={sport} team={c.team} className="bsp-ls-team-link">
+                    <LogoImg team={c.team} className="bsp-ls-logo" />
+                    <span className="bsp-ls-abbr">{c.team?.abbreviation}</span>
+                  </TeamLink>
                 </td>
                 {cols.map((_,i) => {
                   const inning = useMLB ? mlbInnings[i] : null;
@@ -3033,7 +3049,7 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, m
         </div>
       )}
       {/* Away */}
-      <div className="bsp-gh-team bsp-gh-away">
+      <TeamLink sport={sport} team={away?.team} className="bsp-gh-team bsp-gh-away">
         <div className="bsp-gh-text">
           <span className="bsp-gh-name bsp-gh-name-full">{away?.team?.displayName}</span>
           <span className="bsp-gh-name bsp-gh-name-abbr">{away?.team?.abbreviation}</span>
@@ -3041,7 +3057,7 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, m
         </div>
         <LogoImg team={away?.team} className="bsp-gh-logo" />
         {(!isPre) && <span className={`bsp-gh-score${away?.winner ? ' bsp-gh-winner' : ''}`}>{awayScore ?? '—'}</span>}
-      </div>
+      </TeamLink>
 
       {/* Center */}
       <div className="bsp-gh-center">
@@ -3059,7 +3075,7 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, m
       </div>
 
       {/* Home */}
-      <div className="bsp-gh-team bsp-gh-home">
+      <TeamLink sport={sport} team={home?.team} className="bsp-gh-team bsp-gh-home">
         {(!isPre) && <span className={`bsp-gh-score${home?.winner ? ' bsp-gh-winner' : ''}`}>{homeScore ?? '—'}</span>}
         <LogoImg team={home?.team} className="bsp-gh-logo" />
         <div className="bsp-gh-text bsp-gh-text-right">
@@ -3067,7 +3083,7 @@ function GameHeader({ competitors, status, sport, mlbTotals, mlbInningDisplay, m
           <span className="bsp-gh-name bsp-gh-name-abbr">{home?.team?.abbreviation}</span>
           <span className="bsp-gh-rec">{rec(home)}</span>
         </div>
-      </div>
+      </TeamLink>
     </div>
   );
 }

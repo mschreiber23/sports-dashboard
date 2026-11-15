@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getTeamLogo } from '../api/espn';
 import {
   NBA_BOX_COLUMNS,
@@ -136,10 +136,17 @@ function OnCourt({ sides, onOpen }) {
             <thead>
               <tr>
                 <th className="bsp-th bsp-th-player">
-                  <span className="nba-gc-teamhead">
-                    {teamLogo(side.team) && <img src={teamLogo(side.team)} alt="" />}
-                    {side.name}
-                  </span>
+                  {side.id ? (
+                    <Link to={`/team/nba/${side.id}`} className="nba-gc-teamhead game-team-link">
+                      {teamLogo(side.team) && <img src={teamLogo(side.team)} alt="" />}
+                      {side.name}
+                    </Link>
+                  ) : (
+                    <span className="nba-gc-teamhead">
+                      {teamLogo(side.team) && <img src={teamLogo(side.team)} alt="" />}
+                      {side.name}
+                    </span>
+                  )}
                 </th>
                 {NBA_BOX_COLUMNS.map((col) => <th key={col.key} className="bsp-th">{col.label}</th>)}
               </tr>

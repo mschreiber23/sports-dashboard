@@ -3206,6 +3206,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .pbp-team-logo { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
+.pbp-team-link { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .pbp-group-label { font-size: 12px; font-weight: 700; color: var(--text); flex: 1; }
 .pbp-score { font-size: 11px; color: var(--text2); font-weight: 600; }
 
@@ -6076,6 +6077,22 @@ thead .dfs-sticky-player {
   gap: 8px;
   flex: 1;
   min-width: min-content;
+}
+.game-team-link {
+  text-decoration: none;
+  color: inherit;
+}
+a.nfl-inj-team-header,
+a.preview-prob-abbr { color: var(--text2); }
+a.nba-gc-teamhead,
+a.nfl-leaders-team,
+a.nfl-teamstats-team,
+a.nfl-last5-abbr { color: var(--text); }
+.bsp-ls-team-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: inherit;
 }
 .bsp-gh-away { justify-content: flex-start; }
 .bsp-gh-home { justify-content: flex-end; }

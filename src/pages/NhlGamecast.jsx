@@ -4,7 +4,7 @@
  * the Gamecast tab and PBP tab update automatically without any
  * additional fetching here.
  */
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getTeamLogo } from '../api/espn';
 import { NhlScoringSummary, nhlScoringFromSummary } from '../components/TeamRow';
 
@@ -232,10 +232,17 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
       {/* Score Header */}
       <div className="nhl-gc-header">
         <div className="nhl-gc-scoreline">
-          <div className="nhl-gc-team">
-            {awayLogo && <img src={awayLogo} alt="" className="nhl-gc-logo" onError={e=>e.target.style.display='none'}/>}
-            <div className="nhl-gc-team-name">{away?.team?.abbreviation}</div>
-          </div>
+          {away?.team?.id ? (
+            <Link to={`/team/nhl/${away.team.id}`} className="nhl-gc-team game-team-link">
+              {awayLogo && <img src={awayLogo} alt="" className="nhl-gc-logo" onError={e=>e.target.style.display='none'}/>}
+              <div className="nhl-gc-team-name">{away?.team?.abbreviation}</div>
+            </Link>
+          ) : (
+            <div className="nhl-gc-team">
+              {awayLogo && <img src={awayLogo} alt="" className="nhl-gc-logo" onError={e=>e.target.style.display='none'}/>}
+              <div className="nhl-gc-team-name">{away?.team?.abbreviation}</div>
+            </div>
+          )}
           <div className="nhl-gc-center">
             <div className="nhl-gc-scores">
               <span className={`nhl-gc-score${isFinal&&awayScore>homeScore?' nhl-gc-score-win':''}`}>{awayScore}</span>
@@ -247,10 +254,17 @@ export default function NhlGamecast({ data, comp, competitors, status }) {
               {shortDetail || (isFinal ? 'Final' : 'Upcoming')}
             </div>
           </div>
-          <div className="nhl-gc-team">
-            {homeLogo && <img src={homeLogo} alt="" className="nhl-gc-logo" onError={e=>e.target.style.display='none'}/>}
-            <div className="nhl-gc-team-name">{home?.team?.abbreviation}</div>
-          </div>
+          {home?.team?.id ? (
+            <Link to={`/team/nhl/${home.team.id}`} className="nhl-gc-team game-team-link">
+              {homeLogo && <img src={homeLogo} alt="" className="nhl-gc-logo" onError={e=>e.target.style.display='none'}/>}
+              <div className="nhl-gc-team-name">{home?.team?.abbreviation}</div>
+            </Link>
+          ) : (
+            <div className="nhl-gc-team">
+              {homeLogo && <img src={homeLogo} alt="" className="nhl-gc-logo" onError={e=>e.target.style.display='none'}/>}
+              <div className="nhl-gc-team-name">{home?.team?.abbreviation}</div>
+            </div>
+          )}
         </div>
         {(awaySOG !== '0' || homeSOG !== '0') && (
           <div className="nhl-gc-sog-bar">
