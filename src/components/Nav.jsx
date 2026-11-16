@@ -129,8 +129,24 @@ function TodayIcon({ active }) {
   );
 }
 
+function TeamIcon({ active }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3aabff' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="3" />
+      <circle cx="16" cy="8" r="3" />
+      <path d="M3 19c.6-2.4 2.5-4 5-4s4.4 1.6 5 4" />
+      <path d="M13 19c.4-1.8 1.8-3.2 3.6-3.7" />
+    </svg>
+  );
+}
+
+function moreItemActive(pathname, path) {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
 const MORE_ITEMS = [
   { path: '/standings',  label: 'Standings',    Icon: StandingsIcon },
+  { path: '/nhl-teams',  label: 'NHL Teams',    Icon: TeamIcon },
   { path: '/nhl-cold',   label: 'Cold streaks', Icon: PointsIcon },
   { path: '/props',      label: 'Props',        Icon: PropsIcon },
   { path: '/me',         label: 'My Profile',   Icon: MeIcon },
@@ -168,7 +184,7 @@ function MoreDropdown({ onClose }) {
 export function BottomNav() {
   const { pathname } = useLocation();
   const [showMore, setShowMore] = useState(false);
-  const moreActive = MORE_ITEMS.some(i => pathname === i.path);
+  const moreActive = MORE_ITEMS.some((item) => moreItemActive(pathname, item.path));
 
   useEffect(() => {
     if (window.navigator.standalone !== true) return undefined;
@@ -222,7 +238,7 @@ export function TopNav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [showMore, setShowMore] = useState(false);
-  const moreActive = MORE_ITEMS.some(i => pathname === i.path);
+  const moreActive = MORE_ITEMS.some((item) => moreItemActive(pathname, item.path));
 
   return (
     <nav className="top-nav">
@@ -256,7 +272,7 @@ export function TopNav() {
                 <div className="top-more-dropdown">
                   {MORE_ITEMS.map(({ path, label, Icon }) => (
                     <button key={path} className="top-more-item" onClick={() => { navigate(path); setShowMore(false); }}>
-                      <Icon active={pathname === path} />
+                      <Icon active={moreItemActive(pathname, path)} />
                       <span>{label}</span>
                     </button>
                   ))}
