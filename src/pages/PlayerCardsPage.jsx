@@ -4,6 +4,7 @@ import { adaptColorForDarkBg } from '../utils/colorUtils';
 import { fetchMiLBSeasonStats, extractMiLBStats, searchMiLBPlayerByName, fetchMiLBTeam, milbHeadshotUrl } from '../api/milb';
 import { idbStorage } from '../lib/idbStorage';
 import { nhlCardSeasonLabel, nhlCardSeasonYear, nhlGameStatMap, nhlSeasonStatMap } from '../utils/nhlCardStats';
+import { nflGameStatMap, nflPositionGroup, nflSeasonStatMap } from '../utils/nflCardStats';
 
 const STORAGE_KEY = 'playerCards_v1';
 
@@ -39,12 +40,6 @@ const SPORT_CFG = {
 /* ── Position helpers ─────────────────────────────────── */
 const isPitcher    = (pos) => /^(SP|RP|P|CP)$/i.test(pos||'');
 const isNhlGoalie  = (pos) => /^G$/i.test(pos||'');
-const nflGroup     = (pos) => {
-  if (/^QB$/i.test(pos)) return 'qb';
-  if (/^(RB|FB|HB)$/i.test(pos)) return 'rb';
-  if (/^(WR|TE)$/i.test(pos)) return 'wr';
-  return null;
-};
 
 /* ── DraftKings NFL fantasy points calculation ──────────
    Scoring: Pass Yd +0.04 | Pass TD +4 | INT -1 | 300+ Pass Bonus +3
@@ -103,6 +98,20 @@ const STAT_CFGS = {
     {s:'REC',l:'REC'},{s:'TGTS',l:'TGT'},{s:'RECYDS',l:'REC YDS'},{s:'RECTD',l:'REC TD'},
     {s:'DKFP',l:'DKFP',dkfp:'wr'},
   ],
+  nfl_te: [
+    {s:'REC',l:'REC'},{s:'TGTS',l:'TGT'},{s:'RECYDS',l:'REC YDS'},{s:'RECTD',l:'REC TD'},
+    {s:'DKFP',l:'DKFP',dkfp:'te'},
+  ],
+  nfl_def: [
+    {s:'TOT',l:'TOT'},{s:'SOLO',l:'SOLO'},{s:'SACK',l:'SACK'},
+    {s:'TFL',l:'TFL'},{s:'PD',l:'PD'},{s:'INT',l:'INT'},
+  ],
+  nfl_k: [
+    {s:'FG',l:'FG'},{s:'PCT',l:'FG%'},{s:'LONG',l:'LONG'},{s:'XP',l:'XP'},{s:'PTS',l:'PTS'},
+  ],
+  nfl_p: [
+    {s:'NO',l:'PUNTS'},{s:'AVG',l:'AVG'},{s:'TB',l:'TB'},{s:'IN20',l:'IN20'},{s:'LONG',l:'LONG'},
+  ],
   nba: [
     {s:'MIN',l:'MIN'},{s:'PTS',l:'PTS'},{s:'REB',l:'REB'},{s:'AST',l:'AST'},
     {s:'STL',l:'STL'},{s:'BLK',l:'BLK'},{s:'TO',l:'TO'},
@@ -121,8 +130,8 @@ const STAT_CFGS = {
 function getStatCfgKey(sport, posAbb) {
   if (sport === 'mlb' || sport === 'milb') return isPitcher(posAbb) ? 'mlb_pitcher' : 'mlb_batter';
   if (sport === 'nfl') {
-    const g = nflGroup(posAbb);
-    return g ? `nfl_${g}` : 'nfl_wr';
+    const g = nflPositionGroup(posAbb);
+    return g ? `nfl_${g}` : null;
   }
   if (sport === 'nba') return 'nba';
   if (sport === 'nhl') return isNhlGoalie(posAbb) ? 'nhl_goalie' : 'nhl_skater';
@@ -164,36 +173,7 @@ async function fetchSeasonStats(sport, athleteId, posAbb) {
         }
       }
     } else if (sport === 'nfl') {
-      // ESPN season stats API returns duplicate abbreviations in each category
-      // (e.g. 'TD' appears once for rushing TDs, then again for total TDs).
-      // Use first-occurrence-wins so we always get the category-specific value.
-      const setOnce = (key, val) => { if (sm[key] === undefined) sm[key] = val; };
-      const pg = nflGroup(posAbb);
-      for (const cat of cats) {
-        const cn = cat.name?.toLowerCase();
-        const stats = cat.stats || [];
-        if (cn === 'passing' && (pg === 'qb' || !pg)) {
-          for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
-        } else if (cn === 'rushing') {
-          if (pg === 'qb') {
-            for (const stat of stats) {
-              if (stat.abbreviation === 'YDS') setOnce('RYDS', stat.displayValue);
-              else if (stat.abbreviation === 'TD') setOnce('RTD', stat.displayValue);
-              else setOnce(stat.abbreviation, stat.displayValue);
-            }
-          } else {
-            for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
-          }
-        } else if (cn === 'receiving' && pg !== 'qb') {
-          for (const stat of stats) {
-            if (stat.abbreviation === 'YDS') setOnce('RECYDS', stat.displayValue);
-            else if (stat.abbreviation === 'TD') setOnce('RECTD', stat.displayValue);
-            else setOnce(stat.abbreviation, stat.displayValue);
-          }
-        } else if (cn === 'fumbles') {
-          for (const stat of stats) setOnce(stat.abbreviation, stat.displayValue);
-        }
-      }
+      Object.assign(sm, nflSeasonStatMap(cats, posAbb));
     } else if (sport === 'nhl') {
       Object.assign(sm, nhlSeasonStatMap(cats, isNhlGoalie(posAbb)));
     } else {
@@ -219,11 +199,8 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
     return null;
   }
 
-  const isQb = nflGroup(posAbb) === 'qb';
-  const isRb = nflGroup(posAbb) === 'rb';
-  const isWr = nflGroup(posAbb) === 'wr';
-
   const statMap = {};
+  const nflGroups = [];
 
   for (const team of summary.boxscore?.players || []) {
     for (const grp of team.statistics || []) {
@@ -232,32 +209,16 @@ function extractPlayerStats(summary, athleteId, sport, posAbb) {
       if (!athlete) continue;
 
       const stats = athlete.stats || [];
-      // Build map for this group
-      const groupMap = {};
-      labels.forEach((lbl, i) => { groupMap[lbl] = stats[i] ?? '—'; });
-
       if (sport === 'nfl') {
-        // For NFL, merge stats across groups based on position
-        if (grp.name === 'passing' && (isQb || !nflGroup(posAbb))) {
-          Object.assign(statMap, groupMap);
-        } else if (grp.name === 'rushing') {
-          // Rename to avoid collision with passing YDS/TD
-          if (isQb) { statMap['RYDS'] = groupMap['YDS']; statMap['RTD'] = groupMap['TD']; statMap['CAR'] = groupMap['CAR']; }
-          else Object.assign(statMap, groupMap);
-        } else if (grp.name === 'receiving') {
-          if (isRb || isWr) {
-            statMap['RECYDS'] = groupMap['YDS'];
-            statMap['RECTD'] = groupMap['TD'];
-            statMap['TGTS'] = groupMap['TGTS'];
-            statMap['REC'] = groupMap['REC'];
-          }
-        } else if (grp.name === 'fumbles') {
-          statMap['FUM'] = groupMap['FUM'];
-        }
+        nflGroups.push({ name: grp.name, labels, stats });
       } else {
-        Object.assign(statMap, groupMap);
+        labels.forEach((lbl, i) => { statMap[lbl] = stats[i] ?? '—'; });
       }
     }
+  }
+  if (sport === 'nfl') {
+    const mapped = nflGameStatMap(nflGroups, posAbb);
+    return Object.keys(mapped).length > 0 ? mapped : null;
   }
   return Object.keys(statMap).length > 0 ? statMap : null;
 }

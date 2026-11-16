@@ -3,6 +3,7 @@
    games-played number, fold only those newest games into the card. */
 
 import { gamesPlayedValue } from './playerCardStats.js';
+import { nflFoldTargets } from './nflCardStats.js';
 
 function categories(stats) {
   return stats?.splits?.categories || [];
@@ -195,34 +196,13 @@ function foldNba(stats, games, base, count) {
 }
 
 function foldNfl(stats, games, position) {
-  const pos = (position || stats._position || '').toUpperCase();
-  const cats = categories(stats);
-  const hasPass = cats.some((cat) => /pass/i.test(cat.name || ''));
-  let adds;
-  if (pos === 'QB' || (!pos && hasPass)) {
-    adds = [
-      [/pass/i, 'YDS', 'YDS', 0],
-      [/pass/i, 'TD', 'TD', 0],
-      [/pass/i, 'INT', 'INT', 0],
-    ];
-  } else if (['RB', 'HB', 'FB'].includes(pos) || (!pos && cats.some((cat) => /rush/i.test(cat.name || '')) && !hasPass)) {
-    adds = [
-      [/rush/i, 'CAR', 'CAR', 0],
-      [/rush/i, 'YDS', 'YDS', 1],
-      [/rush/i, 'TD', 'TD', 1],
-    ];
-  } else {
-    adds = [
-      [/receiv/i, 'REC', 'REC', 0],
-      [/receiv/i, 'YDS', 'YDS', 0],
-      [/receiv/i, 'TD', 'TD', 0],
-    ];
-  }
-  for (const [catTest, abbr, label, index] of adds) {
+  const targets = nflFoldTargets(position || stats._position, categories(stats));
+  for (const target of targets) {
     addMatching(
       stats,
-      (stat, cat) => stat.abbreviation === abbr && catTest.test(cat.name || ''),
-      sumLabel(games, label, index),
+      (stat, cat) => (cat.name || '').toLowerCase() === target.cat.toLowerCase()
+        && (stat.name ? stat.name === target.name : stat.abbreviation === target.abbr),
+      sumLabel(games, target.label, target.index),
     );
   }
 }
