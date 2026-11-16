@@ -3889,7 +3889,8 @@ body {
   margin-left: 4px;
 }
 
-.standings-tr-out { opacity: 0.55; }
+.standings-tr-out .standings-td:not(.standings-td-team),
+.standings-tr-out .standings-team-link { opacity: 0.55; }
 .standings-groups { display: flex; flex-direction: column; gap: 15px; }
 
 /* No box — flat divider style */
@@ -3912,7 +3913,8 @@ body {
 
 .standings-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 12px;
   white-space: nowrap;
 }
@@ -3927,7 +3929,15 @@ body {
   text-align: right;
   border-bottom: 1px solid var(--border);
 }
-.standings-th-team { text-align: left; min-width: 100px; padding-left: 14px; letter-spacing: -0.4px; background: #0f0f13; }
+.standings-th-team,
+.standings-td-team {
+  position: sticky;
+  left: 0;
+  background: #0f0f13;
+  z-index: 2;
+  box-shadow: 1px 0 0 var(--border);
+}
+.standings-th-team { text-align: left; min-width: 100px; padding-left: 14px; letter-spacing: -0.4px; z-index: 3; }
 .standings-th-hl { color: var(--text); }
 .standings-th-sortable { cursor: pointer; user-select: none; transition: color 0.1s; background: #0f0f13; }
 .standings-th-sorted { color: var(--accent2) !important; }
@@ -3935,11 +3945,8 @@ body {
 .standings-sort-icon { font-size: 9px; opacity: 0.5; margin-left: 2px; }
 .standings-th-sorted .standings-sort-icon { opacity: 1; color: var(--accent2); }
 
-.standings-tr {
-  border-bottom: 1px solid var(--border);
-  transition: background 0.1s;
-}
-.standings-tr:last-child { border-bottom: none; }
+.standings-tr { transition: background 0.1s; }
+.standings-tr:last-child .standings-td { border-bottom: none; }
 
 .standings-td {
   padding: 9px 10px;
@@ -3949,13 +3956,14 @@ body {
   font-size: 12px;
   letter-spacing: -1px;
   font-weight: 300;
+  border-bottom: 1px solid var(--border);
 }
 .standings-td-team { text-align: left; padding-left: 14px; }
 .standings-td-hl { color: var(--text); font-weight: 700; }
 .standings-strk-w { color: var(--live); font-weight: 700; }
 .standings-strk-l { color: var(--danger); font-weight: 600; }
 
-.standings-td-team { display: flex; align-items: center; gap: 8px; }
+.standings-td-team { vertical-align: middle; }
 .standings-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
 .standings-team-info { display: flex; align-items: center; gap: 5px; }
 .standings-abbr { font-size: 12px; font-weight: 600; color: var(--text); }
