@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { HashRouter, Routes, Route, useLocation, matchPath, Link } from 'react-router-dom';
+import { HashRouter, Route, useLocation, matchPath, Link } from 'react-router-dom';
+import HistoryPages from './components/HistoryPages';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import { RecentPlayersProvider } from './context/RecentPlayersContext';
@@ -88,36 +89,7 @@ function AppShell({ userId }) {
           )}
         </div>
         <div className="app-body">
-          <Routes>
-            <Route path="/"          element={<Dashboard />} />
-            <Route path="/scores"    element={<main className="main"><ScoresPage /></main>} />
-            <Route path="/standings" element={<main className="main"><StandingsPage /></main>} />
-            <Route path="/leaders"   element={<main className="main"><LeadersPage /></main>} />
-            <Route path="/me"        element={<main className="main"><ProfilePage /></main>} />
-            <Route path="/player/milb/:playerId"             element={<main className="main"><MiLBPlayerPage /></main>} />
-            <Route path="/player/:sport/:playerId"          element={<main className="main"><PlayerPage /></main>} />
-            <Route path="/statcast/mlb/:playerId"            element={<main className="main"><StatcastPage /></main>} />
-            <Route path="/dfs"                               element={<main className="main"><DFSPage /></main>} />
-            <Route path="/demo/nhl"                          element={<main className="main"><NhlDemoPage /></main>} />
-            <Route path="/player-cards"                      element={<main className="main"><PlayerCardsPage /></main>} />
-            <Route path="/rankings"                          element={<main className="main"><RankingsPage /></main>} />
-            <Route path="/players"                           element={<main className="main"><PlayersPage /></main>} />
-            <Route path="/teams"                             element={<main className="main"><TeamsPage /></main>} />
-            <Route path="/boxscore/:sport/:gameId"           element={<main className="main"><BoxScorePage /></main>} />
-            <Route path="/team/:sport/:teamId"               element={<main className="main"><TeamPage /></main>} />
-            <Route path="/milb"                              element={<main className="main"><MiLBPage /></main>} />
-            <Route path="/props"                             element={<main className="main"><PropsPage /></main>} />
-            <Route path="/nhl-points"                        element={<main className="main"><NhlPointsPage /></main>} />
-            <Route path="/nhl-cold"                          element={<main className="main"><NhlColdPage /></main>} />
-            <Route path="/top"                               element={<main className="main"><DayLeadersPage /></main>} />
-            <Route path="/team-stats"                        element={<main className="main"><TeamStatsPage /></main>} />
-            <Route path="/team-stats/:sport"                 element={<main className="main"><TeamStatsPage /></main>} />
-            <Route path="/team-stats/:sport/:teamId"         element={<main className="main"><TeamStatsPage /></main>} />
-            <Route path="/nhl-teams"                         element={<LegacyTeamStats sport="nhl" />} />
-            <Route path="/nhl-teams/:teamId"                 element={<LegacyTeamStats sport="nhl" />} />
-            <Route path="/nba-teams"                         element={<LegacyTeamStats sport="nba" />} />
-            <Route path="/nba-teams/:teamId"                 element={<LegacyTeamStats sport="nba" />} />
-          </Routes>
+          <HistoryPages render={appRoutes} />
         </div>
         <BottomNav />
         <EdgeScrollbar />
@@ -125,6 +97,41 @@ function AppShell({ userId }) {
       </PropSyncProvider>
       </RecentPlayersProvider>
     </FavoritesProvider>
+  );
+}
+
+function appRoutes() {
+  return (
+    <>
+      <Route path="/"          element={<Dashboard />} />
+      <Route path="/scores"    element={<main className="main"><ScoresPage /></main>} />
+      <Route path="/standings" element={<main className="main"><StandingsPage /></main>} />
+      <Route path="/leaders"   element={<main className="main"><LeadersPage /></main>} />
+      <Route path="/me"        element={<main className="main"><ProfilePage /></main>} />
+      <Route path="/player/milb/:playerId"             element={<main className="main"><MiLBPlayerPage /></main>} />
+      <Route path="/player/:sport/:playerId"          element={<main className="main"><PlayerPage /></main>} />
+      <Route path="/statcast/mlb/:playerId"            element={<main className="main"><StatcastPage /></main>} />
+      <Route path="/dfs"                               element={<main className="main"><DFSPage /></main>} />
+      <Route path="/demo/nhl"                          element={<main className="main"><NhlDemoPage /></main>} />
+      <Route path="/player-cards"                      element={<main className="main"><PlayerCardsPage /></main>} />
+      <Route path="/rankings"                          element={<main className="main"><RankingsPage /></main>} />
+      <Route path="/players"                           element={<main className="main"><PlayersPage /></main>} />
+      <Route path="/teams"                             element={<main className="main"><TeamsPage /></main>} />
+      <Route path="/boxscore/:sport/:gameId"           element={<main className="main"><BoxScorePage /></main>} />
+      <Route path="/team/:sport/:teamId"               element={<main className="main"><TeamPage /></main>} />
+      <Route path="/milb"                              element={<main className="main"><MiLBPage /></main>} />
+      <Route path="/props"                             element={<main className="main"><PropsPage /></main>} />
+      <Route path="/nhl-points"                        element={<main className="main"><NhlPointsPage /></main>} />
+      <Route path="/nhl-cold"                          element={<main className="main"><NhlColdPage /></main>} />
+      <Route path="/top"                               element={<main className="main"><DayLeadersPage /></main>} />
+      <Route path="/team-stats"                        element={<main className="main"><TeamStatsPage /></main>} />
+      <Route path="/team-stats/:sport"                 element={<main className="main"><TeamStatsPage /></main>} />
+      <Route path="/team-stats/:sport/:teamId"         element={<main className="main"><TeamStatsPage /></main>} />
+      <Route path="/nhl-teams"                         element={<LegacyTeamStats sport="nhl" />} />
+      <Route path="/nhl-teams/:teamId"                 element={<LegacyTeamStats sport="nhl" />} />
+      <Route path="/nba-teams"                         element={<LegacyTeamStats sport="nba" />} />
+      <Route path="/nba-teams/:teamId"                 element={<LegacyTeamStats sport="nba" />} />
+    </>
   );
 }
 

@@ -395,7 +395,6 @@ function NewsList({ sport, teamId }) {
 
 export default function TeamPage() {
   const { sport, teamId } = useParams();
-  const navigate = useNavigate();
   const [team, setTeam] = useState(null);
   const [events, setEvents] = useState([]);
   const [scheduleLoaded, setScheduleLoaded] = useState(false);
@@ -445,7 +444,6 @@ export default function TeamPage() {
 
   return (
     <div className="tp-page">
-      <button className="tp-back" type="button" onClick={() => navigate('/')}>← Dashboard</button>
       {loading && !team ? (
         <div className="skeleton-card" style={{ height: 96, borderRadius: 12 }} />
       ) : team ? (

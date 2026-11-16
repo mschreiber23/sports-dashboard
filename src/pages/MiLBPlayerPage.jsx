@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   fetchMiLBPlayerBio, fetchMiLBAllStats, fetchMiLBGameLog,
   milbHeadshotUrl, milbTeamLogoUrl, levelShort,
@@ -74,7 +74,6 @@ function getGlVal(split, col) {
 
 export default function MiLBPlayerPage() {
   const { playerId } = useParams();
-  const navigate = useNavigate();
 
   const [bio, setBio]               = useState(null);
   const [allStats, setAllStats]     = useState([]);
@@ -132,7 +131,6 @@ export default function MiLBPlayerPage() {
   if (loading) {
     return (
       <div className="page-content">
-        <button className="tp-back" onClick={() => navigate(-1)}>‹ Back</button>
         <div className="tp-loading" style={{marginTop:32}}>Loading…</div>
       </div>
     );
@@ -141,7 +139,6 @@ export default function MiLBPlayerPage() {
   if (!bio) {
     return (
       <div className="page-content">
-        <button className="tp-back" onClick={() => navigate(-1)}>‹ Back</button>
         <div className="error-banner" style={{marginTop:16}}>Player not found.</div>
       </div>
     );
@@ -215,8 +212,6 @@ export default function MiLBPlayerPage() {
 
   return (
     <div className="page-content">
-      <button className="tp-back" onClick={() => navigate(-1)}>‹ Back</button>
-
       {/* Player header */}
       <div className="mpp-header">
         <div className="mpp-headshot-wrap">

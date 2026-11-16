@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useRecentPlayers } from '../context/RecentPlayersContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, activeSeasonYear, nhlSeasonYear } from '../api/espn';
@@ -515,7 +515,6 @@ function EspnSeasonTable({ table, highlights = NHL_HL }) {
 
 export default function PlayerPage() {
   const { sport, playerId } = useParams();
-  const navigate = useNavigate();
   const { record } = useRecentPlayers();
   const [bio, setBio] = useState(null);
   const [seasons, setSeasons] = useState([]);
@@ -827,8 +826,6 @@ export default function PlayerPage() {
 
   return (
     <div className="pp-page" style={pageStyle}>
-      <button className="tp-back" onClick={() => navigate(-1)}>← Back</button>
-
       {loading && <div className="tp-loading">Loading…</div>}
 
       {!loading && athlete.displayName && (
