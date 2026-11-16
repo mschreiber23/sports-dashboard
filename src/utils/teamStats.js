@@ -1,14 +1,15 @@
 import { activeSeasonYear } from '../api/espn.js';
 import { seasonLabel } from './nhlCareer.js';
 
-const NBA_COLS = ['G', 'MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TO', 'FG%', '3P%', 'FT%'];
+const NBA_COLS = ['GP', 'GS', 'MIN', 'PTS', 'REB', 'OR', 'DR', 'AST', 'STL', 'BLK', 'TO', 'PF', 'FG%', '3P%', 'FT%'];
 const NFL_COLS = {
   Passing: ['G', 'C/ATT', 'YDS', 'TD', 'INT', 'RTG'],
   Rushing: ['G', 'CAR', 'YDS', 'AVG', 'TD'],
   Receiving: ['G', 'REC', 'YDS', 'AVG', 'TD'],
+  Defense: ['G', 'TOT', 'SOLO', 'SACK', 'PD', 'INT', 'FF', 'FR'],
 };
-const NHL_SKATER_COLS = ['G', 'A', 'PTS', '+/-', 'PIM', 'SOG', 'PPG', 'SHG'];
-const NHL_GOALIE_COLS = ['GP', 'W', 'L', 'GAA', 'SV%', 'SO'];
+const NHL_SKATER_COLS = ['GP', 'G', 'A', 'PTS', '+/-', 'PIM', 'PPG', 'PPA', 'SHG', 'SHA', 'GWG', 'S', 'S%', 'FO%', 'TOI/G', 'HIT', 'BS'];
+const NHL_GOALIE_COLS = ['GP', 'GS', 'W', 'L', 'OTL', 'GAA', 'SV%', 'SO', 'SA', 'SV'];
 
 const POS_LABELS = {
   sp: 'SP', cl: 'CL', rp: 'RP', c: 'C', '1b': '1B', '2b': '2B', '3b': '3B',
@@ -77,21 +78,25 @@ function nbaRows(players) {
   const rows = players
     .map((player) => {
       const stats = {
-        G: cell(anywhere(player.byName, 'gamesPlayed')),
+        GP: cell(anywhere(player.byName, 'gamesPlayed')),
+        GS: cell(anywhere(player.byName, 'gamesStarted')),
         MIN: cell(anywhere(player.byName, 'avgMinutes')),
         PTS: cell(anywhere(player.byName, 'avgPoints')),
         REB: cell(anywhere(player.byName, 'avgRebounds')),
+        OR: cell(anywhere(player.byName, 'avgOffensiveRebounds')),
+        DR: cell(anywhere(player.byName, 'avgDefensiveRebounds')),
         AST: cell(anywhere(player.byName, 'avgAssists')),
         STL: cell(anywhere(player.byName, 'avgSteals')),
         BLK: cell(anywhere(player.byName, 'avgBlocks')),
         TO: cell(anywhere(player.byName, 'avgTurnovers')),
+        PF: cell(anywhere(player.byName, 'avgFouls')),
         'FG%': cell(anywhere(player.byName, 'fieldGoalPct')),
         '3P%': cell(anywhere(player.byName, 'threePointFieldGoalPct') ?? anywhere(player.byName, 'threePointPct')),
         'FT%': cell(anywhere(player.byName, 'freeThrowPct')),
       };
       return { ...player, stats };
     })
-    .filter((player) => played(player.stats.G))
+    .filter((player) => played(player.stats.GP))
     .sort((a, b) => num(b.stats.PTS) - num(a.stats.PTS));
   return { cols: NBA_COLS, rows };
 }
@@ -118,6 +123,17 @@ function nflRows(statsType, players) {
           AVG: cell(from(player.byName, 'receiving', 'yardsPerReception')),
           TD: cell(from(player.byName, 'receiving', 'receivingTouchdowns')),
         };
+      } else if (statsType === 'Defense') {
+        stats = {
+          G: cell(games),
+          TOT: cell(from(player.byName, 'defensive', 'totalTackles')),
+          SOLO: cell(from(player.byName, 'defensive', 'soloTackles')),
+          SACK: cell(from(player.byName, 'defensive', 'sacks')),
+          PD: cell(from(player.byName, 'defensive', 'passesDefended')),
+          INT: cell(from(player.byName, 'defensiveInterceptions', 'interceptions')),
+          FF: cell(from(player.byName, 'general', 'fumblesForced')),
+          FR: cell(from(player.byName, 'general', 'fumblesRecovered')),
+        };
       } else {
         const completions = from(player.byName, 'passing', 'completions');
         const attempts = from(player.byName, 'passing', 'passingAttempts');
@@ -135,9 +151,15 @@ function nflRows(statsType, players) {
     .filter((player) => {
       if (statsType === 'Rushing') return played(player.stats.CAR);
       if (statsType === 'Receiving') return played(player.stats.REC);
+      if (statsType === 'Defense') {
+        return ['TOT', 'SOLO', 'SACK', 'PD', 'INT', 'FF', 'FR'].some((key) => played(player.stats[key]));
+      }
       return played(from(player.byName, 'passing', 'passingAttempts'));
     })
-    .sort((a, b) => num(b.stats.YDS) - num(a.stats.YDS));
+    .sort((a, b) => {
+      if (statsType !== 'Defense') return num(b.stats.YDS) - num(a.stats.YDS);
+      return num(b.stats.SACK) - num(a.stats.SACK) || num(b.stats.TOT) - num(a.stats.TOT);
+    });
   return { cols, rows };
 }
 
@@ -153,21 +175,34 @@ function nhlRows(statsType, players) {
       const stats = goalies
         ? {
           GP: cell(from(player.byName, 'general', 'games')),
+          GS: cell(from(player.byName, 'general', 'gameStarted')),
           W: cell(from(player.byName, 'general', 'wins')),
           L: cell(from(player.byName, 'general', 'losses')),
+          OTL: cell(from(player.byName, 'defensive', 'overtimeLosses')),
           GAA: cell(from(player.byName, 'defensive', 'avgGoalsAgainst')),
           'SV%': cell(from(player.byName, 'defensive', 'savePct')),
           SO: cell(from(player.byName, 'defensive', 'shutouts')),
+          SA: cell(from(player.byName, 'defensive', 'shotsAgainst')),
+          SV: cell(from(player.byName, 'defensive', 'saves')),
         }
         : {
+          GP: cell(from(player.byName, 'general', 'games')),
           G: cell(from(player.byName, 'offensive', 'goals')),
           A: cell(from(player.byName, 'offensive', 'assists')),
           PTS: cell(from(player.byName, 'offensive', 'points')),
           '+/-': cell(from(player.byName, 'general', 'plusMinus')),
           PIM: cell(from(player.byName, 'penalties', 'penaltyMinutes')),
-          SOG: cell(from(player.byName, 'offensive', 'shotsTotal')),
           PPG: cell(from(player.byName, 'offensive', 'powerPlayGoals')),
+          PPA: cell(from(player.byName, 'offensive', 'powerPlayAssists')),
           SHG: cell(from(player.byName, 'offensive', 'shortHandedGoals')),
+          SHA: cell(from(player.byName, 'offensive', 'shortHandedAssists')),
+          GWG: cell(from(player.byName, 'offensive', 'gameWinningGoals')),
+          S: cell(from(player.byName, 'offensive', 'shotsTotal')),
+          'S%': cell(from(player.byName, 'offensive', 'shootingPct')),
+          'FO%': cell(from(player.byName, 'offensive', 'faceoffPercent')),
+          'TOI/G': cell(from(player.byName, 'general', 'timeOnIcePerGame')),
+          HIT: cell(from(player.byName, 'defensive', 'hits')),
+          BS: cell(from(player.byName, 'defensive', 'blockedShots')),
         };
       return { ...player, stats };
     })

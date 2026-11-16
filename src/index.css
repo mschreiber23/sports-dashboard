@@ -10392,3 +10392,47 @@ thead .dfs-sticky-player {
 .nba-team .nts-columns button { font-size: 13px; }
 .nba-team .nts-columns button { white-space: nowrap; }
 .nba-team .nts-pos { font-size: 12px; line-height: 1.1; }
+
+.tp-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.tp-hero-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.tp-hero-copy { min-width: 0; }
+.tp-hero-name {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.tp-hero-record {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.tp-upcoming { display: flex; flex-direction: column; gap: 6px; }
+.tp-next {
+  width: 100%;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: #1e1e26;
+}
+.tp-months { overflow-x: auto; flex-wrap: nowrap; }
+.tp-months button { flex: 0 0 auto; }
+.tp-row-today { box-shadow: inset 3px 0 0 var(--accent, #3aabff); }
+.tp-stat-block { display: flex; flex-direction: column; gap: 6px; }
+.tp-stat-block + .tp-stat-block { margin-top: 16px; }
+.tp-stats-th-name,
+.tp-stats-td-name {
+  position: sticky;
+  left: 0;
+  background: var(--bg, #0f0f13);
+  z-index: 1;
+}

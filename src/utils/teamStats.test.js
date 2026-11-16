@@ -86,7 +86,7 @@ test('NBA team stats use per-game names and games played', () => {
     { id: '0', name: 'Did Not Play', pos: 'G', byName: { general: { gamesPlayed: '0', avgPoints: '20.0' } } },
   ]);
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].stats.G, '1');
+  assert.equal(rows[0].stats.GP, '1');
   assert.equal(rows[0].stats.PTS, '5.0');
   assert.equal(rows[0].stats.REB, '6.0');
   assert.equal(rows[0].stats.STL, '3.0');
@@ -153,12 +153,37 @@ test('NHL skater goals are not team games, and goalie wins come from games playe
   assert.equal(skating.rows[0].stats.G, '4');
   assert.equal(skating.rows[0].stats.A, '8');
   assert.equal(skating.rows[0].stats.PTS, '12');
-  assert.equal(skating.rows[0].stats.SOG, '34');
+  assert.equal(skating.rows[0].stats.S, '34');
+  assert.equal(skating.rows[0].stats.GP, '10');
   assert.equal(skating.rows[0].stats.PIM, '2');
   const goalies = buildTeamStatRows('nhl', 'Goalies', [skater, goalie]);
   assert.deepEqual(goalies.rows[0].stats, {
-    GP: '6', W: '2', L: '3', GAA: '3.15', 'SV%': '.900', SO: '0',
+    GP: '6', GS: '—', W: '2', L: '3', OTL: '—', GAA: '3.15', 'SV%': '.900', SO: '0', SA: '—', SV: '—',
   });
+});
+
+test('NFL defense sorts by sacks and ignores players without a defensive line', () => {
+  const defender = {
+    id: '1',
+    name: 'C. Jones',
+    pos: 'DT',
+    byName: {
+      general: { gamesPlayed: '8', fumblesForced: '1', fumblesRecovered: '0' },
+      defensive: { totalTackles: '22', soloTackles: '14', sacks: '4.0', passesDefended: '2' },
+      defensiveInterceptions: { interceptions: '1' },
+    },
+  };
+  const quiet = {
+    id: '2',
+    name: 'Kicker',
+    pos: 'K',
+    byName: { general: { gamesPlayed: '8' }, defensive: {} },
+  };
+  const defense = buildTeamStatRows('nfl', 'Defense', [quiet, defender]);
+  assert.deepEqual(defense.rows.map((row) => row.name), ['C. Jones']);
+  assert.equal(defense.rows[0].stats.SACK, '4.0');
+  assert.equal(defense.rows[0].stats.INT, '1');
+  assert.equal(defense.cols[0], 'G');
 });
 
 test('depth charts keep every formation, including NFL offense', () => {
