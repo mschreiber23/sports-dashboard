@@ -84,6 +84,7 @@ export async function loadNhlTeamBoard(teamId, onProgress, now = new Date()) {
     return {
       ...skater,
       ...seasonTotals(current),
+      games: (current || []).length,
       last10,
       versus: against,
     };

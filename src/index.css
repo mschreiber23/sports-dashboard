@@ -10293,6 +10293,19 @@ thead .dfs-sticky-player {
   background: #1e1e26;
   flex-shrink: 0;
 }
+.nts-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.nts-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .nts-name {
   min-width: 0;
   font-size: 15px;
@@ -10302,6 +10315,17 @@ thead .dfs-sticky-player {
   text-overflow: ellipsis;
 }
 .nts-pos { flex-shrink: 0; color: var(--text2); font-size: 13px; font-weight: 700; }
+.nts-gp {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #0f0f13;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
 .nts-stat {
   text-align: right;
   font-size: 15px;
@@ -10367,5 +10391,4 @@ thead .dfs-sticky-player {
 .nba-team .nts-stat,
 .nba-team .nts-columns button { font-size: 13px; }
 .nba-team .nts-columns button { white-space: nowrap; }
-.nba-team .nts-id { display: flex; flex-direction: column; min-width: 0; }
 .nba-team .nts-pos { font-size: 12px; line-height: 1.1; }
