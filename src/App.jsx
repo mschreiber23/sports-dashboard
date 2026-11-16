@@ -29,8 +29,7 @@ import PropsPage from './pages/PropsPage';
 import NhlPointsPage from './pages/NhlPointsPage';
 import NhlColdPage from './pages/NhlColdPage';
 import DayLeadersPage from './pages/DayLeadersPage';
-import NhlTeamPage from './pages/NhlTeamPage';
-import NbaTeamPage from './pages/NbaTeamPage';
+import TeamStatsPage, { LegacyTeamStats } from './pages/TeamStatsPage';
 import MiLBPlayerPage from './pages/MiLBPlayerPage';
 import { PropSyncProvider } from './components/PropSync';
 import './index.css';
@@ -110,10 +109,13 @@ function AppShell({ userId }) {
             <Route path="/nhl-points"                        element={<main className="main"><NhlPointsPage /></main>} />
             <Route path="/nhl-cold"                          element={<main className="main"><NhlColdPage /></main>} />
             <Route path="/top"                               element={<main className="main"><DayLeadersPage /></main>} />
-            <Route path="/nhl-teams"                         element={<main className="main"><NhlTeamPage /></main>} />
-            <Route path="/nhl-teams/:teamId"                 element={<main className="main"><NhlTeamPage /></main>} />
-            <Route path="/nba-teams"                         element={<main className="main"><NbaTeamPage /></main>} />
-            <Route path="/nba-teams/:teamId"                 element={<main className="main"><NbaTeamPage /></main>} />
+            <Route path="/team-stats"                        element={<main className="main"><TeamStatsPage /></main>} />
+            <Route path="/team-stats/:sport"                 element={<main className="main"><TeamStatsPage /></main>} />
+            <Route path="/team-stats/:sport/:teamId"         element={<main className="main"><TeamStatsPage /></main>} />
+            <Route path="/nhl-teams"                         element={<LegacyTeamStats sport="nhl" />} />
+            <Route path="/nhl-teams/:teamId"                 element={<LegacyTeamStats sport="nhl" />} />
+            <Route path="/nba-teams"                         element={<LegacyTeamStats sport="nba" />} />
+            <Route path="/nba-teams/:teamId"                 element={<LegacyTeamStats sport="nba" />} />
           </Routes>
         </div>
         <BottomNav />
