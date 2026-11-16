@@ -97,8 +97,18 @@ export function seasonTotals(games) {
   }), { goals: 0, assists: 0, points: 0 });
 }
 
+export const NHL_CATEGORIES = [
+  { key: 'points', label: 'PTS', word: 'points' },
+  { key: 'goals', label: 'G', word: 'goals' },
+  { key: 'assists', label: 'A', word: 'assists' },
+];
+
+export function statSeries(games, key, limit = 10) {
+  return (games || []).slice(0, limit).map((game) => game?.[key] || 0).reverse();
+}
+
 export function pointSeries(games, limit = 10) {
-  return (games || []).slice(0, limit).map((game) => game.points).reverse();
+  return statSeries(games, 'points', limit);
 }
 
 export function facesOpponent(game, opponent) {

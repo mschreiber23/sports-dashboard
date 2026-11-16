@@ -8,6 +8,7 @@ import {
   nextOpponent,
   pointSeries,
   seasonTotals,
+  statSeries,
   skatersFromRoster,
   sortSkaters,
 } from './nhlTeamSkaters.js';
@@ -63,6 +64,12 @@ test('last 10 points read oldest on the left and the opponent series matches the
     { id: '1', points: 2, opponentId: '8', opponentAbbr: 'LA', opponentName: 'Los Angeles Kings' },
   ];
   assert.deepEqual(pointSeries(games, 10), [2, 0, 3]);
+  const counted = [
+    { id: '2', goals: 1, assists: 2, points: 3 },
+    { id: '1', goals: 0, assists: 1, points: 1 },
+  ];
+  assert.deepEqual(statSeries(counted, 'goals', 10), [0, 1]);
+  assert.deepEqual(statSeries(counted, 'assists', 10), [1, 2]);
   const leafs = games.filter((game) => facesOpponent(game, { id: '21', abbreviation: 'TOR', name: 'Maple Leafs' }));
   assert.deepEqual(pointSeries(leafs, 10), [3]);
   assert.equal(facesOpponent(
