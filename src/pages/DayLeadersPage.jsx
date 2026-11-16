@@ -153,7 +153,7 @@ export default function DayLeadersPage() {
   }
 
   return (
-    <div className="day-leaders">
+    <div className="day-leaders stathub">
       <div className="day-leaders-head">
         <div>
           <h1>StatHub</h1>
