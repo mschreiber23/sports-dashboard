@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { activeSeasonYear, getPlayerGameLog, getPlayerStats } from '../api/espn';
+import { rememberLocal } from '../utils/localStore';
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes for player stats
 const REFRESH_MS = 30 * 1000;
@@ -43,7 +44,7 @@ export default function usePlayerStats(sport, playerId) {
         setStats(data);
         if (gameLog) setLog(gameLog);
         setError(null);
-        try { localStorage.setItem(ck, JSON.stringify({ ts: Date.now(), data })); } catch { /* ignore quota */ }
+        rememberLocal(ck, JSON.stringify({ ts: Date.now(), data }));
       }).catch(() => {
         if (!cancelled && initial && !cached) setError('Could not load player stats.');
       }).finally(() => {

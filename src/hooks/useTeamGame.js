@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getScoreboard, getTeamSchedule } from '../api/espn';
 import { getNflWeekGames, getNflWeekInfo } from '../api/nfl';
 import { sportsDayStr } from '../utils/sportsDay';
+import { rememberLocal } from '../utils/localStore';
 import { gameOnDay, selectUpcomingGames } from '../utils/upcomingGames';
 
 const CACHE_TTL = 60 * 1000; // 60 seconds — show cached data instantly, refresh in background
@@ -19,7 +20,7 @@ function readCache(key) {
   } catch { return null; }
 }
 function writeCache(key, data) {
-  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+  rememberLocal(key, JSON.stringify({ ts: Date.now(), data }));
 }
 
 function ymdToLocalDate(ymd) {
