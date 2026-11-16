@@ -308,11 +308,13 @@ function WildCardTable({ entries, cols, divLeaderIds, wcSpots, sortKey, sortDir,
               <>
                 <tr key={team.id || i} className={`standings-tr ${isOut ? 'standings-tr-out' : ''}`}>
                   <td className="standings-td standings-td-team">
-                    <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
-                    <div className="standings-team-info">
-                      <span className="standings-abbr">{team.abbreviation}</span>
-                      {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
-                      {isWC && <span className="standings-wc-badge">WC</span>}
+                    <div className="standings-team-link">
+                      <img src={getTeamLogo({logo})} onError={(e)=>{if(e.target.src!==logo){e.target.onerror=null;e.target.src=logo;}}} alt="" className="standings-logo" />
+                      <div className="standings-team-info">
+                        <span className="standings-abbr">{team.abbreviation}</span>
+                        {clinch && clinch !== '-' && <span className="standings-clinch">{clinch}</span>}
+                        {isWC && <span className="standings-wc-badge">WC</span>}
+                      </div>
                     </div>
                   </td>
                   {cols.map((c) => {
