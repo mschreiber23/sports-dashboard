@@ -1,6 +1,8 @@
 /* Season lines for the home player cards. Four stats stay in the grid.
    Games played is separate so the grid does not grow. */
 
+import { nflHomeLines } from './nflCardStats.js';
+
 function categoryStats(cat) {
   const result = {};
   (cat?.stats || []).forEach((stat) => { result[stat.abbreviation] = stat.displayValue; });
@@ -85,38 +87,7 @@ export function extractSeasonStats(statsData, sport) {
     ];
   }
 
-  if (sport === 'nfl') {
-    const passing = categories.find((cat) => cat.name?.includes('pass'));
-    const rushing = categories.find((cat) => cat.name?.includes('rush'));
-    const receiving = categories.find((cat) => cat.name?.includes('receiv'));
-    const games = categoryStats(categories.find((cat) => cat.name === 'general')).GP || '—';
-
-    if (['QB'].includes(position) || (!position && passing)) {
-      const passingStats = categoryStats(passing);
-      return [
-        { label: 'GP', value: games },
-        { label: 'YDS', value: passingStats.YDS },
-        { label: 'TD', value: passingStats.TD },
-        { label: 'INT', value: passingStats.INT },
-      ];
-    }
-    if (['RB', 'HB', 'FB'].includes(position) || (!position && rushing && !passing)) {
-      const rushingStats = categoryStats(rushing);
-      return [
-        { label: 'GP', value: games },
-        { label: 'CAR', value: rushingStats.CAR },
-        { label: 'YDS', value: rushingStats.YDS },
-        { label: 'TD', value: rushingStats.TD },
-      ];
-    }
-    const receivingStats = categoryStats(receiving);
-    return [
-      { label: 'GP', value: games },
-      { label: 'REC', value: receivingStats.REC },
-      { label: 'YDS', value: receivingStats.YDS },
-      { label: 'TD', value: receivingStats.TD },
-    ];
-  }
+  if (sport === 'nfl') return nflHomeLines(statsData);
 
   if (sport === 'nhl') {
     const merged = mergeAll();
