@@ -10348,3 +10348,24 @@ thead .dfs-sticky-player {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+.nts-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.nts-cats button {
+  background: #0f0f13;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.nts-cats button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nba-team .nts-columns,
+.nba-team .nts-row {
+  grid-template-columns: minmax(0, 1fr) repeat(5, 38px);
+}
+.nba-team .nts-stat,
+.nba-team .nts-columns button { font-size: 13px; }
+.nba-team .nts-columns button { white-space: nowrap; }
+.nba-team .nts-id { display: flex; flex-direction: column; min-width: 0; }
+.nba-team .nts-pos { font-size: 12px; line-height: 1.1; }

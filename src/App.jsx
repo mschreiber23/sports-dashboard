@@ -30,6 +30,7 @@ import NhlPointsPage from './pages/NhlPointsPage';
 import NhlColdPage from './pages/NhlColdPage';
 import DayLeadersPage from './pages/DayLeadersPage';
 import NhlTeamPage from './pages/NhlTeamPage';
+import NbaTeamPage from './pages/NbaTeamPage';
 import MiLBPlayerPage from './pages/MiLBPlayerPage';
 import { PropSyncProvider } from './components/PropSync';
 import './index.css';
@@ -111,6 +112,8 @@ function AppShell({ userId }) {
             <Route path="/top"                               element={<main className="main"><DayLeadersPage /></main>} />
             <Route path="/nhl-teams"                         element={<main className="main"><NhlTeamPage /></main>} />
             <Route path="/nhl-teams/:teamId"                 element={<main className="main"><NhlTeamPage /></main>} />
+            <Route path="/nba-teams"                         element={<main className="main"><NbaTeamPage /></main>} />
+            <Route path="/nba-teams/:teamId"                 element={<main className="main"><NbaTeamPage /></main>} />
           </Routes>
         </div>
         <BottomNav />
