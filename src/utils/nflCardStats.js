@@ -260,3 +260,162 @@ export function nflFoldTargets(position, categories) {
   const group = nflPositionGroup(position) || inferNflGroup(categories);
   return (FOLD[group] || []).map(([cat, name, abbr, label, index]) => ({ cat, name, abbr, label, index }));
 }
+
+/* Game logs repeat labels. The parallel `names` list is the one that
+   says which YDS is passing and which is rushing. */
+const LOG_COLUMNS = {
+  qb: [
+    ['completions', 'CMP'],
+    ['passingAttempts', 'ATT'],
+    ['passingYards', 'YDS'],
+    ['passingTouchdowns', 'TD'],
+    ['interceptions', 'INT'],
+    ['QBRating', 'RTG'],
+    ['rushingAttempts', 'CAR'],
+    ['rushingYards', 'RYDS'],
+    ['rushingTouchdowns', 'RTD'],
+  ],
+  rb: [
+    ['rushingAttempts', 'CAR'],
+    ['rushingYards', 'YDS'],
+    ['yardsPerRushAttempt', 'AVG'],
+    ['rushingTouchdowns', 'TD'],
+    ['receptions', 'REC'],
+    ['receivingTargets', 'TGTS'],
+    ['receivingYards', 'RECYDS'],
+    ['receivingTouchdowns', 'RECTD'],
+  ],
+  wr: [
+    ['receptions', 'REC'],
+    ['receivingTargets', 'TGTS'],
+    ['receivingYards', 'YDS'],
+    ['yardsPerReception', 'AVG'],
+    ['receivingTouchdowns', 'TD'],
+    ['rushingAttempts', 'CAR'],
+    ['rushingYards', 'RYDS'],
+  ],
+  te: [
+    ['receptions', 'REC'],
+    ['receivingTargets', 'TGTS'],
+    ['receivingYards', 'YDS'],
+    ['yardsPerReception', 'AVG'],
+    ['receivingTouchdowns', 'TD'],
+    ['rushingAttempts', 'CAR'],
+    ['rushingYards', 'RYDS'],
+  ],
+  def: [
+    ['totalTackles', 'TOT'],
+    ['soloTackles', 'SOLO'],
+    ['sacks', 'SACK'],
+    ['stuffs', 'TFL'],
+    ['passesDefended', 'PD'],
+    ['interceptions', 'INT'],
+    ['fumblesForced', 'FF'],
+  ],
+  k: [
+    ['fieldGoalsMade-fieldGoalAttempts', 'FG'],
+    ['fieldGoalPct', 'FG%'],
+    ['longFieldGoalMade', 'LNG'],
+    ['extraPointsMade-extraPointAttempts', 'XP'],
+    ['totalKickingPoints', 'PTS'],
+  ],
+  p: [
+    ['punts', 'NO'],
+    ['grossAvgPuntYards', 'AVG'],
+    ['longPunt', 'LNG'],
+    ['touchbacks', 'TB'],
+    ['puntsInside20', 'IN20'],
+    ['netAvgPuntYards', 'NET'],
+  ],
+};
+
+export function nflLogColumns(position) {
+  const group = nflPositionGroup(position);
+  return (LOG_COLUMNS[group] || []).map(([, label]) => label);
+}
+
+export function nflLogStats(names, values, position) {
+  const group = nflPositionGroup(position);
+  const columns = LOG_COLUMNS[group];
+  if (!columns) return {};
+  const byName = {};
+  (names || []).forEach((name, index) => {
+    if (byName[name] == null) byName[name] = values?.[index];
+  });
+  const stats = {};
+  for (const [name, label] of columns) {
+    const value = byName[name];
+    stats[label] = value == null || value === '' ? '—' : value;
+  }
+  return stats;
+}
+
+export function nflCareerStats(categories, position) {
+  const group = nflPositionGroup(position) || inferNflGroup(categories);
+  const map = nflSeasonStatMap(categories, position);
+  const passing = category(categories, 'passing');
+  const rushing = category(categories, 'rushing');
+  const receiving = category(categories, 'receiving');
+  if (group === 'qb') {
+    show(map, 'ATT', read(passing, 'passingAttempts', 'ATT'));
+    show(map, 'CMP', read(passing, 'completions', 'CMP'));
+    show(map, 'RTG', read(passing, 'QBRating', 'RTG') ?? read(passing, 'quarterbackRating', 'RAT'));
+  } else if (group === 'rb') {
+    show(map, 'AVG', read(rushing, 'yardsPerRushAttempt', 'AVG'));
+    show(map, 'RYDS', map.RECYDS);
+    show(map, 'RTD', map.RECTD);
+  } else if (group === 'wr' || group === 'te') {
+    show(map, 'YDS', map.RECYDS);
+    show(map, 'TD', map.RECTD);
+    show(map, 'AVG', read(receiving, 'yardsPerReception', 'AVG'));
+    show(map, 'TGTS', map.TGTS);
+  } else if (group === 'k' || group === 'p') {
+    show(map, 'LNG', map.LONG);
+  }
+  return map;
+}
+
+function labelValue(groups, groupName, label) {
+  const grp = (groups || []).find((item) => (item.name || '').toLowerCase() === groupName);
+  if (!grp) return null;
+  const index = (grp.labels || []).indexOf(label);
+  return index >= 0 ? grp.stats?.[index] : null;
+}
+
+export function nflBoxLogStats(groups, position) {
+  const map = nflGameStatMap(groups, position);
+  const group = nflPositionGroup(position);
+  if (!group || !Object.keys(map).length) return null;
+  if (group === 'qb') {
+    const [cmp, att] = String(map['C/ATT'] || '—').split('/');
+    return {
+      CMP: cmp, ATT: att, YDS: map.YDS, TD: map.TD, INT: map.INT,
+      RTG: labelValue(groups, 'passing', 'RTG') ?? '—',
+      CAR: map.CAR, RYDS: map.RYDS, RTD: map.RTD,
+    };
+  }
+  if (group === 'rb') {
+    return {
+      CAR: map.CAR, YDS: map.YDS, AVG: labelValue(groups, 'rushing', 'AVG') ?? '—', TD: map.TD,
+      REC: map.REC, TGTS: map.TGTS, RECYDS: map.RECYDS, RECTD: map.RECTD,
+    };
+  }
+  if (group === 'wr' || group === 'te') {
+    return {
+      REC: map.REC, TGTS: map.TGTS, YDS: map.RECYDS,
+      AVG: labelValue(groups, 'receiving', 'AVG') ?? '—', TD: map.RECTD,
+      CAR: labelValue(groups, 'rushing', 'CAR') ?? '0',
+      RYDS: labelValue(groups, 'rushing', 'YDS') ?? '0',
+    };
+  }
+  if (group === 'def') {
+    return { TOT: map.TOT, SOLO: map.SOLO, SACK: map.SACK, TFL: map.TFL, PD: map.PD, INT: map.INT, FF: map.FF ?? '0' };
+  }
+  if (group === 'k') {
+    return { FG: map.FG, 'FG%': map.PCT, LNG: map.LONG, XP: map.XP, PTS: map.PTS };
+  }
+  if (group === 'p') {
+    return { NO: map.NO, AVG: map.AVG, LNG: map.LONG, TB: map.TB, IN20: map.IN20, NET: labelValue(groups, 'punting', 'NET') ?? '—' };
+  }
+  return null;
+}
