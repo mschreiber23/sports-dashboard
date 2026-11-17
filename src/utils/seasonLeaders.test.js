@@ -48,6 +48,7 @@ describe('season leader rows', () => {
     assert.equal(rows[0].turnovers, 5);
     assert.equal(formatSeasonStat('nba', 'points', rows[0].points), '39.3');
     assert.equal(formatSeasonStat('nba', 'steals', rows[0].steals), '2.0');
+    assert.equal(rows[0].games, 10);
     assert.equal(rows[0].team, 'LAL');
     assert.match(rows[0].teamLogo, /500-dark\/lal\.png$/);
   });
@@ -76,6 +77,7 @@ describe('season leader rows', () => {
     assert.equal(rows[0].points, 48);
     assert.equal(rows[0].shots, 70);
     assert.equal(rows[0].plusMinus, 12);
+    assert.equal(rows[0].games, 19);
     assert.equal(rows[0].hits, 22);
     assert.equal(rows[0].blocks, 11);
   });
@@ -91,6 +93,9 @@ describe('season leader rows', () => {
       name: 'receiving',
       names: ['receptions', 'receivingTargets', 'receivingYards', 'receivingTouchdowns', 'receivingFumblesLost'],
     }, {
+      name: 'general',
+      names: ['gamesPlayed'],
+    }, {
       name: 'defensiveinterceptions',
       names: ['interceptions'],
     }];
@@ -100,6 +105,7 @@ describe('season leader rows', () => {
         { name: 'passing', totals: ['200', '310', '2400', '18', '6'] },
         { name: 'rushing', totals: ['30', '180', '2', '1'] },
         { name: 'receiving', totals: ['0', '0', '0', '0', '0'] },
+        { name: 'general', totals: ['9'] },
         { name: 'defensiveinterceptions', totals: ['0'] },
       ],
     }], schema);
@@ -108,6 +114,8 @@ describe('season leader rows', () => {
     assert.equal(passing.passingYards, 2400);
     assert.equal(passing.interceptions, 6);
     assert.equal(passing.carries, 30);
+    assert.equal(passing.games, 9);
+    assert.equal(rushing.games, 9);
     assert.equal(passing.fumblesLost, 1);
     assert.equal(rushing.rushingYards, 180);
     assert.equal(rows.some((row) => row.line === 'receiving'), false);
@@ -115,20 +123,22 @@ describe('season leader rows', () => {
 
   it('reads MLB hitting and pitching totals', () => {
     const schema = [
-      { name: 'batting', names: ['atBats', 'hits', 'homeRuns', 'RBIs', 'stolenBases'] },
-      { name: 'pitching', names: ['innings', 'strikeouts'] },
+      { name: 'batting', names: ['atBats', 'hits', 'homeRuns', 'RBIs', 'stolenBases', 'gamesPlayed'] },
+      { name: 'pitching', names: ['innings', 'strikeouts', 'gamesPlayed'] },
     ];
     const rows = rowsFromSeasonAthletes('mlb', [{
       athlete: { id: '27', shortName: 'S. Ohtani', position: { abbreviation: 'DH' } },
       categories: [
-        { name: 'batting', totals: ['400', '120', '40', '90', '12'] },
-        { name: 'pitching', totals: ['80.1', '95'] },
+        { name: 'batting', totals: ['400', '120', '40', '90', '12', '110'] },
+        { name: 'pitching', totals: ['80.1', '95', '22'] },
       ],
     }], schema);
     assert.deepEqual(rows.map((row) => row.line), ['hitting', 'pitching']);
     assert.equal(rows[0].homeRuns, 40);
+    assert.equal(rows[0].games, 110);
     assert.equal(rows[0].rbi, 90);
     assert.equal(rows[1].strikeouts, 95);
+    assert.equal(rows[1].games, 22);
     assert.equal(rows[1].innings, 80.1);
     const hitter = rowsFromSeasonAthletes('mlb', [{
       athlete: { id: '4', shortName: 'A. Judge', position: { abbreviation: 'RF' } },
