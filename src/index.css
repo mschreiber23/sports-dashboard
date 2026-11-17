@@ -9996,6 +9996,19 @@ a.nfl-last5-abbr { color: var(--text); }
   font-size: 10px;
   font-weight: 800;
 }
+.day-leaders-gp {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #0f0f13;
+  color: var(--text2);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
 .day-card-board {
   display: flex;
   align-items: center;

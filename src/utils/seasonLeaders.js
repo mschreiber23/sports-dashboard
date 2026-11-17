@@ -60,6 +60,7 @@ function nbaRows(athletes, schema) {
     if (!who.id) continue;
     rows.push({
       ...who,
+      games: count(stats, 'gamesPlayed'),
       points: perGame(stats, 'avgPoints', 'points'),
       rebounds: perGame(stats, 'avgRebounds', 'rebounds'),
       assists: perGame(stats, 'avgAssists', 'assists'),
@@ -85,6 +86,7 @@ function nhlRows(athletes, schema, extras = {}) {
     const extra = extras[who.id] || {};
     rows.push({
       ...who,
+      games: count(stats, 'games'),
       goals,
       assists,
       points: count(stats, 'points') || goals + assists,
@@ -124,12 +126,14 @@ function nflRows(athletes, schema) {
     const passing = categoryStats(schema, entry.categories, 'passing');
     const rushing = categoryStats(schema, entry.categories, 'rushing');
     const receiving = categoryStats(schema, entry.categories, 'receiving');
+    const games = count(categoryStats(schema, entry.categories, 'general'), 'gamesPlayed');
     const who = identity(entry.athlete);
     if (!who.id) continue;
     const fumblesLost = count(rushing, 'rushingFumblesLost') + count(receiving, 'receivingFumblesLost');
     if (playedPassing(passing)) {
       rows.push({
         ...who,
+        games,
         line: 'passing',
         completions: count(passing, 'completions'),
         passingAttempts: count(passing, 'passingAttempts'),
@@ -145,6 +149,7 @@ function nflRows(athletes, schema) {
     if (playedRushing(rushing)) {
       rows.push({
         ...who,
+        games,
         line: 'rushing',
         carries: count(rushing, 'rushingAttempts'),
         rushingYards: count(rushing, 'rushingYards'),
@@ -159,6 +164,7 @@ function nflRows(athletes, schema) {
     if (playedReceiving(receiving)) {
       rows.push({
         ...who,
+        games,
         line: 'receiving',
         receptions: count(receiving, 'receptions'),
         targets: count(receiving, 'receivingTargets'),
@@ -183,12 +189,12 @@ function mlbRows(athletes, schema) {
     const rbi = count(batting, 'RBIs');
     const steals = count(batting, 'stolenBases');
     if (count(batting, 'atBats') > 0 || hits > 0 || homeRuns > 0 || rbi > 0 || steals > 0) {
-      rows.push({ ...who, line: 'hitting', hits, homeRuns, rbi, steals });
+      rows.push({ ...who, games: count(batting, 'gamesPlayed'), line: 'hitting', hits, homeRuns, rbi, steals });
     }
     const innings = pitching.innings ?? 0;
     const strikeouts = count(pitching, 'strikeouts');
     if (innings > 0 || strikeouts > 0) {
-      rows.push({ ...who, line: 'pitching', innings, strikeouts });
+      rows.push({ ...who, games: count(pitching, 'gamesPlayed'), line: 'pitching', innings, strikeouts });
     }
   }
   return rows;

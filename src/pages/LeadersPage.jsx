@@ -190,6 +190,7 @@ export default function LeadersPage() {
                   <span className="day-leaders-title">
                     <span className="day-leaders-name">{row.name}</span>
                     {row.position && <span className="day-leaders-pos">{row.position}</span>}
+                    {row.games > 0 && <span className="day-leaders-gp">{row.games} GP</span>}
                   </span>
                   <TeamMark row={row} />
                 </span>
