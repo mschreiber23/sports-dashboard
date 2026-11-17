@@ -7627,6 +7627,14 @@ a.nfl-last5-abbr { color: var(--text); }
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+.nba-score-box .nba-stats-head,
+.nba-score-box .nba-stats-row {
+  grid-template-columns: minmax(5.6rem, 1.15fr) repeat(7, minmax(1.35rem, 0.48fr));
+}
+.nba-score-box .nba-stats-col {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
 .nba-stats-cell.is-zero { color: #5c5c6c; font-weight: 600; }
 .nba-stats-empty { margin: 0; font-size: 13px; color: var(--text2); }
 .nfl-stats-group + .nfl-stats-group { margin-top: 12px; }

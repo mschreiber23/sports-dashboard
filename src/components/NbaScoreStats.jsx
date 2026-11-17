@@ -30,7 +30,7 @@ export default function NbaScoreStats({ gameId, awayId, homeId, live = false }) 
   const played = (sides || []).reduce((sum, side) => sum + side.players.length, 0);
 
   return (
-    <div className="nba-stats-wrap" onClick={(event) => event.stopPropagation()}>
+    <div className="nba-stats-wrap nba-score-box" onClick={(event) => event.stopPropagation()}>
       <div className="mlbc-divider" />
       <button
         type="button"
