@@ -2,6 +2,7 @@ export const NBA_STAT_COLUMNS = [
   { key: 'PTS', label: 'PTS' },
   { key: 'REB', label: 'REB' },
   { key: 'AST', label: 'AST' },
+  { key: '3PT', label: '3P' },
   { key: 'BLK', label: 'BLK' },
   { key: 'STL', label: 'STL' },
   { key: 'TO', label: 'TO' },
