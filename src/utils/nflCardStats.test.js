@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { nflGameStatMap, nflHomeLines, nflPositionGroup, nflSeasonStatMap } from './nflCardStats.js';
+import { nflGameStatMap, nflHomeLines, nflLogColumns, nflLogStats, nflPositionGroup, nflSeasonStatMap } from './nflCardStats.js';
 
 function stat(name, abbreviation, displayValue) {
   return { name, abbreviation, displayValue };
@@ -154,4 +154,62 @@ test('a game line follows the position, including the defensive table', () => {
   assert.equal(nflGameStatMap(groups, 'P').AVG, '50.7');
   assert.equal(nflGameStatMap(groups, 'P').IN20, '1');
   assert.deepEqual(nflGameStatMap(groups, 'OT'), {});
+});
+
+test('a game log keeps passing yards when rushing yards share the YDS label', () => {
+  const names = ['completions', 'passingAttempts', 'passingYards', 'passingTouchdowns', 'interceptions', 'QBRating', 'rushingAttempts', 'rushingYards', 'rushingTouchdowns'];
+  const values = ['22', '35', '348', '5', '0', '135.5', '2', '15', '0'];
+  const stats = nflLogStats(names, values, 'QB');
+  assert.equal(stats.YDS, '348');
+  assert.equal(stats.TD, '5');
+  assert.equal(stats.RYDS, '15');
+  assert.equal(stats.RTD, '0');
+  assert.deepEqual(nflLogColumns('QB'), ['CMP', 'ATT', 'YDS', 'TD', 'INT', 'RTG', 'CAR', 'RYDS', 'RTD']);
+});
+
+test('running back, receiver, defender, kicker, and punter logs use their own columns', () => {
+  const back = nflLogStats(
+    ['rushingAttempts', 'rushingYards', 'yardsPerRushAttempt', 'rushingTouchdowns', 'receptions', 'receivingTargets', 'receivingYards', 'receivingTouchdowns'],
+    ['22', '101', '4.6', '0', '6', '7', '70', '2'],
+    'RB',
+  );
+  assert.equal(back.YDS, '101');
+  assert.equal(back.RECYDS, '70');
+  assert.equal(back.RECTD, '2');
+
+  const receiver = nflLogStats(
+    ['receptions', 'receivingTargets', 'receivingYards', 'yardsPerReception', 'receivingTouchdowns', 'rushingYards'],
+    ['5', '6', '82', '16.4', '0', '0'],
+    'WR',
+  );
+  assert.equal(receiver.YDS, '82');
+  assert.equal(receiver.RYDS, '0');
+
+  const defender = nflLogStats(
+    ['totalTackles', 'soloTackles', 'sacks', 'stuffs', 'passesDefended', 'interceptions', 'fumblesForced'],
+    ['9', '5', '0', '1', '0', '0', '1'],
+    'LB',
+  );
+  assert.equal(defender.TOT, '9');
+  assert.equal(defender.TFL, '1');
+  assert.equal(defender.YDS, undefined);
+  assert.deepEqual(nflLogColumns('CB'), ['TOT', 'SOLO', 'SACK', 'TFL', 'PD', 'INT', 'FF']);
+
+  const kicker = nflLogStats(
+    ['fieldGoalsMade-fieldGoalAttempts', 'fieldGoalPct', 'longFieldGoalMade', 'extraPointsMade-extraPointAttempts', 'totalKickingPoints'],
+    ['0-0', '0.0', '0', '5-5', '5'],
+    'PK',
+  );
+  assert.equal(kicker.FG, '0-0');
+  assert.equal(kicker.XP, '5-5');
+  assert.equal(kicker.PTS, '5');
+
+  const punter = nflLogStats(
+    ['punts', 'grossAvgPuntYards', 'longPunt', 'touchbacks', 'puntsInside20', 'puntReturnYards', 'avgPuntReturnYards', 'netAvgPuntYards'],
+    ['7', '50.7', '60', '0', '1', '81', '16.2', '39.1'],
+    'P',
+  );
+  assert.equal(punter.AVG, '50.7');
+  assert.equal(punter.NET, '39.1');
+  assert.equal(punter.NO, '7');
 });

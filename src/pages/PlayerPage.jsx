@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useRecentPlayers } from '../context/RecentPlayersContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { getPlayerBio, getPlayerSeasonStats, getPlayerGameLog, getPlayerSplits, getScoreboard, getGameBoxscore, searchTeams, getAthleteStats, activeSeasonYear, nhlSeasonYear } from '../api/espn';
+import { nflBoxLogStats, nflCareerStats, nflLogColumns, nflLogStats, nflPositionGroup } from '../utils/nflCardStats';
 import { omitCareerColumns, parseAthleteCareer } from '../utils/nhlCareer';
 import { adaptColorForDarkBg } from '../utils/colorUtils';
 
@@ -34,6 +35,8 @@ function roundStat(val, key = '') {
   if (str.startsWith('.') || str.startsWith('-.')) {
     return str; // already formatted correctly by ESPN
   }
+
+  if (str.includes('/') || /^\d+-\d+/.test(str)) return str;
 
   const n = parseFloat(str.replace(/,/g, ''));
   if (isNaN(n)) return str;
@@ -266,16 +269,15 @@ function RecentPointsSearch({ gamelog, color, seasonGames }) {
 }
 
 /* ── Position detection helpers ─────────────────────── */
-const QB_POS  = ['QB'];
-const RB_POS  = ['RB','HB','FB'];
-const REC_POS = ['WR','TE'];
 const NHL_GOALIE_POS = ['G','GK'];
 
 function getNflKey(pos) {
-  if (QB_POS.includes(pos))  return 'nfl_qb';
-  if (RB_POS.includes(pos))  return 'nfl_rb';
-  if (REC_POS.includes(pos)) return 'nfl_wr';
-  return 'nfl_qb'; // fallback
+  const group = nflPositionGroup(pos);
+  if (!group) return null;
+  if (group === 'def') return 'nfl_def';
+  if (group === 'k') return 'nfl_k';
+  if (group === 'p') return 'nfl_p';
+  return `nfl_${group}`;
 }
 
 /* ── Career table columns ─────────────────────────────── */
@@ -321,6 +323,24 @@ const CAREER_COLS = {
     { key: 'YDS', label: 'YDS', hl: true }, { key: 'AVG', label: 'AVG' },
     { key: 'TD', label: 'TD', hl: true }, { key: 'TGTS', label: 'TGT' },
   ],
+  nfl_te: [
+    { key: 'GP', label: 'GP' }, { key: 'REC', label: 'REC', hl: true },
+    { key: 'YDS', label: 'YDS', hl: true }, { key: 'AVG', label: 'AVG' },
+    { key: 'TD', label: 'TD', hl: true }, { key: 'TGTS', label: 'TGT' },
+  ],
+  nfl_def: [
+    { key: 'GP', label: 'GP' }, { key: 'TOT', label: 'TOT', hl: true },
+    { key: 'SOLO', label: 'SOLO' }, { key: 'SACK', label: 'SACK', hl: true },
+    { key: 'TFL', label: 'TFL' }, { key: 'PD', label: 'PD' }, { key: 'INT', label: 'INT' },
+  ],
+  nfl_k: [
+    { key: 'GP', label: 'GP' }, { key: 'FG', label: 'FG', hl: true },
+    { key: 'XP', label: 'XP' }, { key: 'PTS', label: 'PTS', hl: true }, { key: 'LNG', label: 'LNG' },
+  ],
+  nfl_p: [
+    { key: 'GP', label: 'GP' }, { key: 'NO', label: 'NO', hl: true },
+    { key: 'AVG', label: 'AVG', hl: true }, { key: 'IN20', label: 'IN20' }, { key: 'LNG', label: 'LNG' },
+  ],
   nhl_skater: [
     { key: 'GP', label: 'GP' }, { key: 'G', label: 'G', hl: true },
     { key: 'A', label: 'A', hl: true }, { key: 'PTS', label: 'PTS', hl: true },
@@ -336,7 +356,8 @@ const CAREER_COLS = {
 const CAREER_TITLE = {
   mlb_batting: 'Career Batting', mlb_pitching: 'Career Pitching',
   nba: 'Career Stats',
-  nfl_qb: 'Career Passing', nfl_rb: 'Career Rushing', nfl_wr: 'Career Receiving',
+  nfl_qb: 'Career Passing', nfl_rb: 'Career Rushing', nfl_wr: 'Career Receiving', nfl_te: 'Career Receiving',
+  nfl_def: 'Career Defense', nfl_k: 'Career Kicking', nfl_p: 'Career Punting',
   nhl_skater: 'Career Stats', nhl_goalie: 'Career Stats',
 };
 
@@ -386,32 +407,8 @@ function getStats(data, sportKey) {
   }
 
   if (sportKey?.startsWith('nfl')) {
-    const passing   = cats.find((c) => c.name?.includes('pass'));
-    const rushing   = cats.find((c) => c.name?.includes('rush'));
-    const receiving = cats.find((c) => c.name?.includes('receiv'));
-    const general   = cats.find((c) => c.name === 'general');
-    const result = {};
-    // Always get GP from general
-    (general?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-
-    if (sportKey === 'nfl_qb') {
-      (passing?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-      // Store rushing separately to avoid overwriting passing YDS
-      (rushing?.stats || []).forEach((s) => {
-        const key = s.abbreviation === 'YDS' ? 'RYDS' : s.abbreviation === 'TD' ? 'RTD' : s.abbreviation === 'AVG' ? 'RAVG' : s.abbreviation;
-        if (!result[key]) result[key] = s.displayValue;
-      });
-      result['CAR'] = rushing ? (rushing.stats || []).find((s) => s.abbreviation === 'CAR')?.displayValue : null;
-    } else if (sportKey === 'nfl_rb') {
-      (rushing?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-      (receiving?.stats || []).forEach((s) => {
-        const key = s.abbreviation === 'YDS' ? 'RYDS' : s.abbreviation === 'TD' ? 'RTD' : s.abbreviation;
-        if (!result[key]) result[key] = s.displayValue;
-      });
-    } else {
-      (receiving?.stats || []).forEach((s) => { result[s.abbreviation] = s.displayValue; });
-    }
-    return result;
+    const pos = { nfl_qb: 'QB', nfl_rb: 'RB', nfl_wr: 'WR', nfl_te: 'TE', nfl_def: 'LB', nfl_k: 'PK', nfl_p: 'P' }[sportKey];
+    return nflCareerStats(cats, pos);
   }
 
   if (sportKey === 'nhl_skater' || sportKey === 'nhl_goalie') {
@@ -468,6 +465,8 @@ function gamesFromLog(data, { regularOnly = false } = {}) {
           atVs: info.atVs || '',
           result: info.gameResult || '',
           stats: gameLogStats(labels, ev.stats),
+          names: data?.names || null,
+          values: ev.stats || [],
         });
       }
     }
@@ -540,8 +539,8 @@ export default function PlayerPage() {
     return sport;
   })();
 
-  const cols        = CAREER_COLS[sportKey] || CAREER_COLS.nba;
-  const glCols      = GAMELOG_COLS[sportKey] || GAMELOG_COLS.nba;
+  const cols        = CAREER_COLS[sportKey] || (sport === 'nfl' ? [] : CAREER_COLS.nba);
+  const glCols      = sport === 'nfl' ? nflLogColumns(position) : (GAMELOG_COLS[sportKey] || GAMELOG_COLS.nba);
   const careerTitle = CAREER_TITLE[sportKey] || 'Career Stats';
 
   useEffect(() => {
@@ -600,26 +599,36 @@ export default function PlayerPage() {
             // Only inject for live or completed games — pre-game box scores show season totals not game stats
             if (state === 'in' || state === 'post') {
               const summary = await getGameBoxscore(sport, todayGame.id);
-              for (const group of summary?.boxscore?.players || []) {
-                for (const sg of group.statistics || []) {
-                  const bsLabels = sg.labels || [];
-                  const found = (sg.athletes || []).find((a) => String(a.athlete?.id) === String(playerId));
-                  if (found?.stats?.length) {
-                    const myTeam = comp?.competitors?.find((c) => c.team?.id === teamId);
-                    const opp = comp?.competitors?.find((c) => c.team?.id !== teamId);
-                    const injected = gameLogStats(bsLabels, found.stats);
-                    // Sanity: AB must be a realistic single-game number (not season totals)
-                    if (parseInt(injected['AB'] || 0) <= 10) {
-                      games.unshift({
-                        date: todayGame.date || new Date().toISOString(),
-                        opponent: opp?.team?.abbreviation || '',
-                        atVs: myTeam?.homeAway === 'home' ? 'vs' : '@',
-                        result: state === 'post' ? (myTeam?.winner ? 'W' : 'L') : 'Live',
-                        stats: injected,
-                        isLive: state === 'in',
-                      });
+              const myTeam = comp?.competitors?.find((c) => c.team?.id === teamId);
+              const opp = comp?.competitors?.find((c) => c.team?.id !== teamId);
+              const played = {
+                date: todayGame.date || new Date().toISOString(),
+                opponent: opp?.team?.abbreviation || '',
+                atVs: myTeam?.homeAway === 'home' ? 'vs' : '@',
+                result: state === 'post' ? (myTeam?.winner ? 'W' : 'L') : 'Live',
+                isLive: state === 'in',
+              };
+              if (sport === 'nfl') {
+                const groups = [];
+                for (const group of summary?.boxscore?.players || []) {
+                  for (const sg of group.statistics || []) {
+                    const found = (sg.athletes || []).find((a) => String(a.athlete?.id) === String(playerId));
+                    if (found?.stats?.length) groups.push({ name: sg.name, labels: sg.labels || [], stats: found.stats });
+                  }
+                }
+                const mapped = nflBoxLogStats(groups, bioData?.athlete?.position?.abbreviation || '');
+                if (mapped) games.unshift({ ...played, stats: mapped, mapped });
+              } else {
+                for (const group of summary?.boxscore?.players || []) {
+                  for (const sg of group.statistics || []) {
+                    const found = (sg.athletes || []).find((a) => String(a.athlete?.id) === String(playerId));
+                    if (found?.stats?.length) {
+                      const injected = gameLogStats(sg.labels || [], found.stats);
+                      if (parseInt(injected.AB || 0, 10) <= 10) {
+                        games.unshift({ ...played, stats: injected });
+                      }
+                      break;
                     }
-                    break;
                   }
                 }
               }
@@ -769,10 +778,23 @@ export default function PlayerPage() {
       cols.forEach(({ key }) => {
         const val = s[key];
         if (val == null || val === '—') return;
-        const n = parseFloat(String(val).replace(/,/g, ''));
+        const raw = String(val).replace(/,/g, '');
+        const slash = raw.match(/^(\d+)[/-](\d+)$/);
+        if (slash) {
+          const made = (totals[`${key}:made`] || 0) + Number(slash[1]);
+          const attempts = (totals[`${key}:att`] || 0) + Number(slash[2]);
+          totals[`${key}:made`] = made;
+          totals[`${key}:att`] = attempts;
+          totals[key] = `${made}/${attempts}`;
+          return;
+        }
+        if (!/^-?\d+(\.\d+)?$/.test(raw)) return;
+        const n = parseFloat(raw);
         if (isNaN(n)) return;
 
-        if (isNba && NBA_AVG_KEYS.includes(key)) {
+        if (key === 'LNG') {
+          totals[key] = Math.max(totals[key] || 0, n);
+        } else if (isNba && NBA_AVG_KEYS.includes(key)) {
           // Average these for NBA
           totals[key] = (totals[key] || 0) + n;
           counts[key] = (counts[key] || 0) + 1;
@@ -1052,6 +1074,7 @@ export default function PlayerPage() {
                   </thead>
                   <tbody>
                     {(sport === 'nhl' || sport === 'nba' ? gamelog : gamelog.slice(0, 25)).map((g, i) => {
+                      const rowStats = sport === 'nfl' && g.names ? nflLogStats(g.names, g.values, position) : (g.mapped || g.stats);
                       const date = g.date ? new Date(g.date) : null;
                       const dateStr = date
                         ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -1075,8 +1098,8 @@ export default function PlayerPage() {
                             )}
                           </td>
                           {glCols.map((c) => (
-                            <td key={c} className={`pp-td ${c === 'PTS' || c === 'HR' || c === 'TD' ? 'pp-td-hl' : ''}`}>
-                              {g.stats[c] || '0'}
+                            <td key={c} className={`pp-td ${c === 'PTS' || c === 'HR' || c === 'TD' || c === 'YDS' || c === 'TOT' ? 'pp-td-hl' : ''}`}>
+                              {rowStats[c] || '—'}
                             </td>
                           ))}
                         </tr>
